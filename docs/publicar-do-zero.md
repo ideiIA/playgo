@@ -46,7 +46,7 @@ ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 443/tcp && ufw --force enable
 ## 2. Baixar o código
 
 ```bash
-git clone https://github.com/ideiIA/palygo.git /opt/playgo
+git clone https://github.com/ideiIA/playgo.git /opt/playgo
 cd /opt/playgo
 ```
 

@@ -1,6 +1,6 @@
 # Publicar o PlayGo: GitHub + Supabase + Vercel
 
-Conta responsável: **ideiia@ideiia.com.br**. Repositório: https://github.com/ideiIA/palygo
+Conta responsável: **ideiia@ideiia.com.br**. Repositório: https://github.com/ideiIA/playgo
 
 ```
 GitHub (código) ──► Vercel (site + app + API, Python serverless)
@@ -47,7 +47,7 @@ Supabase não enxerga nada; só o nosso servidor) e cria o bucket **privado** `p
 
 ## 3. Vercel
 
-1. https://vercel.com/new → entre com a conta da ideiia → **Import** `ideiIA/palygo` (o Vercel precisa ter acesso ao repositório pelo app GitHub dele).
+1. https://vercel.com/new → entre com a conta da ideiia → **Import** `ideiIA/playgo` (o Vercel precisa ter acesso ao repositório pelo app GitHub dele).
 2. Framework Preset: **Other**. Não precisa de Build Command. A entrada é `api/index.py` e o roteamento está em `vercel.json`.
 3. Gere as variáveis de produção e cole em **Settings → Environment Variables → Import .env**:
 
