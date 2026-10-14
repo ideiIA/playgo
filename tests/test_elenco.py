@@ -53,7 +53,6 @@ def test_editar_campeonato_so_a_organizacao_e_com_regras(s, fabrica):
 
     for ruim, msg in (
         (dict(nome="   "), "nome"),
-        (dict(inscricao_ate=hoje + timedelta(days=60)), "prazo de inscrição"),
         (dict(data_fim=hoje), "data final"),
         (dict(max_equipes=1), "pelo menos 2"),
         (dict(valor_inscricao=-1), "negativo"),

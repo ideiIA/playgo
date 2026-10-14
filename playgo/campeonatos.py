@@ -103,8 +103,6 @@ def criar(s: SessaoORM, usuario: Usuario, d: NovoCampeonato) -> Campeonato:
     planos.exigir(s, usuario, "campeonato")
     if d.atletas_por_equipe < 1:
         raise ErroNegocio("Informe quantos atletas formam uma equipe.")
-    if d.inscricao_ate > d.data_inicio:
-        raise ErroNegocio("O prazo de inscrição precisa ser até o início do campeonato.")
     if d.data_fim and d.data_fim < d.data_inicio:
         raise ErroNegocio("A data final não pode ser anterior à inicial.")
     if d.valor_inscricao < 0:
@@ -168,9 +166,6 @@ def editar(s: SessaoORM, campeonato_id: int, por: Usuario, **campos) -> Campeona
             raise ErroNegocio("Informe o local do campeonato.")
     inicio = novos.get("data_inicio", c.data_inicio)
     fim = novos.get("data_fim", c.data_fim)
-    inscricao = novos.get("inscricao_ate", c.inscricao_ate)
-    if inscricao > inicio:
-        raise ErroNegocio("O prazo de inscrição precisa ser até o início do campeonato.")
     if fim and fim < inicio:
         raise ErroNegocio("A data final não pode ser anterior à inicial.")
     if "max_equipes" in novos:
