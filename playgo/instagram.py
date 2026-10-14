@@ -132,9 +132,15 @@ def conectar(s: SessaoORM, admin: Usuario, codigo: str) -> dict:
     curto, user_id = dado.get("access_token"), str(dado.get("user_id") or "")
     if not curto:
         raise ErroNegocio("O Instagram não devolveu o acesso. Tente de novo.")
-    longo = _graph("GET", "access_token", grant_type="ig_exchange_token", client_secret=settings.instagram_app_secret, access_token=curto)
+    try:
+        longo = _graph("GET", "access_token", grant_type="ig_exchange_token", client_secret=settings.instagram_app_secret, access_token=curto)
+    except ErroNegocio as e:
+        raise ErroNegocio(f"{e} (etapa: trocar o código por token de longa duração)") from None
     token = longo["access_token"]
-    perfil = _graph("GET", "me", token, fields="user_id,username")
+    try:
+        perfil = _graph("GET", "me", token, fields="user_id,username")
+    except ErroNegocio as e:
+        raise ErroNegocio(f"{e} (etapa: ler o perfil da conta)") from None
     meta = {"user_id": str(perfil.get("user_id") or user_id), "username": perfil.get("username")}
     c = s.get(ConfigExterna, CHAVE) or ConfigExterna(chave=CHAVE)
     c.valor, c.meta, c.expira_em, c.atualizado_em = token, meta, agora() + timedelta(seconds=int(longo.get("expires_in") or 60 * 86400)), agora()
@@ -249,9 +255,9 @@ def _esperar(token: str, container: str) -> None:
         if codigo == "FINISHED":
             return
         if codigo in ("ERROR", "EXPIRED"):
-            raise ErroNegocio("O Instagram não aceitou o vídeo (formato ou duração).")
+            raise ErroNegocio("O Instagram não aceitou a mídia (formato, tamanho ou endereço da imagem).")
         if time.monotonic() > limite:
-            raise ErroNegocio("O Instagram ainda está processando o vídeo; nova tentativa no próximo ciclo.")
+            raise ErroNegocio("O Instagram ainda está processando a mídia; nova tentativa no próximo ciclo.")
         _pausa(4)
 
 
@@ -273,17 +279,16 @@ def publicar(s: SessaoORM, p: Publicacao) -> str:
         tipo, url = itens[0]
         dados = {"image_url": url} if tipo == "foto" else {"media_type": "REELS", "video_url": url}
         container = _graph("POST", f"{ig}/media", token, caption=cap, **dados)["id"]
-        if tipo != "foto":
-            _esperar(token, container)
+        _esperar(token, container)
     else:
         filhos = []
         for tipo, url in itens:
             dados = {"image_url": url} if tipo == "foto" else {"media_type": "VIDEO", "video_url": url}
             filho = _graph("POST", f"{ig}/media", token, is_carousel_item="true", **dados)["id"]
-            if tipo != "foto":
-                _esperar(token, filho)
+            _esperar(token, filho)
             filhos.append(filho)
         container = _graph("POST", f"{ig}/media", token, media_type="CAROUSEL", children=",".join(filhos), caption=cap)["id"]
+        _esperar(token, container)
     return _graph("POST", f"{ig}/media_publish", token, creation_id=container)["id"]
 
 
