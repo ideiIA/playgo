@@ -45,6 +45,7 @@
     <a href="/gestao" class="{{ 'active' if aba == 'gestao' }}"><span class="ico">▦</span><span class="t">Minha Arena</span></a>
     <a href="/planos" class="{{ 'active' if aba == 'planos' }}"><span class="ico">💳</span><span class="t">Meu plano</span></a>
     {% if usuario.admin %}
+    <a href="/gestao/locais" class="{{ 'active' if aba == 'locais' }}"><span class="ico">📍</span><span class="t">Guia de locais</span></a>
     <a href="/administracao" class="{{ 'active' if aba == 'administracao' }}"><span class="ico">⚙</span><span class="t">Administração</span></a>
     {% endif %}
     {% if usuario.equipe_moderacao %}

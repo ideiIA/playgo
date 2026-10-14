@@ -25,6 +25,7 @@ from .. import (
     detalhes,
     feed,
     grupos,
+    locais,
     modalidades,
     notificacoes,
     planos,
@@ -505,6 +506,73 @@ def cancelar_equipe(equipe_id: int, s: Sessao, usuario: Atual):
 @app.get("/arenas/{arena_id}")
 def ver_arena(arena_id: int, request: Request, s: Sessao, usuario: Atual):
     return pagina(request, s, usuario, "arena.html", "explorar", ar=detalhes.arena_publica(s, arenas.obter(s, arena_id), usuario))
+
+
+# ---------------------------------------------------------------- guia de locais (Explorar) e sua gestão
+
+
+@app.get("/locais/{local_id}")
+def ver_local(local_id: int, request: Request, s: Sessao, usuario: Atual):
+    return pagina(request, s, usuario, "local.html", "explorar", lc=locais.serializar(locais.obter(s, local_id)))
+
+
+@app.get("/gestao/locais")
+def gestao_locais(request: Request, s: Sessao, usuario: Atual):
+    return pagina(request, s, usuario, "locais_gestao.html", "locais", lista=[locais.serializar(x) for x in locais.todos(s, usuario)], tipos=locais.TIPOS)
+
+
+def _centro_local(usuario):
+    la, ln, informada = descoberta.localizacao(usuario)
+    return {"latitude": la, "longitude": ln, "informada": informada}
+
+
+@app.get("/gestao/locais/novo")
+def novo_local(request: Request, s: Sessao, usuario: Atual):
+    locais._exigir_admin(usuario)
+    return pagina(request, s, usuario, "local_form.html", "locais", lc=None, centro=_centro_local(usuario), tipos=locais.TIPOS)
+
+
+def _dados_local(tipo, nome, endereco, cidade, latitude, longitude, horario_funcionamento, telefone, email, site, regras, descricao, modalidades) -> dict:
+    return dict(
+        tipo=tipo, nome=nome, endereco=endereco, cidade=cidade, latitude=_num(latitude, float), longitude=_num(longitude, float),
+        horario_funcionamento=horario_funcionamento, telefone=telefone, email=email, site=site, regras=regras, descricao=descricao, modalidades=modalidades,
+    )
+
+
+@app.post("/gestao/locais")
+def criar_local(
+    request: Request, s: Sessao, usuario: Atual, tipo: str = Form(""), nome: str = Form(""), endereco: str = Form(""), cidade: str = Form(""),
+    latitude: str = Form(""), longitude: str = Form(""), horario_funcionamento: str = Form(""), telefone: str = Form(""), email: str = Form(""),
+    site: str = Form(""), regras: str = Form(""), descricao: str = Form(""), modalidades: list[str] = Form(default=[]),
+):
+    locais.criar(s, usuario, **_dados_local(tipo, nome, endereco, cidade, latitude, longitude, horario_funcionamento, telefone, email, site, regras, descricao, modalidades))
+    request.session["ok"] = "Local cadastrado no guia."
+    return RedirectResponse("/gestao/locais", status_code=303)
+
+
+@app.get("/gestao/locais/{local_id}/editar")
+def editar_local_form(local_id: int, request: Request, s: Sessao, usuario: Atual):
+    locais._exigir_admin(usuario)
+    lc = locais.serializar(locais.obter(s, local_id, incluir_inativos=True))
+    return pagina(request, s, usuario, "local_form.html", "locais", lc=lc, centro={"latitude": lc["latitude"], "longitude": lc["longitude"], "informada": True}, tipos=locais.TIPOS)
+
+
+@app.post("/gestao/locais/{local_id}")
+def editar_local(
+    local_id: int, request: Request, s: Sessao, usuario: Atual, tipo: str = Form(""), nome: str = Form(""), endereco: str = Form(""), cidade: str = Form(""),
+    latitude: str = Form(""), longitude: str = Form(""), horario_funcionamento: str = Form(""), telefone: str = Form(""), email: str = Form(""),
+    site: str = Form(""), regras: str = Form(""), descricao: str = Form(""), modalidades: list[str] = Form(default=[]),
+):
+    locais.editar(s, usuario, local_id, **_dados_local(tipo, nome, endereco, cidade, latitude, longitude, horario_funcionamento, telefone, email, site, regras, descricao, modalidades))
+    request.session["ok"] = "Local atualizado."
+    return RedirectResponse("/gestao/locais", status_code=303)
+
+
+@app.post("/gestao/locais/{local_id}/ativo")
+def ativar_local(local_id: int, request: Request, s: Sessao, usuario: Atual, ativo: str = Form("")):
+    locais.definir_ativo(s, usuario, local_id, ativo == "1")
+    return RedirectResponse("/gestao/locais", status_code=303)
+
 
 
 @app.get("/gestao")

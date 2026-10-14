@@ -96,10 +96,10 @@
     const mapa = L.map(el).setView([centro.latitude, centro.longitude], 13);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(mapa);
     L.circleMarker([centro.latitude, centro.longitude], { radius: 8, color: '#fff', weight: 3, fillColor: '#6c4cff', fillOpacity: 1 }).addTo(mapa).bindTooltip('Você');
-    const rotas = { atividade: '/atividades/', campeonato: '/campeonatos/', arena: '/arenas/', grupo: '/grupos/', horario: '/arenas/' };
+    const rotas = { atividade: '/atividades/', campeonato: '/campeonatos/', arena: '/arenas/', grupo: '/grupos/', horario: '/arenas/', local: '/locais/' };
     const limites = [[centro.latitude, centro.longitude]];
     pontos.forEach((p) => {
-      const cor = p.urgente ? '#ff3d81' : { atividade: '#6c4cff', campeonato: '#ff8a00', arena: '#16c784', grupo: '#22c7f2', horario: '#16c784' }[p.tipo];
+      const cor = p.urgente ? '#ff3d81' : { atividade: '#6c4cff', campeonato: '#ff8a00', arena: '#16c784', grupo: '#22c7f2', horario: '#16c784', local: '#0ea5e9' }[p.tipo];
       const m = L.circleMarker([p.latitude, p.longitude], { radius: p.urgente ? 11 : 9, color: '#fff', weight: 2, fillColor: cor, fillOpacity: 0.95 }).addTo(mapa);
       const alvo = p.tipo === 'horario' ? '/arenas/' + (p.arena_id || p.id) : rotas[p.tipo] + p.id;
       m.bindPopup('<b>' + p.rotulo.replace(/</g, '&lt;') + '</b><br>' + (p.distancia || '') + '<br><a href="' + alvo + '">Ver detalhes</a>');

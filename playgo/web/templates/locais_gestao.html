@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block titulo %}Guia de locais — PlayGo{% endblock %}
+{% block conteudo %}
+<div class="section-title"><h2>📍 Guia de locais</h2><a class="btn purple" href="/gestao/locais/novo">+ Cadastrar local</a></div>
+<p class="suave">Locais públicos de prática, lojas de material esportivo e arenas que ainda não assinaram. Aparecem no <b>Explorar</b> para todos os usuários, só com informação (horário, contato, endereço e regras).</p>
+{% if not lista %}<div class="panel"><p class="vazio">Nenhum local cadastrado ainda.</p></div>{% endif %}
+<div class="grid">
+{% for l in lista %}
+  <div class="card" {% if not l.ativo %}style="opacity:.6"{% endif %}>
+    <span class="tag verde">{{ l.icone }} {{ l.categoria_nome }}{% if not l.ativo %} • oculto{% endif %}</span>
+    <h3>{{ l.nome }}</h3>
+    <div class="meta">{{ l.endereco }}<br>🕒 {{ l.horario_funcionamento|truncate(60) }}<br>📞 {{ l.telefone }}</div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <a class="btn soft pequeno" href="/gestao/locais/{{ l.id }}/editar">Editar</a>
+      <a class="btn soft pequeno" href="/locais/{{ l.id }}">Ver</a>
+      <form method="post" action="/gestao/locais/{{ l.id }}/ativo"><input type="hidden" name="ativo" value="{{ '' if l.ativo else '1' }}"><button class="btn soft pequeno">{{ 'Ocultar' if l.ativo else 'Mostrar' }}</button></form>
+    </div>
+  </div>
+{% endfor %}
+</div>
+{% endblock %}

@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from .. import (
     arenas,
+    locais,
     atividades,
     campeonatos,
     contas,
@@ -183,6 +184,22 @@ class ArenaIn(BaseModel):
     regras: str | None = None
     abre: time = time(6, 0)
     fecha: time = time(23, 0)
+
+
+class LocalIn(BaseModel):
+    tipo: str
+    nome: str
+    endereco: str
+    latitude: float
+    longitude: float
+    horario_funcionamento: str
+    telefone: str
+    cidade: str | None = None
+    email: str | None = None
+    site: str | None = None
+    regras: str | None = None
+    descricao: str | None = None
+    modalidades: list[str] = []
 
 
 class QuadraIn(BaseModel):
@@ -485,6 +502,34 @@ def cancelar_equipe(equipe_id: int, u: AtualApi, s: Sessao):
     e = s.get(Equipe, equipe_id)
     campeonatos.cancelar_equipe(s, equipe_id, u)
     return detalhes.campeonato(s, e.campeonato, u)
+
+
+# ---------------------------------------------------------------- guia de locais
+
+
+@router.get("/locais/{local_id}")
+def ver_local(local_id: int, u: AtualApi, s: Sessao):
+    return locais.serializar(locais.obter(s, local_id))
+
+
+@router.get("/gestao/locais")
+def gestao_locais(u: AtualApi, s: Sessao):
+    return [locais.serializar(x) for x in locais.todos(s, u)]
+
+
+@router.post("/gestao/locais", status_code=201)
+def criar_local(corpo: LocalIn, u: AtualApi, s: Sessao):
+    return locais.serializar(locais.criar(s, u, **corpo.model_dump()))
+
+
+@router.put("/gestao/locais/{local_id}")
+def editar_local(local_id: int, corpo: LocalIn, u: AtualApi, s: Sessao):
+    return locais.serializar(locais.editar(s, u, local_id, **corpo.model_dump()))
+
+
+@router.post("/gestao/locais/{local_id}/ativo")
+def ativar_local(local_id: int, u: AtualApi, s: Sessao, ativo: bool = True):
+    return locais.serializar(locais.definir_ativo(s, u, local_id, ativo))
 
 
 # ---------------------------------------------------------------- arenas (público)

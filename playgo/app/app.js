@@ -149,6 +149,12 @@
       <h3>${esc(a.nome)}</h3>
       <div class="meta">${esc(a.endereco || a.cidade || '')}${a.distancia ? ' • ' + esc(a.distancia) : ''}${a.horarios_disponiveis ? `<br><b style="color:var(--green)">${a.horarios_disponiveis} horário(s) livre(s) hoje</b>` : ''}</div>
     </a>`;
+  const cardLocal = (l) => `
+    <a class="card" href="#/local/${l.id}">
+      <span class="tag verde">${esc(l.icone)} ${esc(l.categoria_nome)}</span>
+      <h3>${esc(l.nome)}</h3>
+      <div class="meta">${esc(l.endereco || '')}${l.distancia ? ' • ' + esc(l.distancia) : ''}<br>🕒 ${esc((l.horario_funcionamento || '').split('\n')[0])}<br>📞 ${esc(l.telefone)}</div>
+    </a>`;
   const lista = (itens, fn, vazio) => (itens && itens.length ? `<div class="lista">${itens.map(fn).join('')}</div>` : `<p class="vazio">${esc(vazio)}</p>`);
   const secao = (titulo, link) => `<div class="secao"><h2>${titulo}</h2>${link || ''}</div>`;
   const pessoa = (p, extra = '') => `<div class="pessoa"><span class="avatar">${esc(p.iniciais)}</span><b>${esc(p.arroba || p.nome)}</b>${extra}</div>`;
@@ -261,7 +267,8 @@
         ${r.horarios.length ? secao('🏟️ Quadras disponíveis') + lista(r.horarios, cardHorario) : ''}
         ${r.campeonatos.length ? secao('🏆 Campeonatos') + lista(r.campeonatos, (c) => cardCamp(c)) : ''}
         ${r.grupos.length ? secao('👥 Grupos') + lista(r.grupos, cardGrupo) : ''}
-        ${r.arenas.length ? secao('🏟️ Arenas') + lista(r.arenas, cardArena) : ''}`,
+        ${r.arenas.length ? secao('🏟️ Arenas') + lista(r.arenas, cardArena) : ''}
+        ${(r.locais || []).length ? secao('📍 Locais e lojas') + lista(r.locais, cardLocal) : ''}`,
       () => {
         $('#f-busca').onsubmit = (ev) => { ev.preventDefault(); F.q = dadosForm(ev.target).q || ''; vExplorar(); };
         if (F.modo === 'mapa') iniciarMapa('mapa', r.centro, r.pontos);
@@ -629,6 +636,26 @@
         <div class="painel"><h3>Quadras</h3>${a.quadras_lista.map((q) => `<div class="pessoa"><b>${esc(q.nome)}</b><span class="suave">${esc(q.modalidades.join(', ').replace(/_/g, ' '))}</span><span class="acoes"><b>${esc(q.valor_texto)}</b></span></div>`).join('') || '<p class="suave">Nenhuma quadra cadastrada.</p>'}</div>
         ${secao('Horários disponíveis')}${lista(a.horarios, (h) => `<div class="card"><span class="tag verde">🏟️ Livre</span><h3>${modIcone(h.modalidade)} ${esc(h.modalidade ? h.modalidade.nome : 'Quadra')} • ${esc(h.quando)}</h3><div class="meta">${esc(h.quadra_nome)} • <b>${esc(h.valor_texto)}</b></div></div>`, 'Nenhum horário divulgado no momento.')}`,
       () => iniciarMapa('mapa', { latitude: a.latitude, longitude: a.longitude }, [{ tipo: 'arena', id: a.id, latitude: a.latitude, longitude: a.longitude, rotulo: a.nome, distancia: a.distancia }]));
+    } catch (e) { erroTela(e); }
+  }
+
+  async function vLocal(id) {
+    carregando();
+    try {
+      const l = await api('/locais/' + id);
+      const linha = (rotulo, v) => (v ? `<p style="margin:10px 0"><b>${rotulo}</b><br>${v}</p>` : '');
+      montar(`<a href="javascript:history.back()" class="suave">← Voltar</a>
+        <span class="tag verde" style="margin-top:10px">${esc(l.icone)} ${esc(l.categoria_nome)}</span><h1 style="margin:8px 0 4px">${esc(l.nome)}</h1>
+        ${l.descricao ? `<p>${esc(l.descricao)}</p>` : ''}
+        ${linha('📍 Endereço', esc(l.endereco) + (l.cidade ? ' — ' + esc(l.cidade) : '') + (l.distancia ? ' (' + esc(l.distancia) + ')' : ''))}
+        ${linha('🕒 Funcionamento', `<span style="white-space:pre-line">${esc(l.horario_funcionamento)}</span>`)}
+        ${linha('📞 Telefone', `<a href="tel:${esc(l.telefone)}">${esc(l.telefone)}</a>`)}
+        ${linha('✉️ E-mail', l.email ? `<a href="mailto:${esc(l.email)}">${esc(l.email)}</a>` : '')}
+        ${linha('🔗 Site', l.site ? `<a href="${esc(l.site)}" target="_blank" rel="noopener nofollow">${esc(l.site)}</a>` : '')}
+        ${l.regras ? `<div class="painel"><h3>Regras de utilização</h3><p style="white-space:pre-line">${esc(l.regras)}</p></div>` : ''}
+        <div class="mapa pequeno" id="mapa" style="margin:12px 0"></div>
+        <p class="suave" style="font-size:12px">Informações cadastradas pelo PlayGo; confirme com o local antes de ir.</p>`,
+      () => iniciarMapa('mapa', { latitude: l.latitude, longitude: l.longitude }, [{ tipo: 'arena', id: l.id, latitude: l.latitude, longitude: l.longitude, rotulo: l.nome, distancia: l.distancia }]));
     } catch (e) { erroTela(e); }
   }
 
@@ -1201,6 +1228,7 @@
       case 'campeonato': return arg2 === 'editar' ? vEditarCampeonato(arg) : ['chaves', 'ao-vivo', 'sorteio', 'jogo'].includes(arg2) ? vCampSub(arg, arg2, arg3) : vCampeonato(arg);
       case 'novo-campeonato': return vNovoCampeonato();
       case 'arena': return vArena(arg);
+      case 'local': return vLocal(arg);
       case 'gestao': return vGestao();
       case 'nova-arena': return vNovaArena();
       case 'perfil': return vPerfil();

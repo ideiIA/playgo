@@ -72,6 +72,18 @@
 <div class="grid">{% for a in res.arenas %}{{ c.arena(a) }}{% endfor %}</div>
 {% endif %}
 
+{% if res.locais %}
+<div class="section-title"><h2>📍 Locais e lojas</h2></div>
+<p class="suave" style="margin-top:-6px">Locais públicos para praticar, lojas de material esportivo e arenas parceiras: horário, contato e regras.</p>
+<div class="grid">{% for l in res.locais %}
+  <div class="card">
+    <a class="cobre" href="/locais/{{ l.id }}" aria-label="{{ l.nome }}"></a>
+    <span class="tag verde">{{ l.icone }} {{ l.categoria_nome }}</span>
+    <h3>{{ l.nome }}</h3>
+    <div class="meta">{{ l.endereco }}{% if l.distancia %} • {{ l.distancia }}{% endif %}<br>🕒 {{ l.horario_funcionamento|truncate(70) }}<br>📞 {{ l.telefone }}</div>
+  </div>{% endfor %}</div>
+{% endif %}
+
 <script>
   window.addEventListener('load', () => mapaPontos('mapa', {{ res.centro|tojson }}, {{ res.pontos|tojson }}));
 </script>

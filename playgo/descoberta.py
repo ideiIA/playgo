@@ -8,6 +8,7 @@ from sqlalchemy import extract, func, or_, select
 from sqlalchemy.orm import Session as SessaoORM
 
 from . import arenas as srv_arenas
+from . import locais as srv_locais
 from . import serializadores as ser
 from .config import settings
 from .db import agora
@@ -29,7 +30,7 @@ from .models import (
     Usuario,
 )
 
-TIPOS = ("atividade", "campeonato", "arena", "grupo", "horario")
+TIPOS = ("atividade", "campeonato", "arena", "grupo", "horario", "local")
 RAIOS = (2, 5, 10, 20)  # None = toda a cidade
 
 
@@ -204,7 +205,7 @@ def explorar(s: SessaoORM, usuario: Usuario | None, lat: float | None = None, ln
     """Tudo o que há perto do atleta, por tipo, mais a lista única de pontos para o mapa."""
     f = f or Filtros()
     la, ln, informada = localizacao(usuario, lat, lng)
-    saida: dict = {"centro": {"latitude": la, "longitude": ln, "informada": informada}, "atividades": [], "campeonatos": [], "arenas": [], "grupos": [], "horarios": []}
+    saida: dict = {"centro": {"latitude": la, "longitude": ln, "informada": informada}, "atividades": [], "campeonatos": [], "arenas": [], "grupos": [], "horarios": [], "locais": []}
     if "atividade" in f.tipos:
         saida["atividades"] = buscar_atividades(s, usuario, la, ln, f)
     if "campeonato" in f.tipos:
@@ -215,8 +216,10 @@ def explorar(s: SessaoORM, usuario: Usuario | None, lat: float | None = None, ln
         saida["grupos"] = buscar_grupos(s, usuario, la, ln, f)
     if "horario" in f.tipos:
         saida["horarios"] = buscar_horarios(s, la, ln, f)
+    if "local" in f.tipos:
+        saida["locais"] = srv_locais.listar(s, la, ln, f.raio_km, f.q, None, f.modalidades)
     saida["pontos"] = pontos_do_mapa(saida)
-    saida["total"] = sum(len(saida[k]) for k in ("atividades", "campeonatos", "arenas", "grupos", "horarios"))
+    saida["total"] = sum(len(saida[k]) for k in ("atividades", "campeonatos", "arenas", "grupos", "horarios", "locais"))
     return saida
 
 
@@ -234,12 +237,14 @@ def _rotulo_pino(i: dict) -> str:
         return f"🏟️ {i['nome']}"
     if t == "grupo":
         return f"{icone} {i['nome']}"
+    if t == "local":
+        return f"{i['icone']} {i['nome']}"
     return f"{icone} Quadra livre • {i['quando']}"
 
 
 def pontos_do_mapa(res: dict) -> list[dict]:
     pontos = []
-    for chave in ("atividades", "campeonatos", "arenas", "grupos", "horarios"):
+    for chave in ("atividades", "campeonatos", "arenas", "grupos", "horarios", "locais"):
         for i in res[chave]:
             if i.get("latitude") is None:
                 continue

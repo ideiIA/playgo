@@ -192,6 +192,33 @@ class Arena(Base):
     )
 
 
+class Local(Base):
+    """Guia de locais: lugares públicos de prática, lojas de material esportivo e arenas ainda não assinantes.
+    Só informação para o usuário (não reserva nem cobra). Mantido pela administração."""
+
+    __tablename__ = "locais"
+    __table_args__ = (Index("ix_locais_geo", "latitude", "longitude"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tipo: Mapped[str] = mapped_column(String(20))  # publico | loja | arena
+    nome: Mapped[str] = mapped_column(String(200))
+    descricao: Mapped[str | None] = mapped_column(Text)
+    endereco: Mapped[str] = mapped_column(String(300))
+    cidade: Mapped[str | None] = mapped_column(String(100))
+    latitude: Mapped[float] = mapped_column(Float)
+    longitude: Mapped[float] = mapped_column(Float)
+    horario_funcionamento: Mapped[str] = mapped_column(Text)
+    telefone: Mapped[str] = mapped_column(String(40))
+    email: Mapped[str | None] = mapped_column(String(200))
+    site: Mapped[str | None] = mapped_column(String(300))
+    regras: Mapped[str | None] = mapped_column(Text)
+    modalidades: Mapped[list[str]] = mapped_column(ARRAY(String(30)), default=list)
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+    criado_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id", ondelete="SET NULL"))
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
+    atualizado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
+
+
 class Quadra(Base):
     __tablename__ = "quadras"
 

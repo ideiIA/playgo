@@ -53,6 +53,8 @@ ORM alternativo ou framework de front sem pedido explícito.
 
 - **Instagram** (`instagram.py`, `api/instagram.py`, `web/rotas_instagram.py`, `static/instagram.js`): só vai com **consentimento do autor** (`compartilhar_instagram`, só feed geral e com mídia) **e** aprovação da equipe; nunca publicar direto. A API da Meta não exclui posts. O token fica em `ConfigExterna` (renova sozinho); o ID/chave do app vêm do ambiente e a chave **nunca** vai para o git. `instagram._http`/`_pausa` são trocados nos testes.
 
+- **Guia de locais** (`locais.py`, tabela `locais`, `/gestao/locais`, seção "Locais e lojas" no Explorar, `descoberta.TIPOS` inclui `local`): locais públicos de prática, lojas e arenas ainda não assinantes. **Só informação** (nada de reserva/cobrança). Só `Usuario.admin` cadastra/edita/oculta (`locais._exigir_admin`); todos os logados leem. Obrigatórios: tipo, nome, endereço, ponto no mapa, horário de funcionamento e telefone; e-mail, site, regras, descrição e esportes são opcionais. Não confundir com `Arena` (esta tem quadras e agenda).
+
 ## Comandos
 
 ```powershell
