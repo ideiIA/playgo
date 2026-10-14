@@ -43,10 +43,15 @@ def _validar(s: SessaoORM, d: dict) -> dict:
     return d
 
 
+def montar(s: SessaoORM, criado_por_id: int | None = None, **dados) -> Local:
+    """Valida os dados e devolve o Local ainda não gravado (usado no cadastro e na importação de planilhas)."""
+    d = _validar(s, dados)
+    return Local(**{k: d[k] for k in ("tipo", "nome", "descricao", "endereco", "cidade", "latitude", "longitude", "horario_funcionamento", "telefone", "email", "site", "regras", "modalidades")}, criado_por_id=criado_por_id)
+
+
 def criar(s: SessaoORM, u: Usuario, **dados) -> Local:
     _exigir_admin(u)
-    d = _validar(s, dados)
-    loc = Local(**{k: d[k] for k in ("tipo", "nome", "descricao", "endereco", "cidade", "latitude", "longitude", "horario_funcionamento", "telefone", "email", "site", "regras", "modalidades")}, criado_por_id=u.id)
+    loc = montar(s, u.id, **dados)
     s.add(loc)
     s.flush()
     auditoria.registrar(s, u.id, "local_criar", "local", loc.id, tipo=loc.tipo)

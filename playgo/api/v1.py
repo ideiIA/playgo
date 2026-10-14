@@ -4,13 +4,14 @@ Autenticação: `Authorization: Bearer <token>` (vem de /auth/entrar) ou o cooki
 from datetime import date, datetime, time
 from decimal import Decimal
 
-from fastapi import APIRouter, File, HTTPException, Query, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Query, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from .. import (
     arenas,
     locais,
+    locais_importacao,
     atividades,
     campeonatos,
     contas,
@@ -515,6 +516,11 @@ def ver_local(local_id: int, u: AtualApi, s: Sessao):
 @router.get("/gestao/locais")
 def gestao_locais(u: AtualApi, s: Sessao):
     return [locais.serializar(x) for x in locais.todos(s, u)]
+
+
+@router.post("/gestao/locais/importar")
+async def importar_locais(u: AtualApi, s: Sessao, tipo: str = Form(""), arquivo: UploadFile = File(...)):
+    return locais_importacao.importar(s, u, arquivo.filename or "", await arquivo.read(), tipo)
 
 
 @router.post("/gestao/locais", status_code=201)

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block titulo %}Guia de locais — PlayGo{% endblock %}
 {% block conteudo %}
-<div class="section-title"><h2>📍 Guia de locais</h2><a class="btn purple" href="/gestao/locais/novo">+ Cadastrar local</a></div>
+<div class="section-title"><h2>📍 Guia de locais</h2><span><a class="btn soft" href="/gestao/locais/importar">⬆ Importar planilha</a> <a class="btn purple" href="/gestao/locais/novo">+ Cadastrar local</a></span></div>
 <p class="suave">Locais públicos de prática, lojas de material esportivo e arenas que ainda não assinaram. Aparecem no <b>Explorar</b> para todos os usuários, só com informação (horário, contato, endereço e regras).</p>
 {% if not lista %}<div class="panel"><p class="vazio">Nenhum local cadastrado ainda.</p></div>{% endif %}
 <div class="grid">

@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 from fastapi import FastAPI, File, Form, Request, UploadFile
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -26,6 +26,7 @@ from .. import (
     feed,
     grupos,
     locais,
+    locais_importacao,
     modalidades,
     notificacoes,
     planos,
@@ -524,6 +525,26 @@ def gestao_locais(request: Request, s: Sessao, usuario: Atual):
 def _centro_local(usuario):
     la, ln, informada = descoberta.localizacao(usuario)
     return {"latitude": la, "longitude": ln, "informada": informada}
+
+
+@app.get("/gestao/locais/importar")
+def importar_locais_form(request: Request, s: Sessao, usuario: Atual):
+    locais._exigir_admin(usuario)
+    return pagina(request, s, usuario, "locais_importar.html", "locais", tipos=locais.TIPOS, resultado=None)
+
+
+@app.get("/gestao/locais/modelo.csv")
+def modelo_locais(s: Sessao, usuario: Atual):
+    locais._exigir_admin(usuario)
+    return Response(locais_importacao.modelo_csv(), media_type="text/csv; charset=utf-8", headers={"Content-Disposition": 'attachment; filename="modelo-locais-playgo.csv"'})
+
+
+@app.post("/gestao/locais/importar")
+async def importar_locais(request: Request, s: Sessao, usuario: Atual, tipo: str = Form(""), arquivo: UploadFile | None = File(None)):
+    locais._exigir_admin(usuario)
+    dados = await arquivo.read() if arquivo is not None else b""
+    resultado = locais_importacao.importar(s, usuario, arquivo.filename if arquivo else "", dados, tipo)
+    return pagina(request, s, usuario, "locais_importar.html", "locais", tipos=locais.TIPOS, resultado=resultado)
 
 
 @app.get("/gestao/locais/novo")

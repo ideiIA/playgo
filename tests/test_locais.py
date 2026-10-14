@@ -84,3 +84,8 @@ def test_guia_de_locais(banco):
         assert "Regras de utilização" in site.get(f"/locais/{publico['id']}").text
         assert "Cadastrar local" in site.get("/gestao/locais").text
         assert "Locais e lojas" in site.get("/explorar?raio=0").text
+        assert "Como preencher" in site.get("/gestao/locais/importar").text
+        modelo = site.get("/gestao/locais/modelo.csv")
+        assert modelo.status_code == 200 and "horario_funcionamento" in modelo.text
+        r = site.post("/gestao/locais/importar", data={"tipo": "loja"}, files={"arquivo": ("l.csv", "nome;endereco;telefone;horario_funcionamento;latitude;longitude\nLoja Z;Rua Z;1;9h;-20,4;-54,6\n".encode())})
+        assert r.status_code == 200 and "cadastrado" in r.text

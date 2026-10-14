@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block titulo %}Importar locais — PlayGo{% endblock %}
+{% block conteudo %}
+<div class="section-title"><h2>⬆ Importar planilha de locais</h2><a class="btn soft" href="/gestao/locais">Voltar ao guia</a></div>
+
+{% if resultado %}
+<div class="panel">
+  <h3>Resultado</h3>
+  <p><b style="color:var(--green)">{{ resultado.criados }}</b> local{{ 'is' if resultado.criados != 1 else '' }} cadastrado{{ 's' if resultado.criados != 1 }}
+    • {{ resultado.ignorados }} já existia{{ 'm' if resultado.ignorados != 1 }} (mesmo nome e endereço)
+    • {{ resultado.erros|length }} com problema • {{ resultado.total }} linha{{ 's' if resultado.total != 1 }} lida{{ 's' if resultado.total != 1 }}.</p>
+  {% if resultado.erros %}
+  <table class="tabela">
+    <thead><tr><th>Linha</th><th>Local</th><th>O que corrigir</th></tr></thead>
+    <tbody>{% for e in resultado.erros %}<tr><td>{{ e.linha }}</td><td>{{ e.nome }}</td><td>{{ e.motivo }}</td></tr>{% endfor %}</tbody>
+  </table>
+  <p class="suave">Corrija essas linhas na planilha e envie de novo: as que já entraram são ignoradas.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+<form class="panel" method="post" action="/gestao/locais/importar" enctype="multipart/form-data">
+  <div class="form-grid">
+    <div class="field"><label for="tipo">Tipo dos locais desta planilha</label>
+      <select name="tipo" id="tipo" required>{% for k, v in tipos.items() %}<option value="{{ k }}">{{ v[0] }} {{ v[1] }}</option>{% endfor %}</select></div>
+    <div class="field"><label for="arquivo">Planilha (.xlsx ou .csv, até 2 MB)</label><input type="file" name="arquivo" id="arquivo" accept=".xlsx,.csv,.txt" required></div>
+  </div>
+  <br><button class="btn purple">Importar</button> <a class="btn soft" href="/gestao/locais/modelo.csv">Baixar modelo (.csv)</a>
+</form>
+
+<div class="panel">
+  <h3>Como preencher</h3>
+  <p>A primeira linha é o cabeçalho. Colunas aceitas (a ordem não importa):</p>
+  <ul>
+    <li><b>nome</b>, <b>endereco</b>, <b>telefone</b> e <b>horario_funcionamento</b>: obrigatórios.</li>
+    <li><b>cidade</b>, <b>email</b>, <b>site</b>, <b>regras</b>, <b>descricao</b>: opcionais.</li>
+    <li><b>esportes</b>: nomes ou códigos separados por vírgula (ex.: <i>futsal, vôlei</i>).</li>
+    <li><b>tipo</b>: opcional, por linha (<i>publico</i>, <i>loja</i> ou <i>arena</i>). Sem a coluna, vale o tipo escolhido acima.</li>
+    <li><b>latitude</b> e <b>longitude</b>: opcionais. Se faltarem, o PlayGo localiza pelo endereço (até 60 por envio, cerca de 1 por segundo).</li>
+  </ul>
+  <p class="suave">Locais com o mesmo nome e endereço de um já cadastrado são ignorados, então dá para reenviar a planilha corrigida.</p>
+</div>
+{% endblock %}
