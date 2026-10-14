@@ -26,8 +26,8 @@ def _camp(s, fabrica, org, **kw):
 def test_criar_valida_prazos(s, fabrica):
     org = fabrica.atleta("Org")
     hoje = date.today()
-    with pytest.raises(ErroNegocio):
-        _camp(s, fabrica, org, inscricao_ate=hoje + timedelta(days=30))  # depois do início
+    # o prazo de inscrição pode passar do início (inscrições abertas com o campeonato em andamento)
+    assert _camp(s, fabrica, org, inscricao_ate=hoje + timedelta(days=30)).id
     with pytest.raises(ErroNegocio):
         _camp(s, fabrica, org, max_equipes=1)
 
