@@ -160,8 +160,28 @@
     };
     const setInfo = ss ? '<div class="av-setinfo">' + (ss.decidido ? 'Jogo decidido — encerre o jogo' : 'Set ' + ss.numero + ' de ' + rg.melhor_de + ' · até ' + ss.alvo + (ss.numero >= rg.melhor_de && rg.melhor_de > 1 ? ' (decisivo)' : '')) +
       (ss.fechados.length ? ' · <span class="ch-sub">' + ss.fechados.map((x) => x.a + '–' + x.b).join(' · ') + '</span>' : '') + '</div>' : '';
+    const gamesHtml = porPonto ? listaGames(j, rg) : '';
     return '<div class="av-quadro"><div class="av-topo"><span class="ch-vivo">● AO VIVO</span><span class="ch-sub">' + esc([j.rodada_nome, j.local].filter(Boolean).join(' · ')) + '</span>' +
-      '<a class="ch-link" href="' + esc(o_href(j)) + '">lance a lance →</a></div>' + setInfo + '<div class="av-times">' + time(j.a, 'a') + '<div class="av-x">×</div>' + time(j.b, 'b') + '</div></div>';
+      '<a class="ch-link" href="' + esc(o_href(j)) + '">lance a lance →</a></div>' + setInfo + '<div class="av-times">' + time(j.a, 'a') + '<div class="av-x">×</div>' + time(j.b, 'b') + '</div>' + gamesHtml + '</div>';
+  }
+
+  // Games já terminados do jogo (beach tennis/tênis): "◀" = ganhou a dupla da esquerda, "▶" = a da direita; o placar é o do game.
+  function textoGame(g) {
+    if (g.manual || g.a == null) return 'game';
+    const venc = g.lado === 'a' ? g.a : g.b, perd = g.lado === 'a' ? g.b : g.a;
+    if (g.tiebreak) return 'TB ' + (g.lado === 'a' ? g.a + '–' + g.b : g.a + '–' + g.b);
+    if (perd >= 3) return '40–40 (ouro)';
+    return '40–' + ['0', '15', '30'][perd];
+  }
+
+  function listaGames(j, rg) {
+    const gs = j.games || [];
+    if (!gs.length) return '';
+    const chip = (g) => '<span class="av-game ' + g.lado + '" title="Game ' + g.numero + '">' + (g.lado === 'a' ? '◀ ' : '') + textoGame(g) + (g.lado === 'b' ? ' ▶' : '') + '</span>';
+    const porSet = {};
+    gs.forEach((g) => { (porSet[g.set || 0] = porSet[g.set || 0] || []).push(g); });
+    const chaves = Object.keys(porSet).sort((x, y) => x - y);
+    return '<div class="av-games">' + chaves.map((k) => '<div class="av-games-linha">' + (rg.modo === 'sets' && Number(k) ? '<b>Set ' + k + '</b> ' : '') + porSet[k].map(chip).join(' ') + '</div>').join('') + '</div>';
   }
 
   function montarAoVivo(el, o) {

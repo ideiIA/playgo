@@ -536,6 +536,7 @@ class Jogo(Base):
     equipe_b2: Mapped[Equipe | None] = relationship(foreign_keys=[equipe_b2_id], lazy="joined")
     eventos: Mapped[list["JogoEvento"]] = relationship(cascade="all, delete-orphan", order_by="JogoEvento.id")
     sets: Mapped[list["JogoSet"]] = relationship(cascade="all, delete-orphan", order_by="JogoSet.numero")
+    games: Mapped[list["JogoGame"]] = relationship(cascade="all, delete-orphan", order_by="JogoGame.numero", lazy="selectin")
 
 
 class JogoSet(Base):
@@ -550,6 +551,23 @@ class JogoSet(Base):
     pontos_a: Mapped[int] = mapped_column(Integer, default=0)
     pontos_b: Mapped[int] = mapped_column(Integer, default=0)
     encerrado: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class JogoGame(Base):
+    """Cada game terminado de um jogo contado em games: quem ganhou e como (pontos do game; tie-break). `manual` = lançado como game
+    inteiro, sem os pontos."""
+
+    __tablename__ = "jogo_games"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    jogo_id: Mapped[int] = mapped_column(ForeignKey("jogos.id", ondelete="CASCADE"), index=True)
+    numero: Mapped[int] = mapped_column(Integer)
+    set_numero: Mapped[int | None] = mapped_column(Integer)
+    lado: Mapped[str] = mapped_column(String(1))  # a | b: quem ganhou o game
+    pontos_a: Mapped[int | None] = mapped_column(Integer)
+    pontos_b: Mapped[int | None] = mapped_column(Integer)
+    tiebreak: Mapped[bool] = mapped_column(Boolean, default=False)
+    manual: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class JogoEvento(Base):

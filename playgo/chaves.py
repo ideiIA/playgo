@@ -12,7 +12,7 @@ import random
 import secrets
 from datetime import datetime, time, timedelta
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session as SessaoORM
 
 from . import auditoria, campeonatos, notificacoes
@@ -36,6 +36,7 @@ from .models import (
     ChaveEquipe,
     Jogo,
     JogoEvento,
+    JogoGame,
     JogoSet,
     Usuario,
 )
@@ -568,6 +569,8 @@ def definir_sets(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario, s
         raise ErroNegocio(f"O resultado não decide o jogo: quem vence precisa de {r['sets_para_vencer']} sets.")
     for antigo in _sets_do_jogo(s, j):
         s.delete(antigo)
+    for g in list(j.games):
+        s.delete(g)
     s.flush()
     linhas = [JogoSet(jogo_id=j.id, numero=i, pontos_a=a, pontos_b=b, encerrado=True) for i, (a, b) in enumerate(sets, 1)]
     s.add_all(linhas)
@@ -686,11 +689,16 @@ def marcar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario, lado: s
         raise ErroNegocio("Marcação inválida.")
     if delta > 0 and c.placar_modo in ("games", "total"):
         j.ponto_a = j.ponto_b = 0  # game lançado à mão: os pontos do game em andamento deixam de valer
+        situacao, nset = _situacao_do_game(s, c, j)
+        if situacao != "pontos":
+            _registrar_game(s, j, lado, nset, None, None, manual=True)
     return _dar_game(s, c, j, por, lado, delta)
 
 
 def _dar_game(s: SessaoORM, c: Campeonato, j: Jogo, por: Usuario, lado: str, delta: int) -> Jogo:
     """Soma (ou tira) um game do lado: no set em andamento (por sets/games) ou no placar simples."""
+    if delta < 0 and c.placar_modo in ("games", "total"):
+        _desfazer_game(s, c, j, lado)
     if modo_sets(c):
         return _marcar_sets(s, c, j, por, lado, delta)
     atual = j.placar_a if lado == "a" else j.placar_b
@@ -710,6 +718,30 @@ def _dar_game(s: SessaoORM, c: Campeonato, j: Jogo, por: Usuario, lado: str, del
     return j
 
 
+def _registrar_game(s: SessaoORM, j: Jogo, lado: str, set_numero: int | None, pa: int | None, pb: int | None, tiebreak: bool = False, manual: bool = False) -> None:
+    """Guarda o resultado do game que acabou de fechar (aparece no ao vivo, como os sets do vôlei)."""
+    n = (s.scalar(select(func.max(JogoGame.numero)).where(JogoGame.jogo_id == j.id)) or 0) + 1
+    s.add(JogoGame(jogo_id=j.id, numero=n, set_numero=set_numero, lado=lado, pontos_a=pa, pontos_b=pb, tiebreak=tiebreak, manual=manual))
+
+
+def _desfazer_game(s: SessaoORM, c: Campeonato, j: Jogo, lado: str) -> None:
+    """Tirou um game do lado: some também o último game registrado dele (no set decisivo os pontos não são games)."""
+    cons = select(JogoGame).where(JogoGame.jogo_id == j.id, JogoGame.lado == lado)
+    if modo_sets(c):
+        sets = _sets_do_jogo(s, j)
+        if not sets:
+            return
+        ultimo = sets[-1].numero
+        r = regras_placar(c)
+        if r["melhor_de"] > 1 and ultimo >= r["melhor_de"]:
+            return
+        cons = cons.where(JogoGame.set_numero == ultimo)
+    g = s.scalar(cons.order_by(JogoGame.numero.desc()).limit(1).execution_options(populate_existing=True))
+    if g is not None:
+        s.delete(g)
+        s.flush()
+
+
 PONTOS_DO_GAME = ("0", "15", "30", "40")
 
 
@@ -717,19 +749,19 @@ def texto_do_ponto(n: int) -> str:
     return PONTOS_DO_GAME[n] if n < len(PONTOS_DO_GAME) else str(n)
 
 
-def _situacao_do_game(s: SessaoORM, c: Campeonato, j: Jogo) -> str:
+def _situacao_do_game(s: SessaoORM, c: Campeonato, j: Jogo) -> tuple[str, int | None]:
     """"normal" (primeiro a 4 pontos; 40-40 é o ponto de ouro), "tiebreak" (6×6: primeiro a 7 com 2 de vantagem)
     ou "pontos" (set decisivo: os pontos já são a contagem do set)."""
     if c.placar_modo == "total":
-        return "normal"
+        return "normal", None
     sets = _sets_do_jogo(s, j)
     atual = sets[-1] if sets and not sets[-1].encerrado else None
     numero = atual.numero if atual else len(sets) + 1
     r = regras_placar(c)
     if r["melhor_de"] > 1 and numero >= r["melhor_de"]:
-        return "pontos"
+        return "pontos", numero
     ga, gb = (atual.pontos_a, atual.pontos_b) if atual else (0, 0)
-    return "tiebreak" if ga == gb == r["pontos_set"] else "normal"
+    return ("tiebreak" if ga == gb == r["pontos_set"] else "normal"), numero
 
 
 def marcar_ponto(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario, lado: str, delta: int) -> Jogo:
@@ -743,7 +775,7 @@ def marcar_ponto(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario, l
         raise ErroNegocio("Marcação inválida.")
     if c.placar_modo not in ("games", "total"):
         raise ErroNegocio("Este campeonato não conta os pontos dentro do game: use a pontuação por games ou total fixo de games.")
-    situacao = _situacao_do_game(s, c, j)
+    situacao, nset = _situacao_do_game(s, c, j)
     if situacao == "pontos":
         return _dar_game(s, c, j, por, lado, delta)  # set decisivo: cada ponto já é um ponto do set
     nome = _nome_lado(j, lado)
@@ -776,6 +808,7 @@ def marcar_ponto(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario, l
         s.commit()
         return j
     j.ponto_a = j.ponto_b = 0
+    _registrar_game(s, j, lado, nset, pa, pb, tiebreak=situacao == "tiebreak")
     _evento(s, j, "ponto", por, f"Ponto {nome} fecha o game ({pa}–{pb}{' no tie-break' if situacao == 'tiebreak' else ''})", None)
     return _dar_game(s, c, j, por, lado, 1)
 
@@ -791,6 +824,8 @@ def definir_placar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario,
     if modo_total(c) and a + b > _total_games(c):
         raise ErroNegocio(f"O jogo tem {_total_games(c)} games no total: {a}×{b} passa disso.")
     if (a, b) != (j.placar_a, j.placar_b):
+        for g in list(j.games):
+            s.delete(g)
         j.placar_a, j.placar_b = a, b
         _evento(s, j, "placar", por, "Placar ajustado pela mesa")
         auditoria.registrar(s, por.id, "jogo_placar", "jogo", j.id, placar=f"{a}x{b}")
@@ -986,6 +1021,7 @@ def jogo_dict(j: Jogo) -> dict:
         "placar_a": j.placar_a, "placar_b": j.placar_b, "ponto_a": j.ponto_a or 0, "ponto_b": j.ponto_b or 0, "status": j.status, "vencedor_id": j.vencedor_id, "desempate": j.desempate, "folga": j.folga,
         "inicio_previsto": _dt(j.inicio_previsto), "local": j.local, "iniciado_em": _dt(j.iniciado_em),
         "sets": [{"numero": x.numero, "a": x.pontos_a, "b": x.pontos_b, "encerrado": x.encerrado} for x in j.sets],
+        "games": [{"numero": g.numero, "set": g.set_numero, "lado": g.lado, "a": g.pontos_a, "b": g.pontos_b, "tiebreak": g.tiebreak, "manual": g.manual} for g in j.games],
     }
 
 

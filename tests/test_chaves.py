@@ -786,3 +786,31 @@ def test_ponto_a_ponto_no_total_fixo_e_so_em_games(s, fabrica):
     with pytest.raises(ErroNegocio, match="já foram disputados"):
         chaves.marcar_ponto(s, c2.id, j2.id, org, "a", 1)
     chaves.encerrar(s, c2.id, j2.id, org, vencedor_id=jj.equipe_a_id)  # 1×1 num mata-mata: desempate pela organização
+
+
+def test_ao_vivo_guarda_o_resultado_de_cada_game_e_a_correcao_desfaz(s, fabrica):
+    org = fabrica.atleta("Org")
+    c = _campeonato_de(s, fabrica, org, "beach_tennis", 2)
+    chaves.configurar_placar(s, c.id, org, "games", melhor_de=1, pontos_set=6, pontos_tiebreak=10)
+    chaves.sortear(s, c.id, org, "eliminatoria")
+    j = _jogos(s, c)[0]
+    chaves.iniciar(s, c.id, j.id, org)
+    _pontos(s, c, org, j, "a", 4)  # A fecha 4×0
+    _pontos(s, c, org, j, "a", 2)
+    _pontos(s, c, org, j, "b", 3)
+    _pontos(s, c, org, j, "a", 1)  # 3×3: ponto de ouro
+    _pontos(s, c, org, j, "a", 1)  # A fecha 4×3
+    chaves.marcar(s, c.id, j.id, org, "b", 1)  # game lançado à mão para B
+    jogo = s.get(Jogo, j.id)
+    s.refresh(jogo)
+    d = chaves.jogo_dict(jogo)
+    assert [(g["numero"], g["lado"], g["a"], g["b"], g["manual"]) for g in d["games"]] == [(1, "a", 4, 0, False), (2, "a", 4, 3, False), (3, "b", None, None, True)]
+    assert d["ponto_a"] == 0 and d["ponto_b"] == 0
+    chaves.marcar(s, c.id, j.id, org, "b", -1)  # tira o game lançado à mão: some da lista
+    s.refresh(s.get(Jogo, j.id))
+    assert [g["numero"] for g in chaves.jogo_dict(s.get(Jogo, j.id))["games"]] == [1, 2]
+    chaves.marcar_ponto(s, c.id, j.id, org, "a", -1)  # sem pontos no game: corrige o último game do A
+    s.refresh(s.get(Jogo, j.id))
+    assert [g["numero"] for g in chaves.jogo_dict(s.get(Jogo, j.id))["games"]] == [1]
+    sets = _sets_deste(s, j)
+    assert (sets[0].pontos_a, sets[0].pontos_b) == (1, 0)
