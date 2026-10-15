@@ -72,7 +72,17 @@ app = FastAPI(title="PlayGo", lifespan=lifespan)
 app.add_middleware(
     SessionMiddleware, secret_key=seguranca.chave_sessao(), session_cookie="playgo_sessao", max_age=30 * 24 * 3600, same_site="lax", https_only=settings.cookie_seguro
 )
-app.mount("/static", StaticFiles(directory=PASTA / "static"), name="static")
+class _EstaticosAtuais(StaticFiles):
+    """Scripts e estilos sempre revalidados (ETag): quem atualiza o servidor não fica com o JavaScript antigo no navegador."""
+
+    async def get_response(self, path, scope):
+        resp = await super().get_response(path, scope)
+        if path.endswith((".js", ".css")):
+            resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+
+app.mount("/static", _EstaticosAtuais(directory=PASTA / "static"), name="static")
 app.mount("/app", StaticFiles(directory=PASTA.parent / "app", html=True), name="pwa")
 app.include_router(api_v1)
 app.include_router(api_mural)
