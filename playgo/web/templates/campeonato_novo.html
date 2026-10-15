@@ -21,6 +21,8 @@
     <div class="field"><label for="local_nome">Local <span class="suave">(se não for uma arena)</span></label><input name="local_nome" id="local_nome"></div>
     {{ c.seletor_local(centro) }}
     <div class="field full"><label for="regulamento">Regulamento</label><textarea name="regulamento" id="regulamento" placeholder="Resumo ou texto do regulamento (opcional se enviar o PDF)"></textarea></div>
+    <div class="field full"><label for="capa">Arte, logo ou imagem do campeonato (opcional)</label><input type="file" name="capa" id="capa" accept="image/*">
+      <span class="suave">Vira a capa do <b>book</b> do campeonato (a história do evento para divulgar). JPG, PNG ou WebP; é recortada em 16:9.</span></div>
     <div class="field full"><label for="regulamento_pdf">Regulamento em PDF (opcional)</label><input type="file" name="regulamento_pdf" id="regulamento_pdf" accept="application/pdf,.pdf">
       <span class="suave">Se já tem o regulamento definido em reunião, envie agora. Dá para trocar depois em Editar.</span></div>
     <div class="field full"><label for="descricao">Descrição</label><textarea name="descricao" id="descricao"></textarea></div>

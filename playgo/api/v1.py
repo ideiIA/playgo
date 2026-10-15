@@ -10,6 +10,7 @@ from sqlalchemy import select
 
 from .. import (
     arenas,
+    book,
     locais,
     locais_importacao,
     atividades,
@@ -484,6 +485,40 @@ def criar_campeonato(corpo: CampeonatoIn, u: AtualApi, s: Sessao):
 @router.get("/campeonatos/encerrados")
 def campeonatos_encerrados(u: AtualApi, s: Sessao, q: str = "", de: date | None = None, ate: date | None = None, organizador: str = ""):
     return campeonatos.encerrados(s, u, q, de, ate, organizador)
+
+
+@router.get("/campeonatos/{campeonato_id}/book")
+def book_campeonato(campeonato_id: int, u: AtualApi, s: Sessao):
+    return book.campeonato(s, campeonatos.obter(s, campeonato_id), u)
+
+
+@router.post("/campeonatos/{campeonato_id}/book/publicar")
+def publicar_book_campeonato(campeonato_id: int, u: AtualApi, s: Sessao, publicado: bool = True):
+    c = campeonatos.definir_book_publicado(s, campeonato_id, u, publicado)
+    return {"publicado": c.book_publicado}
+
+
+@router.post("/campeonatos/{campeonato_id}/capa")
+def capa_campeonato(campeonato_id: int, u: AtualApi, s: Sessao, arquivo: UploadFile = File()):
+    c = campeonatos.definir_capa(s, campeonato_id, u, midia.ler_upload(arquivo))
+    return {"capa_url": f"/capa/{c.capa}"}
+
+
+@router.get("/atividades/{atividade_id}/book")
+def book_atividade(atividade_id: int, u: AtualApi, s: Sessao):
+    return book.atividade(s, atividades.obter(s, atividade_id), u)
+
+
+@router.post("/atividades/{atividade_id}/book/publicar")
+def publicar_book_atividade(atividade_id: int, u: AtualApi, s: Sessao, publicado: bool = True):
+    a = atividades.definir_book_publicado(s, atividade_id, u, publicado)
+    return {"publicado": a.book_publicado}
+
+
+@router.post("/atividades/{atividade_id}/capa")
+def capa_atividade(atividade_id: int, u: AtualApi, s: Sessao, arquivo: UploadFile = File()):
+    a = atividades.definir_capa(s, atividade_id, u, midia.ler_upload(arquivo))
+    return {"capa_url": f"/capa/{a.capa}"}
 
 
 @router.get("/campeonatos/{campeonato_id}")

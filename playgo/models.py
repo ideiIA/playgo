@@ -339,6 +339,8 @@ class Atividade(Base):
     grupo_id: Mapped[int | None] = mapped_column(ForeignKey("grupos.id", ondelete="SET NULL"))
     arena_id: Mapped[int | None] = mapped_column(ForeignKey("arenas.id", ondelete="SET NULL"))
     quadra_id: Mapped[int | None] = mapped_column(ForeignKey("quadras.id", ondelete="SET NULL"))
+    capa: Mapped[str | None] = mapped_column(String(60))  # arte/logo da atividade (nome do arquivo em capas/)
+    book_publicado: Mapped[bool] = mapped_column(Boolean, default=False)
 
     nome: Mapped[str] = mapped_column(String(150))
     descricao: Mapped[str | None] = mapped_column(Text)
@@ -419,6 +421,8 @@ class Campeonato(Base):
     organizador_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
     arena_id: Mapped[int | None] = mapped_column(ForeignKey("arenas.id", ondelete="SET NULL"))
     modalidade_id: Mapped[int] = mapped_column(ForeignKey("modalidades.id"))
+    capa: Mapped[str | None] = mapped_column(String(60))  # arte/logo do campeonato (nome do arquivo em capas/)
+    book_publicado: Mapped[bool] = mapped_column(Boolean, default=False)  # o book fica visível para todos os usuários
 
     nome: Mapped[str] = mapped_column(String(150))
     categoria: Mapped[str | None] = mapped_column(String(120))  # "B, C e iniciante", "Masculino"…
@@ -780,6 +784,16 @@ class ConfigExterna(Base):
     meta: Mapped[dict | None] = mapped_column(JSONB)
     expira_em: Mapped[datetime | None] = mapped_column(DateTime)
     atualizado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
+
+
+class PublicacaoCurtida(Base):
+    """❤ numa publicação (uma por pessoa)."""
+
+    __tablename__ = "publicacao_curtidas"
+
+    publicacao_id: Mapped[int] = mapped_column(ForeignKey("publicacoes.id", ondelete="CASCADE"), primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
 
 
 class PublicacaoVersao(Base):

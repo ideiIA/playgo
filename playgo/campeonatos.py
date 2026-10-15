@@ -275,6 +275,33 @@ def validar_pdf(dados: bytes) -> None:
         raise ErroNegocio("Envie um arquivo PDF.")
 
 
+def definir_capa(s: SessaoORM, campeonato_id: int, por: Usuario, dados: bytes) -> Campeonato:
+    """Arte/logo do campeonato (capa do book). Substitui a anterior. Só a organização."""
+    c = obter(s, campeonato_id)
+    exigir_gestao(c, por)
+    if c.status == C_CANCELADO:
+        raise ErroNegocio("Este campeonato foi cancelado e não pode mais ser alterado.")
+    from . import midia
+
+    novo = midia.salvar_capa(midia.processar_capa(dados))
+    anterior = c.capa
+    c.capa = novo
+    auditoria.registrar(s, por.id, "campeonato_capa", "campeonato", c.id)
+    s.commit()
+    if anterior:
+        armazenamento.remover(f"capas/{anterior}")
+    return c
+
+
+def definir_book_publicado(s: SessaoORM, campeonato_id: int, por: Usuario, publicado: bool) -> Campeonato:
+    c = obter(s, campeonato_id)
+    exigir_gestao(c, por)
+    c.book_publicado = publicado
+    auditoria.registrar(s, por.id, "campeonato_book", "campeonato", c.id, publicado=publicado)
+    s.commit()
+    return c
+
+
 def anexar_regulamento(s: SessaoORM, campeonato_id: int, por: Usuario, dados: bytes, nome_original: str | None) -> Campeonato:
     """Guarda o PDF do regulamento (substitui o anterior). Só a organização."""
     c = obter(s, campeonato_id)

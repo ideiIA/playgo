@@ -132,6 +132,7 @@
 
     function acoes(p) {
       const b = [];
+      if (p.status === 'publicada') b.push(`<button data-a="curtir" data-id="${p.id}" class="${p.curtiu ? 'mu-curtiu' : ''}" aria-pressed="${p.curtiu ? 'true' : 'false'}">${p.curtiu ? '❤️' : '🤍'} ${p.n_curtidas || 'Curtir'}</button>`);
       if (p.status === 'publicada') b.push(`<button data-a="comentarios" data-id="${p.id}">💬 ${p.n_comentarios ? p.n_comentarios + ' comentário' + (p.n_comentarios > 1 ? 's' : '') : 'Comentar'}</button>`);
       if (p.pode_editar) b.push(`<button data-a="editar" data-id="${p.id}">Editar</button>`);
       if (p.pode_excluir) b.push(`<button data-a="excluir" data-id="${p.id}" title="Você pode excluir até a primeira hora">Excluir</button>`);
@@ -305,6 +306,10 @@
         else if (a === 'gps') {
           if (!navigator.geolocation) return ate('Seu aparelho não informa a localização.');
           navigator.geolocation.getCurrentPosition((p) => { S.loc = { lat: p.coords.latitude, lng: p.coords.longitude, nome: '', origem: 'gps' }; redesenharComposer(); }, () => ate('Não consegui pegar sua localização. Permita o acesso no navegador.'), { timeout: 10000 });
+        } else if (a === 'curtir') {
+          const r = await o.api(`/publicacoes/${id}/curtir`, { metodo: 'POST', corpo: {} });
+          const post = S.itens.find((x) => x.id === id);
+          if (post) { post.curtiu = r.curtiu; post.n_curtidas = r.n_curtidas; desenhar(); }
         } else if (a === 'comentarios') {
           const caixa = b.closest('article').querySelector('[data-coments]');
           if (caixa.hidden) { S.abertos[id] = true; caixa.hidden = false; await carregarComentarios(id, caixa); } else { delete S.abertos[id]; caixa.hidden = true; }

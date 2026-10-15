@@ -11,6 +11,7 @@
     <h1>🏆 {{ k.nome }}</h1>
     <div class="meta">Organizado por <b>{{ k.organizador.arroba }}</b>{% if k.categoria %} • {{ k.categoria }}{% endif %}</div>
   </div>
+  {% if k.sou_gestor or k.book_publicado %}<div><a class="btn purple" href="/campeonatos/{{ k.id }}/book">📖 {{ 'Book do campeonato' if k.book_publicado else 'Montar o book' }}</a></div>{% endif %}
 </div>
 
 <link rel="stylesheet" href="/static/chaves.css">

@@ -1,5 +1,6 @@
 """Site do PlayGo (visão web), API JSON em /api/v1 e o aplicativo PWA em /app."""
 
+import re
 import threading
 from contextlib import asynccontextmanager
 from datetime import date, datetime, time, timedelta
@@ -16,8 +17,10 @@ from starlette.middleware.sessions import SessionMiddleware
 from .. import (
     agendador,
     arenas,
+    armazenamento,
     atividades,
     auditoria,
+    book,
     campeonatos,
     contas,
     convites,
@@ -27,6 +30,7 @@ from .. import (
     grupos,
     locais,
     locais_importacao,
+    midia,
     modalidades,
     notificacoes,
     planos,
@@ -110,7 +114,7 @@ def _plano_necessario(request: Request, erro: PlanoNecessario):
 @app.exception_handler(ErroNegocio)
 def _erro_de_negocio(request: Request, erro: ErroNegocio):
     codigo = 404 if isinstance(erro, NaoEncontrado) else 403 if isinstance(erro, SemPermissao) else 400
-    if request.url.path.startswith(("/api/", "/midia/", "/foto/")) or request.url.path.endswith("/regulamento.pdf"):
+    if request.url.path.startswith(("/api/", "/midia/", "/foto/", "/capa/")) or request.url.path.endswith("/regulamento.pdf"):
         return JSONResponse({"detail": str(erro)}, status_code=codigo)
     # No site, a mensagem vai para a página de onde a pessoa veio
     request.session["erro"] = str(erro)
@@ -312,7 +316,11 @@ def criar_atividade(
     arena_id: str = Form(""), quadra_id: str = Form(""), grupo_id: str = Form(""), duracao_min: int = Form(90), nivel: str = Form("todos"),
     categoria: str = Form("misto"), idade_min: str = Form(""), idade_max: str = Form(""), valor: str = Form(""), descricao: str = Form(""),
     regras: str = Form(""), percurso: str = Form(""), exige_aprovacao: str = Form(""), visibilidade: str = Form("publica"), falta_gente: str = Form(""),
+    capa: UploadFile | None = File(None),
 ):
+    imagem = midia.ler_upload(capa) if capa is not None and capa.filename else b""
+    if imagem:
+        midia.processar_capa(imagem)  # antes de criar: uma imagem inválida não deixa a atividade pela metade
     d = _data(data)
     if d is None:
         raise ErroNegocio("Informe a data.")
@@ -327,7 +335,29 @@ def criar_atividade(
             exige_aprovacao=bool(exige_aprovacao), visibilidade=visibilidade, falta_gente=bool(falta_gente),
         ),
     )
+    if imagem:
+        atividades.definir_capa(s, a.id, usuario, imagem)
     return RedirectResponse(f"/atividades/{a.id}", status_code=303)
+
+
+@app.get("/atividades/{atividade_id}/book")
+def book_atividade(atividade_id: int, request: Request, s: Sessao, usuario: Atual):
+    a = atividades.obter(s, atividade_id)
+    return pagina(request, s, usuario, "book.html", "explorar", b=book.atividade(s, a, usuario))
+
+
+@app.post("/atividades/{atividade_id}/book/publicar")
+def publicar_book_atividade(atividade_id: int, request: Request, s: Sessao, usuario: Atual, publicar: str = Form("")):
+    atividades.definir_book_publicado(s, atividade_id, usuario, bool(publicar))
+    request.session["ok"] = "Book publicado: todos os usuários podem ver." if publicar else "Book voltou a ser rascunho."
+    return RedirectResponse(f"/atividades/{atividade_id}/book", status_code=303)
+
+
+@app.post("/atividades/{atividade_id}/capa")
+def trocar_capa_atividade(atividade_id: int, request: Request, s: Sessao, usuario: Atual, capa: UploadFile = File()):
+    atividades.definir_capa(s, atividade_id, usuario, midia.ler_upload(capa))
+    request.session["ok"] = "Capa atualizada."
+    return voltar(request, f"/atividades/{atividade_id}/book")
 
 
 @app.get("/atividades/{atividade_id}")
@@ -493,8 +523,11 @@ def criar_campeonato(
     s: Sessao, usuario: Atual, nome: str = Form(), modalidade_id: int = Form(), data_inicio: str = Form(), inscricao_ate: str = Form(),
     max_equipes: int = Form(), atletas_por_equipe: int = Form(5), arena_id: str = Form(""), data_fim: str = Form(""), categoria: str = Form(""),
     local_nome: str = Form(""), latitude: str = Form(""), longitude: str = Form(""), valor_inscricao: str = Form(""), premiacao: str = Form(""),
-    regulamento: str = Form(""), descricao: str = Form(""), regulamento_pdf: UploadFile | None = File(None),
+    regulamento: str = Form(""), descricao: str = Form(""), regulamento_pdf: UploadFile | None = File(None), capa: UploadFile | None = File(None),
 ):
+    imagem = midia.ler_upload(capa) if capa is not None and capa.filename else b""
+    if imagem:
+        midia.processar_capa(imagem)
     pdf = regulamento_pdf.file.read(settings.limite_pdf_mb * 1024 * 1024 + 1) if regulamento_pdf is not None and regulamento_pdf.filename else b""
     if pdf:
         campeonatos.validar_pdf(pdf)  # antes de criar: um PDF inválido não deixa um campeonato pela metade
@@ -510,6 +543,34 @@ def criar_campeonato(
     if pdf:
         campeonatos.anexar_regulamento(s, c.id, usuario, pdf, regulamento_pdf.filename)
     return RedirectResponse(f"/campeonatos/{c.id}", status_code=303)
+
+
+@app.get("/capa/{nome}")
+def capa_do_evento(nome: str):
+    """Arte/logo de campeonato ou atividade. O nome é aleatório (32 hex): quem não recebeu a URL não a adivinha."""
+    if not re.fullmatch(r"[0-9a-f]{32}\.jpg", nome):
+        raise NaoEncontrado("Imagem não encontrada.")
+    return armazenamento.servir(f"capas/{nome}", "image/jpeg", "public, max-age=86400")
+
+
+@app.get("/campeonatos/{campeonato_id}/book")
+def book_campeonato(campeonato_id: int, request: Request, s: Sessao, usuario: Atual):
+    c = campeonatos.obter(s, campeonato_id)
+    return pagina(request, s, usuario, "book.html", "campeonatos", b=book.campeonato(s, c, usuario))
+
+
+@app.post("/campeonatos/{campeonato_id}/book/publicar")
+def publicar_book_campeonato(campeonato_id: int, request: Request, s: Sessao, usuario: Atual, publicar: str = Form("")):
+    campeonatos.definir_book_publicado(s, campeonato_id, usuario, bool(publicar))
+    request.session["ok"] = "Book publicado: todos os usuários podem ver." if publicar else "Book voltou a ser rascunho."
+    return RedirectResponse(f"/campeonatos/{campeonato_id}/book", status_code=303)
+
+
+@app.post("/campeonatos/{campeonato_id}/capa")
+def trocar_capa_campeonato(campeonato_id: int, request: Request, s: Sessao, usuario: Atual, capa: UploadFile = File()):
+    campeonatos.definir_capa(s, campeonato_id, usuario, midia.ler_upload(capa))
+    request.session["ok"] = "Capa atualizada."
+    return voltar(request, f"/campeonatos/{campeonato_id}/book")
 
 
 @app.get("/campeonatos/{campeonato_id}")

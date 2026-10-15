@@ -164,6 +164,11 @@ def motivos_de_denuncia():
 # ---------------------------------------------------------------- comentários
 
 
+@router.post("/publicacoes/{publicacao_id}/curtir")
+def curtir(publicacao_id: int, u: AtualApi, s: Sessao):
+    return publicacoes.curtir(s, u, publicacao_id)
+
+
 @router.get("/publicacoes/{publicacao_id}/comentarios")
 def listar_comentarios(publicacao_id: int, u: AtualApi, s: Sessao):
     return publicacoes.comentarios(s, u, publicacao_id)

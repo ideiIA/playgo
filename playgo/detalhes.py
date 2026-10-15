@@ -42,6 +42,8 @@ def atividade(s: SessaoORM, a: Atividade, usuario: Usuario | None) -> dict:
         posicao = [p.usuario_id for p in por_status[ESPERA]].index(usuario.id) + 1
     d.update(
         {
+            "capa_url": f"/capa/{a.capa}" if a.capa else None,
+            "book_publicado": bool(a.book_publicado),
             "descricao": a.descricao,
             "regras": a.regras,
             "percurso": a.percurso,
@@ -111,6 +113,8 @@ def campeonato(s: SessaoORM, c: Campeonato, usuario: Usuario | None) -> dict:
     contagem = elenco.contagens(s, [e.id for e in visiveis])
     d.update(
         {
+            "capa_url": f"/capa/{c.capa}" if c.capa else None,
+            "book_publicado": bool(c.book_publicado),
             "descricao": c.descricao,
             "regulamento": c.regulamento,
             "cadastro_elenco": bool(c.cadastro_elenco),

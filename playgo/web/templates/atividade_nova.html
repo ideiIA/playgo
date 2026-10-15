@@ -3,7 +3,7 @@
 {% block titulo %}Criar atividade — PlayGo{% endblock %}
 {% block conteudo %}
 <div class="section-title"><h2>Criar nova atividade</h2></div>
-<form class="panel" method="post" action="/atividades">
+<form class="panel" method="post" action="/atividades" enctype="multipart/form-data">
   <input type="hidden" name="quadra_id" value="{{ v.quadra_id or '' }}">
   <div class="form-grid">
     <div class="field"><label for="modalidade_id">Modalidade</label>
@@ -47,6 +47,8 @@
     <div class="field full"><label for="regras">Regras</label><textarea name="regras" id="regras" placeholder="Ex.: chegar 10 min antes, levar camisa de cor diferente">{{ v.regras or '' }}</textarea></div>
     <div class="field full"><label class="rotulo" style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="falta_gente" value="1" style="width:auto" {{ 'checked' if v.falta_gente }}> 🔥 Falta gente — destacar a atividade e avisar atletas compatíveis por perto</label></div>
   </div>
+  <div class="field full" style="margin-top:14px"><label for="capa">Arte ou imagem da atividade (opcional)</label><input type="file" name="capa" id="capa" accept="image/*">
+    <span class="suave">Vira a capa do book da atividade. JPG, PNG ou WebP.</span></div>
   <br><button class="btn purple">Publicar atividade</button>
 </form>
 <script>

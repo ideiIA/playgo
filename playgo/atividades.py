@@ -66,6 +66,36 @@ def obter(s: SessaoORM, atividade_id: int) -> Atividade:
     return a
 
 
+def _exigir_organizacao(a: Atividade, usuario: Usuario) -> None:
+    if usuario.id != a.organizador_id and not usuario.admin:
+        raise SemPermissao("Só quem organiza a atividade pode fazer isso.")
+
+
+def definir_capa(s: SessaoORM, atividade_id: int, por: Usuario, dados: bytes) -> Atividade:
+    """Arte/logo da atividade (capa do book). Substitui a anterior. Só o organizador."""
+    a = obter(s, atividade_id)
+    _exigir_organizacao(a, por)
+    from . import armazenamento, midia
+
+    novo = midia.salvar_capa(midia.processar_capa(dados))
+    anterior = a.capa
+    a.capa = novo
+    auditoria.registrar(s, por.id, "atividade_capa", "atividade", a.id)
+    s.commit()
+    if anterior:
+        armazenamento.remover(f"capas/{anterior}")
+    return a
+
+
+def definir_book_publicado(s: SessaoORM, atividade_id: int, por: Usuario, publicado: bool) -> Atividade:
+    a = obter(s, atividade_id)
+    _exigir_organizacao(a, por)
+    a.book_publicado = publicado
+    auditoria.registrar(s, por.id, "atividade_book", "atividade", a.id, publicado=publicado)
+    s.commit()
+    return a
+
+
 def _pode_usar_quadra(s: SessaoORM, quadra: Quadra, usuario: Usuario, inicio: datetime) -> HorarioDivulgado | None:
     """Gestor da arena usa a quadra livremente; qualquer atleta só no horário que o gestor divulgou."""
     if usuario.admin or usuario in quadra.arena.gestores:

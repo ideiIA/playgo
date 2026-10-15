@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block titulo %}Book — {{ b.nome }} — PlayGo{% endblock %}
+{% macro post(p, etiqueta) %}
+<article class="bk-post">
+  <span class="bk-etq">{{ etiqueta }}</span>
+  {% if p.midias %}<img src="{{ p.midias[0].miniatura or p.midias[0].url }}" alt="Foto da publicação" loading="lazy">{% endif %}
+  <div class="bk-post-corpo">
+    <span class="autor">{{ p.autor }}</span>
+    {% if p.texto %}<p>{{ p.texto }}</p>{% endif %}
+    <div class="reacoes"><span class="c">❤ {{ p.n_curtidas }}</span><span class="m">💬 {{ p.n_comentarios }}</span><span class="suave">{{ p.quando }}</span></div>
+  </div>
+</article>
+{% endmacro %}
+{% macro lugar(classe, medalha, rotulo, nome, sub) %}
+<div class="bk-lugar {{ classe }}"><div class="medalha">{{ medalha }}</div><div class="rotulo">{{ rotulo }}</div><div class="nome">{{ nome }}</div>{% if sub %}<div class="sub">{{ sub }}</div>{% endif %}</div>
+{% endmacro %}
+{% block conteudo %}
+<link rel="stylesheet" href="/static/book.css">
+{% set camp = b.tipo == 'campeonato' %}
+{% set p = b.publicacoes %}
+<div class="bk">
+
+  {% if b.sou_organizacao %}
+  <div class="bk-barra">
+    <form method="post" action="/{{ 'campeonatos' if camp else 'atividades' }}/{{ b.id }}/book/publicar">
+      <input type="hidden" name="publicar" value="{{ '' if b.publicado else '1' }}">
+      <button class="btn {{ 'soft' if b.publicado else 'purple' }}">{{ '🔒 Despublicar book' if b.publicado else '🚀 Publicar book para todos' }}</button>
+    </form>
+    <button class="btn soft" type="button" onclick="window.print()">🖨 Imprimir / salvar PDF</button>
+    <button class="btn soft" type="button" onclick="navigator.clipboard && navigator.clipboard.writeText(location.href).then(() => this.textContent = '✅ Link copiado')">🔗 Copiar link</button>
+    <form method="post" action="/{{ 'campeonatos' if camp else 'atividades' }}/{{ b.id }}/capa" enctype="multipart/form-data" style="display:flex;gap:6px;align-items:center">
+      <input type="file" name="capa" accept="image/*" required style="max-width:200px"><button class="btn soft">Trocar capa</button>
+    </form>
+    <span class="suave">{{ 'Publicado: todos os usuários veem este book.' if b.publicado else 'Rascunho: só a organização vê.' }}</span>
+  </div>
+  {% endif %}
+
+  <header class="bk-capa">
+    {% if b.capa_url %}<img class="bk-arte" src="{{ b.capa_url }}" alt="Arte de {{ b.nome }}">{% endif %}
+    <div class="bk-capa-texto">
+      <span class="bk-selo">{{ b.modalidade.icone }} {{ b.modalidade.nome }}{% if camp and b.categoria %} · {{ b.categoria }}{% endif %}{% if b.encerrado %} · 🏁 Encerrado{% endif %}</span>
+      <h1>{{ b.nome }}</h1>
+      <div class="bk-meta">
+        <span>📅 {% if b.periodo.inicio[:10] == b.periodo.fim[:10] %}{{ b.periodo.inicio[8:10] }}/{{ b.periodo.inicio[5:7] }}/{{ b.periodo.inicio[:4] }}{% else %}{{ b.periodo.inicio[8:10] }}/{{ b.periodo.inicio[5:7] }} a {{ b.periodo.fim[8:10] }}/{{ b.periodo.fim[5:7] }}/{{ b.periodo.fim[:4] }}{% endif %}{% if not camp %} · {{ b.periodo.inicio[11:16] }}{% endif %}</span>
+        <span>📍 {{ b.local }}</span>
+        <span>🎙 {{ b.organizador }}</span>
+      </div>
+    </div>
+  </header>
+
+  {% if b.descricao %}<p style="font-size:17px;line-height:1.65;margin:22px 4px 0">{{ b.descricao }}</p>{% endif %}
+
+  <section class="bk-numeros">
+    {% if camp %}
+      <div class="bk-num bk-n1" data-ic="👥"><b>{{ b.numeros.equipes }}</b><span>Equipes</span></div>
+      <div class="bk-num bk-n2" data-ic="🎮"><b>{{ b.numeros.jogos_encerrados }}</b><span>Jogos disputados</span></div>
+      <div class="bk-num bk-n3" data-ic="🔥"><b>{{ b.numeros.pontos_marcados }}</b><span>Gols / pontos marcados</span></div>
+    {% else %}
+      <div class="bk-num bk-n1" data-ic="👥"><b>{{ b.numeros.participantes }}</b><span>Participantes</span></div>
+      <div class="bk-num bk-n2" data-ic="🎟"><b>{{ b.numeros.vagas }}</b><span>Vagas</span></div>
+    {% endif %}
+    <div class="bk-num bk-n4" data-ic="❤"><b>{{ p.totais.curtidas }}</b><span>Curtidas</span></div>
+    <div class="bk-num bk-n2" data-ic="💬"><b>{{ p.totais.comentarios }}</b><span>Comentários</span></div>
+    <div class="bk-num bk-n3" data-ic="📣"><b>{{ p.totais.publicacoes }}</b><span>Publicações</span></div>
+  </section>
+
+  {% if camp %}
+  {# ---------- campeões e finalistas ---------- #}
+  {% set pd = b.podio %}
+  <section class="bk-sec" style="--cor:#f5b301">
+    <h2>🏆 Campeões e finalistas</h2>
+    {% if pd.campeao %}
+      <div class="bk-podio">
+        {% if pd.vice %}{{ lugar('bk-prata', '🥈', 'Vice-campeão', pd.vice.nome, 'Finalista') }}{% endif %}
+        {{ lugar('bk-ouro', '🥇', 'Campeão', pd.campeao.nome, b.premiacao and ('Premiação: ' ~ b.premiacao) or '') }}
+        {% for t in pd.semifinalistas[:1] %}{{ lugar('bk-bronze', '🥉', 'Semifinalista', t.nome, '') }}{% endfor %}
+      </div>
+      {% if pd.final %}
+      <div class="bk-final"><span>Final</span><span>{{ pd.final.a.nome if pd.final.a else '—' }}</span><span class="placar">{{ pd.final.placar_a }} × {{ pd.final.placar_b }}</span><span>{{ pd.final.b.nome if pd.final.b else '—' }}</span></div>
+      {% endif %}
+      {% if pd.semifinalistas|length > 1 %}<p class="suave" style="margin-top:12px">Também nas semifinais: {{ pd.semifinalistas|map(attribute='nome')|join(', ') }}.</p>{% endif %}
+    {% elif pd.ranking %}
+      <div class="bk-podio">
+        {% for r in pd.ranking %}
+          {{ lugar(['bk-ouro','bk-prata','bk-bronze'][loop.index0], ['🥇','🥈','🥉'][loop.index0], r.posicao ~ 'º lugar', r.nome, r.pontos ~ ' pts · ' ~ r.vitorias ~ ' vitórias · saldo ' ~ r.saldo) }}
+        {% endfor %}
+      </div>
+    {% elif pd.grupos %}
+      {% for g in pd.grupos %}
+        <h3 style="margin:18px 0 8px">{{ 'Grupo ' ~ g.grupo if g.grupo else 'Ranking individual' }}</h3>
+        <div class="bk-podio">
+          {% for r in g.ranking %}
+            {{ lugar(['bk-ouro','bk-prata','bk-bronze'][loop.index0], ['🥇','🥈','🥉'][loop.index0], r.posicao ~ 'º lugar', r.nome, r.pontos ~ ' pts · ' ~ r.vitorias ~ ' vitórias · saldo ' ~ r.saldo) }}
+          {% endfor %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="bk-vazio">{{ 'Os campeões aparecem aqui quando as finais terminarem.' if not b.encerrado else 'Sem resultado final registrado.' }}</div>
+    {% endif %}
+  </section>
+
+  {% if b.equipes %}
+  <section class="bk-sec" style="--cor:#16c784">
+    <h2>👥 Quem jogou</h2>
+    <div class="bk-times">{% for e in b.equipes %}<span class="bk-time">{{ e }}</span>{% endfor %}</div>
+  </section>
+  {% endif %}
+  {% else %}
+  <section class="bk-sec" style="--cor:#16c784">
+    <h2>👥 Quem esteve lá</h2>
+    {% if b.participantes %}<div class="bk-gente">{% for u in b.participantes %}<span>{{ '⭐ ' if u.organizador }}{{ u.arroba }}</span>{% endfor %}</div>
+    {% else %}<div class="bk-vazio">Ainda sem participantes confirmados.</div>{% endif %}
+  </section>
+  {% endif %}
+
+  {# ---------- melhores momentos ---------- #}
+  <section class="bk-sec" style="--cor:#ff3d81">
+    <h2>❤ Publicações mais curtidas</h2>
+    {% if p.mais_curtidas %}<div class="bk-posts">{% for x in p.mais_curtidas %}{{ post(x, ['🥇 mais curtida','🥈 2ª mais curtida','🥉 3ª mais curtida'][loop.index0]) }}{% endfor %}</div>
+    {% else %}<div class="bk-vazio">Quando o pessoal curtir as publicações do evento, as favoritas aparecem aqui.</div>{% endif %}
+  </section>
+
+  <section class="bk-sec" style="--cor:#22c7f2">
+    <h2>💬 Publicações mais comentadas</h2>
+    {% if p.mais_comentadas %}<div class="bk-posts">{% for x in p.mais_comentadas %}{{ post(x, '💬 ' ~ x.n_comentarios ~ ' comentário' ~ ('s' if x.n_comentarios != 1 else '')) }}{% endfor %}</div>
+    {% else %}<div class="bk-vazio">As conversas mais animadas do evento aparecem aqui.</div>{% endif %}
+  </section>
+
+  {% if p.galeria %}
+  <section class="bk-sec" style="--cor:#ff8a00">
+    <h2>📸 Melhores momentos</h2>
+    <div class="bk-galeria">{% for f in p.galeria %}<a href="{{ f.url }}" target="_blank" rel="noopener"><img src="{{ f.miniatura }}" alt="Foto de {{ f.autor }}" loading="lazy"></a>{% endfor %}</div>
+  </section>
+  {% endif %}
+
+  <p class="bk-rodape">Book gerado pelo PlayGo · <a href="{{ b.link_evento }}">ver {{ 'o campeonato' if camp else 'a atividade' }}</a>{% if camp and b.link_chaves %} · <a href="{{ b.link_chaves }}">chaves e resultados</a>{% endif %}</p>
+</div>
+{% endblock %}

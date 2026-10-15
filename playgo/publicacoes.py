@@ -20,6 +20,7 @@ from .db import agora
 from .erros import ErroNegocio, NaoEncontrado, SemPermissao
 from .geo import caixa_sql, distancia_sql, formatar_km, haversine
 from .models import (
+    PublicacaoCurtida,
     P_EM_ANALISE,
     P_EXCLUIDA,
     P_OCULTA,
@@ -342,6 +343,37 @@ def comentar(s: SessaoORM, usuario: Usuario, publicacao_id: int, texto: str) -> 
     return c
 
 
+def curtir(s: SessaoORM, usuario: Usuario, publicacao_id: int) -> dict:
+    """Liga/desliga o ❤ da pessoa numa publicação que ela pode ver."""
+    planos.exigir(s, usuario, "basico")
+    p = obter(s, publicacao_id)
+    if p.status != P_PUBLICADA or not pode_ver(s, usuario, p):
+        raise SemPermissao("Você não pode curtir esta publicação.")
+    existente = s.get(PublicacaoCurtida, (p.id, usuario.id))
+    if existente is None:
+        s.add(PublicacaoCurtida(publicacao_id=p.id, usuario_id=usuario.id))
+        curtiu = True
+    else:
+        s.delete(existente)
+        curtiu = False
+    s.flush()
+    auditoria.registrar(s, usuario.id, "publicacao_curtir" if curtiu else "publicacao_descurtir", "publicacao", p.id)
+    s.commit()
+    return {"curtiu": curtiu, "n_curtidas": contar_curtidas(s, [p.id]).get(p.id, 0)}
+
+
+def contar_curtidas(s: SessaoORM, ids: list[int]) -> dict[int, int]:
+    if not ids:
+        return {}
+    return dict(s.execute(select(PublicacaoCurtida.publicacao_id, func.count()).where(PublicacaoCurtida.publicacao_id.in_(ids)).group_by(PublicacaoCurtida.publicacao_id)).all())
+
+
+def _minhas_curtidas(s: SessaoORM, usuario: Usuario, ids: list[int]) -> set[int]:
+    if not ids:
+        return set()
+    return set(s.scalars(select(PublicacaoCurtida.publicacao_id).where(PublicacaoCurtida.usuario_id == usuario.id, PublicacaoCurtida.publicacao_id.in_(ids))))
+
+
 def _comentario(s: SessaoORM, comentario_id: int) -> tuple[Comentario, Publicacao]:
     c = s.get(Comentario, comentario_id)
     if c is None or c.status == P_EXCLUIDA:
@@ -453,8 +485,13 @@ def comentarios(s: SessaoORM, usuario: Usuario, publicacao_id: int, limite: int 
     return [serializar_comentario(s, c, usuario, p) for c in s.scalars(q).unique()]
 
 
-def serializar(s: SessaoORM, p: Publicacao, usuario: Usuario, ctx: dict | None = None, contagens: dict | None = None, centro: tuple[float, float] | None = None) -> dict:
+def serializar(
+    s: SessaoORM, p: Publicacao, usuario: Usuario, ctx: dict | None = None, contagens: dict | None = None, centro: tuple[float, float] | None = None,
+    curtidas: tuple[dict, set] | None = None,
+) -> dict:
     n = agora()
+    if curtidas is None:
+        curtidas = (contar_curtidas(s, [p.id]), _minhas_curtidas(s, usuario, [p.id]))
     ctx = ctx if ctx is not None else {}
     chave = (p.escopo, p.escopo_id)
     if chave not in ctx:
@@ -490,6 +527,8 @@ def serializar(s: SessaoORM, p: Publicacao, usuario: Usuario, ctx: dict | None =
         "criado_em": p.criado_em.isoformat(timespec="seconds"),
         "editado": texto_editado(p.editado_em),
         "n_comentarios": (contagens or {}).get(p.id, 0),
+        "n_curtidas": curtidas[0].get(p.id, 0),
+        "curtiu": p.id in curtidas[1],
         "minha": dono,
         "pode_editar": dono and p.status in (P_PUBLICADA, P_EM_ANALISE),
         "pode_excluir": dono and _janela_aberta(p.criado_em),
@@ -507,9 +546,11 @@ def _pagina(s: SessaoORM, usuario: Usuario, consulta, antes_de: int | None, limi
     linhas = list(s.scalars(consulta.order_by(Publicacao.id.desc()).limit(limite + 1)).unique())
     mais = len(linhas) > limite
     linhas = linhas[:limite]
-    contagens = _contagens(s, [p.id for p in linhas])
+    ids = [p.id for p in linhas]
+    contagens = _contagens(s, ids)
+    curtidas = (contar_curtidas(s, ids), _minhas_curtidas(s, usuario, ids))
     ctx: dict = {}
-    return {"itens": [serializar(s, p, usuario, ctx, contagens, centro) for p in linhas], "proxima": linhas[-1].id if mais and linhas else None}
+    return {"itens": [serializar(s, p, usuario, ctx, contagens, centro, curtidas) for p in linhas], "proxima": linhas[-1].id if mais and linhas else None}
 
 
 def mural(s: SessaoORM, usuario: Usuario, escopo: str, escopo_id: int | None, antes_de: int | None = None, limite: int = 20, centro=None) -> dict:

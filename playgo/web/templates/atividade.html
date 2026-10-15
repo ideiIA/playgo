@@ -9,6 +9,7 @@
     {% if a.status == 'cancelada' %}<span class="tag rosa">CANCELADA</span>{% elif a.encerrada %}<span class="tag cinza">ENCERRADA</span>{% elif a.falta_gente %}<span class="tag rosa">🔥 {{ a.rotulo_falta }}</span>{% endif %}
     <h1>{{ a.nome }}</h1>
     <div class="meta">Organizado por <b>{{ a.organizador.arroba }}</b>{% if a.grupo %} • grupo <a href="/grupos/{{ a.grupo.id }}">{{ a.grupo.nome }}</a>{% endif %}</div>
+    {% if a.sou_organizador or a.book_publicado %}<p style="margin:8px 0 0"><a class="btn soft pequeno" href="/atividades/{{ a.id }}/book">📖 {{ 'Book da atividade' if a.book_publicado else 'Montar o book' }}</a></p>{% endif %}
   </div>
   <div>
     {% if not a.encerrada %}

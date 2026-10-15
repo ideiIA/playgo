@@ -109,6 +109,39 @@ def processar_avatar(dados: bytes) -> bytes:
     return saida.getvalue()
 
 
+LARGURA_CAPA, ALTURA_CAPA = 1600, 900
+
+
+def processar_capa(dados: bytes) -> bytes:
+    """Arte ou logo do campeonato/atividade: só imagem, recortada em 16:9 (1600x900), JPEG sem metadados. PNG com fundo transparente vira fundo branco."""
+    achado = detectar(dados)
+    if achado is None or achado[0] != "foto":
+        raise ErroNegocio("Envie uma imagem (JPG, PNG ou WebP) para a capa.")
+    if len(dados) > settings.limite_foto_mb * 1024 * 1024:
+        raise ErroNegocio(f"A imagem passa do limite de {settings.limite_foto_mb} MB.")
+    try:
+        img = Image.open(io.BytesIO(dados))
+        img.load()
+    except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
+        raise ErroNegocio("Não foi possível ler essa imagem. Tente outra.") from None
+    img = ImageOps.exif_transpose(img)
+    if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+        fundo = Image.new("RGB", img.size, "white")
+        fundo.paste(img.convert("RGBA"), mask=img.convert("RGBA").split()[3])
+        img = fundo
+    img = ImageOps.fit(img.convert("RGB"), (LARGURA_CAPA, ALTURA_CAPA))
+    saida = io.BytesIO()
+    img.save(saida, "JPEG", quality=86, optimize=True)
+    return saida.getvalue()
+
+
+def salvar_capa(jpeg: bytes) -> str:
+    """Grava em uploads/capas/<32 hex>.jpg e devolve só o nome (a URL é a 'chave')."""
+    nome = uuid.uuid4().hex + ".jpg"
+    armazenamento.salvar(f"capas/{nome}", jpeg, "image/jpeg")
+    return nome
+
+
 def salvar_avatar(jpeg: bytes) -> str:
     """Grava em uploads/perfil/<32 hex>.jpg (nome aleatório: a URL é a 'chave') e devolve só o nome."""
     nome = uuid.uuid4().hex + ".jpg"
