@@ -2,7 +2,7 @@
 {% import "_cards.html" as c %}
 {% block titulo %}Campeonatos — PlayGo{% endblock %}
 {% block conteudo %}
-<div class="section-title"><h2>Campeonatos em destaque 🏆</h2>{% if pode.campeonato %}<a class="btn purple" href="/campeonatos/novo">+ Criar campeonato</a>{% endif %}</div>
+<div class="section-title"><h2>Campeonatos em destaque 🏆</h2>{% if pode.campeonato %}<span><a class="btn soft" href="/tutorial/campeonatos">📘 Tutorial</a> <a class="btn purple" href="/campeonatos/novo">+ Criar campeonato</a></span>{% endif %}</div>
 
 <form class="filtros" method="get">
   <div class="campo"><label>Esporte</label>

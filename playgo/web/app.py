@@ -442,6 +442,14 @@ def listar_campeonatos(request: Request, s: Sessao, usuario: Atual, modalidades:
     return pagina(request, s, usuario, "campeonatos.html", "campeonatos", f=f, lista=descoberta.buscar_campeonatos(s, la, ln, f))
 
 
+@app.get("/tutorial/campeonatos")
+def tutorial_campeonatos(request: Request, s: Sessao, usuario: Atual):
+    """Passo a passo da área de campeonatos: só para quem pode criá-los (plano Organizador/Arena e administrador)."""
+    if (r := _sem_plano(request, s, usuario, "campeonato")) is not None:
+        return r
+    return pagina(request, s, usuario, "tutorial_campeonatos.html", "tutorial")
+
+
 @app.get("/campeonatos/novo")
 def novo_campeonato(request: Request, s: Sessao, usuario: Atual):
     if (r := _sem_plano(request, s, usuario, "campeonato")) is not None:

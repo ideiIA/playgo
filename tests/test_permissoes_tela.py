@@ -2,9 +2,25 @@
 
 import uuid
 
+import pytest
+
 from fastapi.testclient import TestClient
 
 from playgo.web.app import app
+
+
+@pytest.fixture(autouse=True)
+def _ja_existe_um_admin(banco):
+    """O primeiro cadastro do banco vira administrador: garante que já existe um para o usuário de teste ser comum."""
+    from sqlalchemy import select
+
+    from playgo import contas
+    from playgo.db import Session
+    from playgo.models import Usuario
+
+    with Session() as s:
+        if not s.scalar(select(Usuario.id).where(Usuario.admin).limit(1)):
+            contas.cadastrar(s, "Primeiro", f"{uuid.uuid4().hex[:8]}@t.local", "senha-de-teste-1", f"pri{uuid.uuid4().hex[:10]}", True, False)
 
 
 def test_usuario_comum_nao_ve_nem_abre_telas_de_criacao(banco):
@@ -26,3 +42,22 @@ def test_usuario_comum_nao_ve_nem_abre_telas_de_criacao(banco):
         for url in ("/atividades/nova", "/campeonatos/novo", "/gestao", "/gestao/arenas/nova"):
             r = cli.get(url, follow_redirects=False)
             assert r.status_code == 303 and r.headers["location"] == "/planos", url
+
+
+def test_tutorial_de_campeonatos_so_para_quem_pode_criar(banco):
+    from playgo.db import Session
+    from playgo.models import Usuario
+
+    with TestClient(app) as cli:
+        email = f"{uuid.uuid4().hex[:10]}@teste.local"
+        cli.post("/cadastro", data={"nome": "Comum", "email": email, "senha": "senha-de-teste-1", "usuario": f"c{uuid.uuid4().hex[:10]}", "aceito_termos": "1"}, follow_redirects=False)
+        r = cli.get("/tutorial/campeonatos", follow_redirects=False)
+        assert r.status_code == 303 and r.headers["location"] == "/planos"
+        assert "Tutorial de campeonatos" not in cli.get("/campeonatos").text
+
+        with Session() as s:  # quem pode criar campeonato (aqui, administrador) vê o tutorial e o menu
+            s.query(Usuario).filter(Usuario.email == email).update({Usuario.admin: True})
+            s.commit()
+        pagina = cli.get("/tutorial/campeonatos")
+        assert pagina.status_code == 200 and "Regras de cada modalidade" in pagina.text and "Super 8" in pagina.text and "Beach Tennis" in pagina.text
+        assert "/tutorial/campeonatos" in cli.get("/campeonatos").text
