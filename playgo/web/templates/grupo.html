@@ -11,7 +11,7 @@
   </div>
   <div style="display:flex;gap:8px;flex-wrap:wrap">
     {% if g.sou_membro %}
-      <a class="btn purple" href="/atividades/nova?grupo_id={{ g.id }}&modalidade_id={{ g.modalidade.id }}">+ Atividade do grupo</a>
+      {% if pode.atividade %}<a class="btn purple" href="/atividades/nova?grupo_id={{ g.id }}&modalidade_id={{ g.modalidade.id }}">+ Atividade do grupo</a>{% endif %}
       <form method="post" action="/grupos/{{ g.id }}/sair" onsubmit="return confirm('Sair do grupo?')"><button class="btn perigo">Sair</button></form>
     {% else %}
       <form method="post" action="/grupos/{{ g.id }}/entrar"><button class="btn purple">Entrar no grupo</button></form>

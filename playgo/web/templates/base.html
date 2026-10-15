@@ -38,11 +38,13 @@
 <aside class="sidebar">
   <a class="logo" href="/"><img class="logo-ico" src="/static/marca/icone.svg" alt="" width="34" height="34">Play<span>Go</span></a>
   <nav class="nav">
-    {% for chave, url, icone, nome in itens_do_menu %}
+    {% for chave, url, icone, nome in itens_do_menu if chave != 'criar' or pode.atividade %}
     <a href="{{ url }}" class="{{ 'active' if aba == chave }}"><span class="ico">{{ icone }}</span><span class="t">{{ nome }}</span></a>
     {% endfor %}
     <div class="manager"><small>Gestão</small></div>
+    {% if pode.arena %}
     <a href="/gestao" class="{{ 'active' if aba == 'gestao' }}"><span class="ico">▦</span><span class="t">Minha Arena</span></a>
+    {% endif %}
     <a href="/planos" class="{{ 'active' if aba == 'planos' }}"><span class="ico">💳</span><span class="t">Meu plano</span></a>
     {% if usuario.admin %}
     <a href="/gestao/locais" class="{{ 'active' if aba == 'locais' }}"><span class="ico">📍</span><span class="t">Guia de locais</span></a>

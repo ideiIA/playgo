@@ -185,6 +185,15 @@ def resumo(s: SessaoORM, u: Usuario) -> dict:
     }
 
 
+def permissoes(s: SessaoORM, u: Usuario) -> dict:
+    """O que o plano da pessoa libera na tela: organizar atividade, criar campeonato e cadastrar/gerir arena.
+    A tela esconde o que não vale; a regra de verdade continua em `exigir` dentro dos serviços."""
+    if u.admin:
+        return {"atividade": True, "campeonato": True, "arena": True}
+    r = regras(s, situacao(s, u)["plano"])
+    return {"atividade": bool(r.pode_atividade), "campeonato": bool(r.pode_campeonato), "arena": bool(r.pode_arena)}
+
+
 ACESSO_VIGENTE = ("administrador", "teste", "ativa", "cancelada", "tolerancia")
 
 

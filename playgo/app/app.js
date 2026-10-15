@@ -326,13 +326,16 @@
   }
 
   // ------------------------------------------------------------ criar
+  const pode = (r) => !!(estado.usuario && estado.usuario.permissoes && estado.usuario.permissoes[r]);
+
   function vCriar() {
     const item = (href, ic, t, d) => `<a class="item-menu" href="${href}"><i>${ic}</i><div>${t}<div class="suave">${d}</div></div></a>`;
     montar(`<h1>Criar</h1><p class="suave" style="margin:4px 0 14px">O que você quer organizar?</p><div class="painel">
-      ${item('#/nova-atividade?tipo=jogo', '⚽', 'Criar jogo', 'Futebol, vôlei, beach tennis… em quadra ou arena')}
-      ${item('#/nova-atividade?tipo=atividade', '🏃', 'Criar atividade', 'Corrida, ciclismo, caminhada, trilha… com ponto de encontro')}
+      ${pode('atividade') ? item('#/nova-atividade?tipo=jogo', '⚽', 'Criar jogo', 'Futebol, vôlei, beach tennis… em quadra ou arena') : ''}
+      ${pode('atividade') ? item('#/nova-atividade?tipo=atividade', '🏃', 'Criar atividade', 'Corrida, ciclismo, caminhada, trilha… com ponto de encontro') : ''}
       ${item('#/novo-grupo', '👥', 'Criar grupo', 'Uma comunidade permanente do seu esporte')}
-      ${item('#/novo-campeonato', '🏆', 'Criar campeonato', 'Torneios com equipes e inscrição')}
+      ${pode('campeonato') ? item('#/novo-campeonato', '🏆', 'Criar campeonato', 'Torneios com equipes e inscrição') : ''}
+      ${!pode('atividade') || !pode('campeonato') ? item('#/planos', '💳', 'Quer organizar?', 'Veja os planos que liberam atividades, campeonatos e arenas') : ''}
     </div>`);
   }
 
@@ -409,7 +412,7 @@
         <p class="suave">${g.membros} membros${g.cidade ? ' • ' + esc(g.cidade) : ''}${g.local_habitual ? ' • 📍 ' + esc(g.local_habitual) : ''}</p>
         ${g.descricao ? `<p style="margin-top:8px">${esc(g.descricao)}</p>` : ''}
         ${g.avisos.map((a) => `<p class="aviso alerta">📌 <b>${esc(a.autor)}:</b> ${esc(a.texto)}</p>`).join('')}
-        <div style="display:flex;gap:8px;margin-top:12px">${g.sou_membro ? `<a class="btn roxo pequeno" href="#/nova-atividade?tipo=${g.modalidade.usa_quadra ? 'jogo' : 'atividade'}&modalidade_id=${g.modalidade.id}">+ Atividade</a><button class="btn perigo pequeno" data-acao="sair-grupo" data-id="${g.id}">Sair</button>` : `<button class="btn roxo bloco" data-acao="entrar-grupo" data-id="${g.id}">Entrar no grupo</button>`}</div>
+        <div style="display:flex;gap:8px;margin-top:12px">${g.sou_membro ? `${pode('atividade') ? `<a class="btn roxo pequeno" href="#/nova-atividade?tipo=${g.modalidade.usa_quadra ? 'jogo' : 'atividade'}&modalidade_id=${g.modalidade.id}">+ Atividade</a>` : ''}<button class="btn perigo pequeno" data-acao="sair-grupo" data-id="${g.id}">Sair</button>` : `<button class="btn roxo bloco" data-acao="entrar-grupo" data-id="${g.id}">Entrar no grupo</button>`}</div>
         <div class="abas-int">${[['jogos', 'Jogos'], ['conversa', 'Conversa'], ['membros', 'Membros']].map(([k, n]) => `<button class="${aba === k ? 'on' : ''}" data-acao="aba-grupo" data-id="${g.id}" data-v="${k}">${n}</button>`).join('')}</div>${corpo}`,
       () => { if (aba === 'conversa' && g.sou_membro) conversa(g); });
     } catch (e) { erroTela(e); }
@@ -458,7 +461,7 @@
     carregando();
     try {
       const r = await api('/explorar?' + comPos({ raio: 0, tipos: 'campeonato' }));
-      montar(`<div class="secao" style="margin-top:0"><h1>Campeonatos 🏆</h1><a class="btn roxo pequeno" href="#/novo-campeonato">+ Criar</a></div>${lista(r.campeonatos, (c) => cardCamp(c), 'Nenhum campeonato por perto no momento.')}`);
+      montar(`<div class="secao" style="margin-top:0"><h1>Campeonatos 🏆</h1>${pode('campeonato') ? '<a class="btn roxo pequeno" href="#/novo-campeonato">+ Criar</a>' : ''}</div>${lista(r.campeonatos, (c) => cardCamp(c), 'Nenhum campeonato por perto no momento.')}`);
     } catch (e) { erroTela(e); }
   }
 
@@ -712,7 +715,7 @@
       const mine = await api('/minhas-atividades');
       const nivelDe = (id) => (u.esportes.find((e) => e.modalidade_id === id) || {}).nivel || '';
       montar(`<div style="display:flex;gap:14px;align-items:center;margin-bottom:14px"><span class="avatar grande">${u.foto_url ? `<img src="${esc(u.foto_url)}" alt="Sua foto">` : esc(u.iniciais)}</span><div><h1>${esc(u.arroba)}</h1><p class="suave">${esc(u.nome)} · ${esc(u.email)}</p><button class="btn suave pequeno" data-acao="trocar-usuario" style="margin-top:6px">Trocar @usuario</button> <button class="btn suave pequeno" data-acao="foto" style="margin-top:6px">📷 ${u.foto_url ? 'Trocar foto' : 'Adicionar foto'}</button>${u.foto_url ? ' <button class="btn perigo pequeno" data-acao="remover-foto" style="margin-top:6px">Remover</button>' : ''}</div></div>
-        <div class="painel"><a class="item-menu" href="#/gestao"><i>▦</i>Minha Arena<span>Gestão ›</span></a><a class="item-menu" href="#/campeonatos"><i>🏆</i>Campeonatos<span>›</span></a><a class="item-menu" href="#/planos"><i>💳</i>Meu plano<span>›</span></a><a class="item-menu" href="#/notificacoes"><i>🔔</i>Notificações<span>›</span></a><a class="item-menu" href="#/comunidades"><i>☺</i>Comunidades<span>›</span></a><a class="item-menu" href="#/convites"><i>✉️</i>Convites<span>›</span></a>${u.equipe_moderacao ? '<a class="item-menu" href="#/moderacao"><i>🛡</i>Moderação<span>Fila ›</span></a>' : ''}${u.admin ? '<a class="item-menu" href="#/admin"><i>⚙️</i>Administração<span>Perfis ›</span></a>' : ''}<a class="item-menu" href="#/privacidade"><i>🔒</i>Meus dados e privacidade<span>›</span></a></div>
+        <div class="painel">${pode('arena') ? '<a class="item-menu" href="#/gestao"><i>▦</i>Minha Arena<span>Gestão ›</span></a>' : ''}<a class="item-menu" href="#/campeonatos"><i>🏆</i>Campeonatos<span>›</span></a><a class="item-menu" href="#/planos"><i>💳</i>Meu plano<span>›</span></a><a class="item-menu" href="#/notificacoes"><i>🔔</i>Notificações<span>›</span></a><a class="item-menu" href="#/comunidades"><i>☺</i>Comunidades<span>›</span></a><a class="item-menu" href="#/convites"><i>✉️</i>Convites<span>›</span></a>${u.equipe_moderacao ? '<a class="item-menu" href="#/moderacao"><i>🛡</i>Moderação<span>Fila ›</span></a>' : ''}${u.admin ? '<a class="item-menu" href="#/admin"><i>⚙️</i>Administração<span>Perfis ›</span></a>' : ''}<a class="item-menu" href="#/privacidade"><i>🔒</i>Meus dados e privacidade<span>›</span></a></div>
         ${mine.proximas.length ? secao('Meus próximos jogos') + lista(mine.proximas, (a) => cardAtv(a)) : ''}
         <form id="f-perfil" style="margin-top:18px"><div class="painel"><h3 style="margin-bottom:12px">Esportes que pratico</h3>
           ${estado.mods.map((m) => `<div class="pessoa"><span style="font-size:22px">${esc(m.icone)}</span><b>${esc(m.nome)}</b><span class="acoes"><select name="esporte_${m.id}" style="border:1px solid var(--border);border-radius:10px;padding:7px"><option value="">—</option>${Object.entries(NIVEIS).map(([k, v]) => `<option value="${k}" ${nivelDe(m.id) === k ? 'selected' : ''}>${v}</option>`).join('')}</select></span></div>`).join('')}</div>

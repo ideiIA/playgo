@@ -236,9 +236,21 @@ def definir_esportes(s: SessaoORM, u: Usuario, esportes: dict[int, str]) -> Usua
     return u
 
 
+def _permissoes(u: Usuario) -> dict:
+    from sqlalchemy.orm import object_session
+
+    from . import planos
+
+    s = object_session(u)
+    if s is None:
+        return {"atividade": False, "campeonato": False, "arena": False}
+    return planos.permissoes(s, u)
+
+
 def dados_publicos(u: Usuario) -> dict:
     """O que o app recebe sobre o próprio usuário."""
     return {
+        "permissoes": _permissoes(u),
         "id": u.id, "nome": u.nome, "email": u.email, "usuario": u.usuario, "arroba": u.arroba, "iniciais": u.iniciais, "foto_url": u.foto_url,
         "admin": u.admin, "moderador": u.moderador, "perfil_acesso": u.perfil_acesso, "equipe_moderacao": u.equipe_moderacao, "gestor": u.gestor, "cidade": u.cidade, "latitude": u.latitude, "longitude": u.longitude,
         "raio_km": u.raio_km, "disponibilidade": list(u.disponibilidade or []), "sexo": u.sexo,

@@ -66,6 +66,12 @@ def test_enviar_o_pdf_ja_na_criacao_do_campeonato_pelo_site(banco):
     with TestClient(app) as cli:
         email = f"{uuid.uuid4().hex[:10]}@teste.local"
         assert cli.post("/cadastro", data={"nome": "Org Site", "email": email, "senha": "senha-de-teste-1", "usuario": f"o{uuid.uuid4().hex[:10]}", "aceito_termos": "1"}, follow_redirects=False).status_code == 303
+        from playgo.db import Session
+        from playgo.models import Usuario
+
+        with Session() as sx:  # criar campeonato exige plano; aqui não é o foco do teste
+            sx.query(Usuario).filter(Usuario.email == email).update({Usuario.admin: True})
+            sx.commit()
         mods = {m["codigo"]: m["id"] for m in cli.get("/api/v1/modalidades").json()}
         hoje = agora().date()
         dados = {"nome": "Copa com PDF", "modalidade_id": mods["futsal"], "data_inicio": str(hoje + timedelta(days=20)), "inscricao_ate": str(hoje + timedelta(days=10)), "max_equipes": 8, "atletas_por_equipe": 5,

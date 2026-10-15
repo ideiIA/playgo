@@ -134,8 +134,24 @@ def pagina(request: Request, s, usuario: Usuario, nome: str, aba: str = "", **co
         "hoje": agora().date().isoformat(),
         "fila_moderacao": publicacoes.contar_fila(s) if usuario.equipe_moderacao else 0,
         "convites_pendentes": len(convites.pendentes(s, usuario)),
+        "pode": planos.permissoes(s, usuario),
     }
     return templates.TemplateResponse(request, nome, base | contexto)
+
+
+_SEM_PLANO = {
+    "atividade": "Organizar atividades faz parte do plano Pro. Veja os planos.",
+    "campeonato": "Criar campeonatos faz parte do plano Organizador. Veja os planos.",
+    "arena": "Cadastrar e gerir arenas faz parte do plano Arena. Veja os planos.",
+}
+
+
+def _sem_plano(request: Request, s, usuario: Usuario, recurso: str) -> RedirectResponse | None:
+    """Se o plano da pessoa não libera o recurso, leva à tela de planos (as telas de criação não aparecem no menu)."""
+    if planos.permissoes(s, usuario)[recurso]:
+        return None
+    request.session["erro"] = _SEM_PLANO[recurso]
+    return RedirectResponse("/planos", status_code=303)
 
 
 def voltar(request: Request, padrao: str = "/") -> RedirectResponse:
@@ -261,6 +277,8 @@ def explorar(
 
 @app.get("/atividades/nova")
 def nova_atividade(request: Request, s: Sessao, usuario: Atual):
+    if (r := _sem_plano(request, s, usuario, "atividade")) is not None:
+        return r
     p = request.query_params
     v = {k: p.get(k) for k in ("modalidade_id", "grupo_id", "arena_id", "quadra_id")}
     v["modalidade_id"] = int(v["modalidade_id"]) if v["modalidade_id"] else None
@@ -426,6 +444,8 @@ def listar_campeonatos(request: Request, s: Sessao, usuario: Atual, modalidades:
 
 @app.get("/campeonatos/novo")
 def novo_campeonato(request: Request, s: Sessao, usuario: Atual):
+    if (r := _sem_plano(request, s, usuario, "campeonato")) is not None:
+        return r
     la, ln, informada = descoberta.localizacao(usuario)
     return pagina(request, s, usuario, "campeonato_novo.html", "campeonatos", minhas_arenas=arenas.minhas(s, usuario), centro={"latitude": la, "longitude": ln, "informada": informada})
 
@@ -598,6 +618,8 @@ def ativar_local(local_id: int, request: Request, s: Sessao, usuario: Atual, ati
 
 @app.get("/gestao")
 def gestao(request: Request, s: Sessao, usuario: Atual, arena: int | None = None, dia: str = ""):
+    if (r := _sem_plano(request, s, usuario, "arena")) is not None:
+        return r
     lista = arenas.minhas(s, usuario)
     escolhida = next((a for a in lista if a.id == arena), lista[0] if lista else None)
     if escolhida is None:
@@ -616,6 +638,8 @@ def gestao(request: Request, s: Sessao, usuario: Atual, arena: int | None = None
 
 @app.get("/gestao/arenas/nova")
 def nova_arena(request: Request, s: Sessao, usuario: Atual):
+    if (r := _sem_plano(request, s, usuario, "arena")) is not None:
+        return r
     la, ln, informada = descoberta.localizacao(usuario)
     return pagina(request, s, usuario, "arena_nova.html", "gestao", centro={"latitude": la, "longitude": ln, "informada": informada})
 
