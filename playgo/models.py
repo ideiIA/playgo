@@ -200,7 +200,7 @@ class Local(Base):
     __table_args__ = (Index("ix_locais_geo", "latitude", "longitude"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    tipo: Mapped[str] = mapped_column(String(20))  # publico | loja | arena
+    tipo: Mapped[str] = mapped_column(String(20))  # publico | arena | clube | loja
     nome: Mapped[str] = mapped_column(String(200))
     descricao: Mapped[str | None] = mapped_column(Text)
     endereco: Mapped[str] = mapped_column(String(300))
@@ -211,6 +211,12 @@ class Local(Base):
     telefone: Mapped[str] = mapped_column(String(40))
     email: Mapped[str | None] = mapped_column(String(200))
     site: Mapped[str | None] = mapped_column(String(300))
+    instagram: Mapped[str | None] = mapped_column(String(300))
+    facebook: Mapped[str | None] = mapped_column(String(300))
+    maps_url: Mapped[str | None] = mapped_column(Text)  # link do Google Maps do local
+    categoria_maps: Mapped[str | None] = mapped_column(String(120))  # como o Maps classifica ("Quadra de vôlei de praia")
+    avaliacao: Mapped[float | None] = mapped_column(Float)  # nota de 0 a 5 no Maps
+    avaliacoes: Mapped[int | None] = mapped_column(Integer)
     regras: Mapped[str | None] = mapped_column(Text)
     modalidades: Mapped[list[str]] = mapped_column(ARRAY(String(30)), default=list)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)

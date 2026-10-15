@@ -153,7 +153,7 @@
     <a class="card" href="#/local/${l.id}">
       <span class="tag verde">${esc(l.icone)} ${esc(l.categoria_nome)}</span>
       <h3>${esc(l.nome)}</h3>
-      <div class="meta">${esc(l.endereco || '')}${l.distancia ? ' • ' + esc(l.distancia) : ''}<br>🕒 ${esc((l.horario_funcionamento || '').split('\n')[0])}<br>📞 ${esc(l.telefone)}</div>
+      <div class="meta">${esc(l.endereco || '')}${l.distancia ? ' • ' + esc(l.distancia) : ''}${l.horario_funcionamento ? '<br>🕒 ' + esc(l.horario_funcionamento.split('\n')[0]) : ''}${l.telefone ? '<br>📞 ' + esc(l.telefone) : ''}${l.avaliacao ? '<br><b style="color:#f5b301">★ ' + String(l.avaliacao.toFixed(1)).replace('.', ',') + '</b>' : ''}</div>
     </a>`;
   const lista = (itens, fn, vazio) => (itens && itens.length ? `<div class="lista">${itens.map(fn).join('')}</div>` : `<p class="vazio">${esc(vazio)}</p>`);
   const secao = (titulo, link) => `<div class="secao"><h2>${titulo}</h2>${link || ''}</div>`;
@@ -167,11 +167,14 @@
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
     L.circleMarker([centro.latitude, centro.longitude], { radius: 8, color: '#fff', weight: 3, fillColor: '#6c4cff', fillOpacity: 1 }).addTo(m);
     const cores = { atividade: '#6c4cff', campeonato: '#ff8a00', arena: '#16c784', grupo: '#22c7f2', horario: '#16c784' };
-    const rotas = { atividade: '#/atividade/', campeonato: '#/campeonato/', arena: '#/arena/', grupo: '#/grupo/' };
+    const rotas = { atividade: '#/atividade/', campeonato: '#/campeonato/', arena: '#/arena/', grupo: '#/grupo/', local: '#/local/' };
     const lim = [[centro.latitude, centro.longitude]];
     (pontos || []).forEach((p) => {
       const alvo = p.tipo === 'horario' ? '#/arena/' + p.arena_id : rotas[p.tipo] + p.id;
-      L.circleMarker([p.latitude, p.longitude], { radius: p.urgente ? 11 : 9, color: '#fff', weight: 2, fillColor: p.urgente ? '#ff3d81' : cores[p.tipo], fillOpacity: 0.95 })
+      (p.tipo === 'local' && p.icone
+        ? L.marker([p.latitude, p.longitude], { icon: L.divIcon({ className: 'pino-local', iconSize: [34, 34], iconAnchor: [17, 17], popupAnchor: [0, -16],
+            html: `<span style="display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:${p.cor || '#0ea5e9'};border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.35);font-size:17px;line-height:1">${p.icone}</span>` }) })
+        : L.circleMarker([p.latitude, p.longitude], { radius: p.urgente ? 11 : 9, color: '#fff', weight: 2, fillColor: p.urgente ? '#ff3d81' : cores[p.tipo], fillOpacity: 0.95 }))
         .addTo(m).bindPopup(`<b>${esc(p.rotulo)}</b><br>${esc(p.distancia || '')}<br><a href="${alvo}">Ver detalhes</a>`);
       lim.push([p.latitude, p.longitude]);
     });
@@ -668,10 +671,13 @@
         <span class="tag verde" style="margin-top:10px">${esc(l.icone)} ${esc(l.categoria_nome)}</span><h1 style="margin:8px 0 4px">${esc(l.nome)}</h1>
         ${l.descricao ? `<p>${esc(l.descricao)}</p>` : ''}
         ${linha('📍 Endereço', esc(l.endereco) + (l.cidade ? ' — ' + esc(l.cidade) : '') + (l.distancia ? ' (' + esc(l.distancia) + ')' : ''))}
-        ${linha('🕒 Funcionamento', `<span style="white-space:pre-line">${esc(l.horario_funcionamento)}</span>`)}
-        ${linha('📞 Telefone', `<a href="tel:${esc(l.telefone)}">${esc(l.telefone)}</a>`)}
+        ${l.avaliacao ? `<p style="margin:6px 0"><b style="color:#f5b301">★ ${String(l.avaliacao.toFixed(1)).replace('.', ',')}</b>${l.avaliacoes ? ` <span class="suave">(${l.avaliacoes} avaliações no Google)</span>` : ''}</p>` : ''}
+        ${l.incompleto ? '<p class="aviso alerta">Horário ou telefone ainda não informados. Confirme com o local antes de ir.</p>' : ''}
+        ${linha('🕒 Funcionamento', l.horario_funcionamento ? `<span style="white-space:pre-line">${esc(l.horario_funcionamento)}</span>` : '<span class="suave">Não informado</span>')}
+        ${linha('📞 Telefone', l.telefone ? `<a href="tel:${esc(l.telefone)}">${esc(l.telefone)}</a>` : '<span class="suave">Não informado</span>')}
         ${linha('✉️ E-mail', l.email ? `<a href="mailto:${esc(l.email)}">${esc(l.email)}</a>` : '')}
-        ${linha('🔗 Site', l.site ? `<a href="${esc(l.site)}" target="_blank" rel="noopener nofollow">${esc(l.site)}</a>` : '')}
+        ${l.instagram || l.facebook || l.site ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0">${l.instagram ? `<a class="btn suave pequeno" href="${esc(l.instagram)}" target="_blank" rel="noopener nofollow">📸 Instagram</a>` : ''}${l.facebook ? `<a class="btn suave pequeno" href="${esc(l.facebook)}" target="_blank" rel="noopener nofollow">👍 Facebook</a>` : ''}${l.site ? `<a class="btn suave pequeno" href="${esc(l.site)}" target="_blank" rel="noopener nofollow">🌐 Site</a>` : ''}</div>` : ''}
+        <p><a class="btn roxo pequeno" href="${esc(l.maps_url)}" target="_blank" rel="noopener">📍 Abrir no Google Maps</a></p>
         ${l.regras ? `<div class="painel"><h3>Regras de utilização</h3><p style="white-space:pre-line">${esc(l.regras)}</p></div>` : ''}
         <div class="mapa pequeno" id="mapa" style="margin:12px 0"></div>
         <p class="suave" style="font-size:12px">Informações cadastradas pelo PlayGo; confirme com o local antes de ir.</p>`,

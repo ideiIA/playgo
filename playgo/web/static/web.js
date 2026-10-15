@@ -100,7 +100,11 @@
     const limites = [[centro.latitude, centro.longitude]];
     pontos.forEach((p) => {
       const cor = p.urgente ? '#ff3d81' : { atividade: '#6c4cff', campeonato: '#ff8a00', arena: '#16c784', grupo: '#22c7f2', horario: '#16c784', local: '#0ea5e9' }[p.tipo];
-      const m = L.circleMarker([p.latitude, p.longitude], { radius: p.urgente ? 11 : 9, color: '#fff', weight: 2, fillColor: cor, fillOpacity: 0.95 }).addTo(mapa);
+      // locais do guia: pino com o ícone e a cor do tipo (público, arena, clube, loja)
+      const m = p.tipo === 'local' && p.icone
+        ? L.marker([p.latitude, p.longitude], { icon: L.divIcon({ className: 'pino-local', iconSize: [34, 34], iconAnchor: [17, 17], popupAnchor: [0, -16],
+            html: '<span style="display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:' + (p.cor || '#0ea5e9') + ';border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.35);font-size:17px;line-height:1">' + p.icone + '</span>' }) }).addTo(mapa)
+        : L.circleMarker([p.latitude, p.longitude], { radius: p.urgente ? 11 : 9, color: '#fff', weight: 2, fillColor: cor, fillOpacity: 0.95 }).addTo(mapa);
       const alvo = p.tipo === 'horario' ? '/arenas/' + (p.arena_id || p.id) : rotas[p.tipo] + p.id;
       m.bindPopup('<b>' + p.rotulo.replace(/</g, '&lt;') + '</b><br>' + (p.distancia || '') + '<br><a href="' + alvo + '">Ver detalhes</a>');
       limites.push([p.latitude, p.longitude]);

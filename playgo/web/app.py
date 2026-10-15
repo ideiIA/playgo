@@ -659,10 +659,10 @@ def modelo_locais(s: Sessao, usuario: Atual):
 
 
 @app.post("/gestao/locais/importar")
-async def importar_locais(request: Request, s: Sessao, usuario: Atual, tipo: str = Form(""), arquivo: UploadFile | None = File(None)):
+async def importar_locais(request: Request, s: Sessao, usuario: Atual, tipo: str = Form("auto"), incompleto: str = Form(""), arquivo: UploadFile | None = File(None)):
     locais._exigir_admin(usuario)
     dados = await arquivo.read() if arquivo is not None else b""
-    resultado = locais_importacao.importar(s, usuario, arquivo.filename if arquivo else "", dados, tipo)
+    resultado = locais_importacao.importar(s, usuario, arquivo.filename if arquivo else "", dados, tipo or "auto", permitir_incompleto=bool(incompleto))
     return pagina(request, s, usuario, "locais_importar.html", "locais", tipos=locais.TIPOS, resultado=resultado)
 
 
@@ -672,10 +672,11 @@ def novo_local(request: Request, s: Sessao, usuario: Atual):
     return pagina(request, s, usuario, "local_form.html", "locais", lc=None, centro=_centro_local(usuario), tipos=locais.TIPOS)
 
 
-def _dados_local(tipo, nome, endereco, cidade, latitude, longitude, horario_funcionamento, telefone, email, site, regras, descricao, modalidades) -> dict:
+def _dados_local(tipo, nome, endereco, cidade, latitude, longitude, horario_funcionamento, telefone, email, site, regras, descricao, modalidades, instagram="", facebook="", maps_url="") -> dict:
     return dict(
         tipo=tipo, nome=nome, endereco=endereco, cidade=cidade, latitude=_num(latitude, float), longitude=_num(longitude, float),
-        horario_funcionamento=horario_funcionamento, telefone=telefone, email=email, site=site, regras=regras, descricao=descricao, modalidades=modalidades,
+        horario_funcionamento=horario_funcionamento, telefone=telefone, email=email, site=site, instagram=instagram, facebook=facebook, maps_url=maps_url,
+        regras=regras, descricao=descricao, modalidades=modalidades,
     )
 
 
@@ -684,8 +685,9 @@ def criar_local(
     request: Request, s: Sessao, usuario: Atual, tipo: str = Form(""), nome: str = Form(""), endereco: str = Form(""), cidade: str = Form(""),
     latitude: str = Form(""), longitude: str = Form(""), horario_funcionamento: str = Form(""), telefone: str = Form(""), email: str = Form(""),
     site: str = Form(""), regras: str = Form(""), descricao: str = Form(""), modalidades: list[str] = Form(default=[]),
+    instagram: str = Form(""), facebook: str = Form(""), maps_url: str = Form(""),
 ):
-    locais.criar(s, usuario, **_dados_local(tipo, nome, endereco, cidade, latitude, longitude, horario_funcionamento, telefone, email, site, regras, descricao, modalidades))
+    locais.criar(s, usuario, **_dados_local(tipo, nome, endereco, cidade, latitude, longitude, horario_funcionamento, telefone, email, site, regras, descricao, modalidades, instagram, facebook, maps_url))
     request.session["ok"] = "Local cadastrado no guia."
     return RedirectResponse("/gestao/locais", status_code=303)
 
@@ -702,8 +704,9 @@ def editar_local(
     local_id: int, request: Request, s: Sessao, usuario: Atual, tipo: str = Form(""), nome: str = Form(""), endereco: str = Form(""), cidade: str = Form(""),
     latitude: str = Form(""), longitude: str = Form(""), horario_funcionamento: str = Form(""), telefone: str = Form(""), email: str = Form(""),
     site: str = Form(""), regras: str = Form(""), descricao: str = Form(""), modalidades: list[str] = Form(default=[]),
+    instagram: str = Form(""), facebook: str = Form(""), maps_url: str = Form(""),
 ):
-    locais.editar(s, usuario, local_id, **_dados_local(tipo, nome, endereco, cidade, latitude, longitude, horario_funcionamento, telefone, email, site, regras, descricao, modalidades))
+    locais.editar(s, usuario, local_id, **_dados_local(tipo, nome, endereco, cidade, latitude, longitude, horario_funcionamento, telefone, email, site, regras, descricao, modalidades, instagram, facebook, maps_url))
     request.session["ok"] = "Local atualizado."
     return RedirectResponse("/gestao/locais", status_code=303)
 

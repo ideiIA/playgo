@@ -6,9 +6,17 @@
 {% if resultado %}
 <div class="panel">
   <h3>Resultado</h3>
+  {% if resultado.por_tipo %}<p>{% for k, n in resultado.por_tipo.items() %}<span class="tag verde">{{ tipos[k][0] }} {{ tipos[k][1] }}: {{ n }}</span> {% endfor %}{% if resultado.incompletos %}<span class="tag cinza">⚠ {{ resultado.incompletos }} sem horário ou telefone</span>{% endif %}</p>{% endif %}
   <p><b style="color:var(--green)">{{ resultado.criados }}</b> local{{ 'is' if resultado.criados != 1 else '' }} cadastrado{{ 's' if resultado.criados != 1 }}
     • {{ resultado.ignorados }} já existia{{ 'm' if resultado.ignorados != 1 }} (mesmo nome e endereço)
-    • {{ resultado.erros|length }} com problema • {{ resultado.total }} linha{{ 's' if resultado.total != 1 }} lida{{ 's' if resultado.total != 1 }}.</p>
+    • {{ resultado.descartados|length }} fora do tema esportivo • {{ resultado.erros|length }} com problema • {{ resultado.total }} linha{{ 's' if resultado.total != 1 }} lida{{ 's' if resultado.total != 1 }}.</p>
+  {% if resultado.descartados %}
+  <details><summary><b>{{ resultado.descartados|length }} descartados por categoria não esportiva</b> (lojas de móveis, armas, órgãos públicos…)</summary>
+    <table class="tabela"><thead><tr><th>Linha</th><th>Local</th><th>Motivo</th></tr></thead>
+    <tbody>{% for e in resultado.descartados %}<tr><td>{{ e.linha }}</td><td>{{ e.nome }}</td><td>{{ e.motivo }}</td></tr>{% endfor %}</tbody></table>
+    <p class="suave">Se algum desses é um local de esporte, cadastre-o à mão em "+ Cadastrar local".</p>
+  </details>
+  {% endif %}
   {% if resultado.erros %}
   <table class="tabela">
     <thead><tr><th>Linha</th><th>Local</th><th>O que corrigir</th></tr></thead>
@@ -22,9 +30,10 @@
 <form class="panel" method="post" action="/gestao/locais/importar" enctype="multipart/form-data">
   <div class="form-grid">
     <div class="field"><label for="tipo">Tipo dos locais desta planilha</label>
-      <select name="tipo" id="tipo" required>{% for k, v in tipos.items() %}<option value="{{ k }}">{{ v[0] }} {{ v[1] }}</option>{% endfor %}</select></div>
+      <select name="tipo" id="tipo" required><option value="auto">✨ Detectar pela categoria do Google Maps (recomendado)</option>{% for k, v in tipos.items() %}<option value="{{ k }}">{{ v[0] }} {{ v[1] }}</option>{% endfor %}</select></div>
     <div class="field"><label for="arquivo">Planilha (.xlsx ou .csv, até 2 MB)</label><input type="file" name="arquivo" id="arquivo" accept=".xlsx,.csv,.txt" required></div>
   </div>
+  <label style="display:flex;gap:8px;align-items:center;margin-top:12px"><input type="checkbox" name="incompleto" value="1" checked style="width:auto"> Aceitar locais sem horário ou telefone (aparecem como "incompletos" para completar depois)</label>
   <br><button class="btn purple">Importar</button> <a class="btn soft" href="/gestao/locais/modelo.csv">Baixar modelo (.csv)</a>
 </form>
 
@@ -32,10 +41,13 @@
   <h3>Como preencher</h3>
   <p>A primeira linha é o cabeçalho. Colunas aceitas (a ordem não importa):</p>
   <ul>
-    <li><b>nome</b>, <b>endereco</b>, <b>telefone</b> e <b>horario_funcionamento</b>: obrigatórios.</li>
-    <li><b>cidade</b>, <b>email</b>, <b>site</b>, <b>regras</b>, <b>descricao</b>: opcionais.</li>
+    <li><b>nome</b> e <b>endereco</b>: obrigatórios. <b>telefone</b> e <b>horario_funcionamento</b> também, a não ser que você aceite locais incompletos (acima).</li>
+    <li><b>cidade</b> (ou <b>município</b>), <b>email</b>, <b>regras</b>, <b>descricao</b>: opcionais.</li>
+    <li><b>site</b>, <b>instagram</b>, <b>facebook</b>: opcionais. Links de Instagram/Facebook que vierem na coluna do site vão para o campo certo.</li>
+    <li><b>link do Maps</b> (coluna "Link do Maps"): opcional. As coordenadas são lidas do link, sem precisar de latitude e longitude.</li>
+    <li><b>categoria no Maps</b> e <b>avaliação</b> (ex.: <i>5,0 (16)</i>): opcionais; a categoria ajuda a detectar o tipo e o esporte.</li>
     <li><b>esportes</b>: nomes ou códigos separados por vírgula (ex.: <i>futsal, vôlei</i>).</li>
-    <li><b>tipo</b>: opcional, por linha (<i>publico</i>, <i>loja</i> ou <i>arena</i>). Sem a coluna, vale o tipo escolhido acima.</li>
+    <li><b>tipo</b>: opcional, por linha (<i>publico</i>, <i>arena</i>, <i>clube</i> ou <i>loja</i>). Sem a coluna, vale o tipo escolhido acima.</li>
     <li><b>latitude</b> e <b>longitude</b>: opcionais. Se faltarem, o PlayGo localiza pelo endereço (até 60 por envio, cerca de 1 por segundo).</li>
   </ul>
   <p class="suave">Locais com o mesmo nome e endereço de um já cadastrado são ignorados, então dá para reenviar a planilha corrigida.</p>

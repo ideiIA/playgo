@@ -38,7 +38,12 @@
 </form>
 
 <div class="two">
+  <div>
   <div id="mapa" class="map alto"></div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:8px;font-size:13px" aria-label="Legenda do mapa">
+    <span>🌳 Local público</span><span>🏟️ Arena</span><span>🏋️ Clube/academia</span><span>🛍️ Loja</span>
+  </div>
+  </div>
   <div class="panel">
     <h2>Mais próximos</h2>
     <div class="lista-lateral">
@@ -80,7 +85,7 @@
     <a class="cobre" href="/locais/{{ l.id }}" aria-label="{{ l.nome }}"></a>
     <span class="tag verde">{{ l.icone }} {{ l.categoria_nome }}</span>
     <h3>{{ l.nome }}</h3>
-    <div class="meta">{{ l.endereco }}{% if l.distancia %} • {{ l.distancia }}{% endif %}<br>🕒 {{ l.horario_funcionamento|truncate(70) }}<br>📞 {{ l.telefone }}</div>
+    <div class="meta">{{ l.endereco }}{% if l.distancia %} • {{ l.distancia }}{% endif %}{% if l.horario_funcionamento %}<br>🕒 {{ l.horario_funcionamento|truncate(70) }}{% endif %}{% if l.telefone %}<br>📞 {{ l.telefone }}{% endif %}{% if l.avaliacao %}<br><b style="color:#f5b301">★ {{ '%.1f'|format(l.avaliacao)|replace('.', ',') }}</b>{% endif %}</div>
   </div>{% endfor %}</div>
 {% endif %}
 

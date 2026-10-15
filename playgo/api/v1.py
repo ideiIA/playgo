@@ -195,11 +195,14 @@ class LocalIn(BaseModel):
     endereco: str
     latitude: float
     longitude: float
-    horario_funcionamento: str
-    telefone: str
+    horario_funcionamento: str = ""
+    telefone: str = ""
     cidade: str | None = None
     email: str | None = None
     site: str | None = None
+    instagram: str | None = None
+    facebook: str | None = None
+    maps_url: str | None = None
     regras: str | None = None
     descricao: str | None = None
     modalidades: list[str] = []
@@ -578,8 +581,8 @@ def gestao_locais(u: AtualApi, s: Sessao):
 
 
 @router.post("/gestao/locais/importar")
-async def importar_locais(u: AtualApi, s: Sessao, tipo: str = Form(""), arquivo: UploadFile = File(...)):
-    return locais_importacao.importar(s, u, arquivo.filename or "", await arquivo.read(), tipo)
+async def importar_locais(u: AtualApi, s: Sessao, tipo: str = Form("auto"), incompleto: bool = Form(True), arquivo: UploadFile = File(...)):
+    return locais_importacao.importar(s, u, arquivo.filename or "", await arquivo.read(), tipo or "auto", permitir_incompleto=incompleto)
 
 
 @router.post("/gestao/locais", status_code=201)

@@ -248,5 +248,9 @@ def pontos_do_mapa(res: dict) -> list[dict]:
         for i in res[chave]:
             if i.get("latitude") is None:
                 continue
-            pontos.append({"tipo": i["tipo"], "id": i["id"], "latitude": i["latitude"], "longitude": i["longitude"], "rotulo": _rotulo_pino(i), "distancia": i["distancia"], "urgente": bool(i.get("falta_gente")), "arena_id": i.get("arena_id")})
+            pontos.append({
+                "tipo": i["tipo"], "id": i["id"], "latitude": i["latitude"], "longitude": i["longitude"], "rotulo": _rotulo_pino(i), "distancia": i["distancia"],
+                "urgente": bool(i.get("falta_gente")), "arena_id": i.get("arena_id"),
+                "icone": i.get("icone") if i["tipo"] == "local" else None, "cor": i.get("cor") if i["tipo"] == "local" else None,  # pino próprio por tipo de local
+            })
     return pontos
