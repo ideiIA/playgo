@@ -333,7 +333,7 @@
     montar(`<h1>Criar</h1><p class="suave" style="margin:4px 0 14px">O que você quer organizar?</p><div class="painel">
       ${pode('atividade') ? item('#/nova-atividade?tipo=jogo', '⚽', 'Criar jogo', 'Futebol, vôlei, beach tennis… em quadra ou arena') : ''}
       ${pode('atividade') ? item('#/nova-atividade?tipo=atividade', '🏃', 'Criar atividade', 'Corrida, ciclismo, caminhada, trilha… com ponto de encontro') : ''}
-      ${item('#/novo-grupo', '👥', 'Criar grupo', 'Uma comunidade permanente do seu esporte')}
+      ${pode('grupo') ? item('#/novo-grupo', '👥', 'Criar grupo', 'Grupo do seu esporte, com aceite e remoção de participantes') : ''}
       ${pode('campeonato') ? item('#/novo-campeonato', '🏆', 'Criar campeonato', 'Torneios com equipes e inscrição') : ''}
       ${!pode('atividade') || !pode('campeonato') ? item('#/planos', '💳', 'Quer organizar?', 'Veja os planos que liberam atividades, campeonatos e arenas') : ''}
     </div>`);
@@ -392,7 +392,7 @@
     carregando();
     try {
       const g = await api('/grupos?' + comPos());
-      montar(`${segGrupos('grupos')}<div class="secao" style="margin-top:0"><h1>Meus grupos</h1><a class="btn roxo pequeno" href="#/novo-grupo">+ Criar</a></div>
+      montar(`${segGrupos('grupos')}<div class="secao" style="margin-top:0"><h1>Meus grupos</h1>${pode('grupo') ? '<a class="btn roxo pequeno" href="#/novo-grupo">+ Criar</a>' : ''}</div>
         ${lista(g.meus, cardGrupo, 'Você ainda não participa de nenhum grupo.')}
         ${g.descobrir.length ? secao('Descubra grupos') + lista(g.descobrir, (x) => cardGrupo(x)) : ''}`);
     } catch (e) { erroTela(e); }
@@ -404,7 +404,8 @@
       const g = await api('/grupos/' + id);
       let corpo = '';
       if (aba === 'jogos') corpo = secao('Próximos jogos') + lista(g.agenda, (a) => cardAtv(a), 'Nenhuma atividade marcada.') + (g.historico.length ? secao('Histórico') + `<div class="painel">${g.historico.map((a) => `<div class="pessoa"><a href="#/atividade/${a.id}">${esc(a.nome)}</a><span class="suave" style="margin-left:auto">${esc(a.quando)}</span></div>`).join('')}</div>` : '');
-      if (aba === 'membros') corpo = `<div class="painel">${g.membros_lista.map((m) => pessoa(m, m.papel === 'admin' ? '<span class="tag">Admin</span>' : g.sou_admin ? `<span class="acoes"><button class="btn suave pequeno" data-acao="promover" data-id="${g.id}" data-v="${m.usuario_id}">Tornar admin</button></span>` : '')).join('')}</div>`;
+      if (aba === 'membros') corpo = (g.sou_admin && g.pedidos && g.pedidos.length ? `<div class="painel" style="border:1px solid #ffd9a1;background:#fffaf0"><h3>Pedidos para entrar (${g.pedidos.length})</h3>${g.pedidos.map((m) => pessoa(m, `<span class="acoes"><button class="btn roxo pequeno" data-acao="aceitar-pedido" data-id="${g.id}" data-v="${m.usuario_id}">Aceitar</button><button class="btn perigo pequeno" data-acao="recusar-pedido" data-id="${g.id}" data-v="${m.usuario_id}">Recusar</button></span>`)).join('')}</div>` : '') +
+        `<div class="painel">${g.membros_lista.map((m) => pessoa(m, m.papel === 'admin' ? '<span class="tag">Admin</span>' : g.sou_admin ? `<span class="acoes"><button class="btn suave pequeno" data-acao="promover" data-id="${g.id}" data-v="${m.usuario_id}">Tornar admin</button><button class="btn perigo pequeno" data-acao="remover-membro" data-id="${g.id}" data-v="${m.usuario_id}">Remover</button></span>` : '')).join('')}</div>`;
       if (aba === 'conversa') corpo = g.sou_membro ? '<div class="chat" id="chat"></div><form class="enviar" id="f-msg"><input name="texto" placeholder="Escreva uma mensagem…" required autocomplete="off" maxlength="2000">' + (g.sou_admin ? '<label class="suave" style="display:flex;align-items:center;gap:4px"><input type="checkbox" name="aviso" value="1">aviso</label>' : '') + '<button class="btn roxo pequeno">Enviar</button></form>' : '<p class="vazio">Entre no grupo para ver a conversa.</p>';
       montar(`<a href="#/grupos" class="suave">← Grupos</a>
         <span class="tag ${esc(g.modalidade.cor)}" style="margin-top:10px">${modIcone(g.modalidade)} ${esc(g.modalidade.nome)}</span>
@@ -412,7 +413,7 @@
         <p class="suave">${g.membros} membros${g.cidade ? ' • ' + esc(g.cidade) : ''}${g.local_habitual ? ' • 📍 ' + esc(g.local_habitual) : ''}</p>
         ${g.descricao ? `<p style="margin-top:8px">${esc(g.descricao)}</p>` : ''}
         ${g.avisos.map((a) => `<p class="aviso alerta">📌 <b>${esc(a.autor)}:</b> ${esc(a.texto)}</p>`).join('')}
-        <div style="display:flex;gap:8px;margin-top:12px">${g.sou_membro ? `${pode('atividade') ? `<a class="btn roxo pequeno" href="#/nova-atividade?tipo=${g.modalidade.usa_quadra ? 'jogo' : 'atividade'}&modalidade_id=${g.modalidade.id}">+ Atividade</a>` : ''}<button class="btn perigo pequeno" data-acao="sair-grupo" data-id="${g.id}">Sair</button>` : `<button class="btn roxo bloco" data-acao="entrar-grupo" data-id="${g.id}">Entrar no grupo</button>`}</div>
+        <div style="display:flex;gap:8px;margin-top:12px">${g.sou_membro ? `${pode('atividade') ? `<a class="btn roxo pequeno" href="#/nova-atividade?tipo=${g.modalidade.usa_quadra ? 'jogo' : 'atividade'}&modalidade_id=${g.modalidade.id}">+ Atividade</a>` : ''}<button class="btn perigo pequeno" data-acao="sair-grupo" data-id="${g.id}">Sair</button>` : `${g.pedido_pendente ? `<span class="tag">⏳ Pedido enviado</span><button class="btn perigo pequeno" data-acao="cancelar-pedido-grupo" data-id="${g.id}">Cancelar pedido</button>` : `<button class="btn roxo bloco" data-acao="entrar-grupo" data-id="${g.id}">${g.entrada === 'aprovacao' ? 'Pedir para entrar' : 'Entrar no grupo'}</button>`}`}</div>
         <div class="abas-int">${[['jogos', 'Jogos'], ['conversa', 'Conversa'], ['membros', 'Membros']].map(([k, n]) => `<button class="${aba === k ? 'on' : ''}" data-acao="aba-grupo" data-id="${g.id}" data-v="${k}">${n}</button>`).join('')}</div>${corpo}`,
       () => { if (aba === 'conversa' && g.sou_membro) conversa(g); });
     } catch (e) { erroTela(e); }
@@ -461,7 +462,23 @@
     carregando();
     try {
       const r = await api('/explorar?' + comPos({ raio: 0, tipos: 'campeonato' }));
-      montar(`<div class="secao" style="margin-top:0"><h1>Campeonatos 🏆</h1>${pode('campeonato') ? '<a class="btn roxo pequeno" href="#/novo-campeonato">+ Criar</a>' : ''}</div>${lista(r.campeonatos, (c) => cardCamp(c), 'Nenhum campeonato por perto no momento.')}`);
+      const encerrados = pode('campeonato') ? `<div class="secao"><h2>🏁 Encerrados</h2></div>
+        <form class="filtros-enc" id="f-enc"><input name="q" placeholder="Buscar por nome"><div style="display:flex;gap:6px"><input type="date" name="de" aria-label="De"><input type="date" name="ate" aria-label="Até"></div>
+        ${estado.usuario.admin ? '<input name="organizador" placeholder="Organizador (@usuario)">' : ''}<button class="btn roxo pequeno">Filtrar</button></form><div id="lista-enc"><p class="suave">Carregando…</p></div>` : '';
+      montar(`<div class="secao" style="margin-top:0"><h1>Campeonatos 🏆</h1>${pode('campeonato') ? '<a class="btn roxo pequeno" href="#/novo-campeonato">+ Criar</a>' : ''}</div>${lista(r.campeonatos, (c) => cardCamp(c), 'Nenhum campeonato por perto no momento.')}${encerrados}`, () => {
+        const f = $('#f-enc');
+        if (!f) return;
+        const carregar = async () => {
+          const d = Object.fromEntries(new FormData(f));
+          const qs = new URLSearchParams(Object.entries(d).filter(([, v]) => v)).toString();
+          try {
+            const e = await api('/campeonatos/encerrados' + (qs ? '?' + qs : ''));
+            $('#lista-enc').innerHTML = e.itens.length ? e.itens.map((x) => `<a class="card" href="#/campeonato/${x.id}"><span class="tag">${esc(x.icone)} ${esc(x.modalidade)}</span><h3>${esc(x.nome)}</h3><div class="meta">Encerrou em ${esc(x.data_fim.slice(8))}/${esc(x.data_fim.slice(5, 7))}/${esc(x.data_fim.slice(0, 4))} • ${x.equipes} equipe(s)${e.todos ? ' • ' + esc(x.organizador) : ''}<br>${esc(x.arena || x.local)}</div></a>`).join('') : '<p class="vazio">Nenhum campeonato encerrado com esses filtros.</p>';
+          } catch (err) { $('#lista-enc').innerHTML = `<p class="vazio">${esc(err.message)}</p>`; }
+        };
+        f.addEventListener('submit', (ev) => { ev.preventDefault(); carregar(); });
+        carregar();
+      });
     } catch (e) { erroTela(e); }
   }
 
@@ -834,7 +851,7 @@
     carregando();
     try {
       const c = await api('/comunidades');
-      montar(`${segGrupos('comunidades')}<div class="secao" style="margin-top:0"><h1>Comunidades</h1><a class="btn roxo pequeno" href="#/nova-comunidade">+ Criar</a></div>
+      montar(`${segGrupos('comunidades')}<div class="secao" style="margin-top:0"><h1>Comunidades</h1>${pode('comunidade') ? '<a class="btn roxo pequeno" href="#/nova-comunidade">+ Criar</a>' : ''}</div>
         <p class="suave" style="margin:-4px 0 10px">Espaços de relacionamento por interesse, bairro ou jeito de jogar — cada um com seu mural.</p>
         ${lista(c.minhas, cardComunidade, 'Você ainda não participa de nenhuma comunidade.')}
         ${c.descobrir.length ? secao('Descubra comunidades') + lista(c.descobrir, cardComunidade) : ''}`);
@@ -1122,6 +1139,10 @@
     async 'cancelar-atv'(el) { if (!confirm('Cancelar a atividade? Os participantes serão avisados.')) return; try { await post(`/atividades/${el.dataset.id}/cancelar`); toast('Atividade cancelada.'); vAtividade(el.dataset.id); } catch (e) { toast(e.message); } },
     async decidir(el) { try { await post(`/atividades/${el.dataset.id}/participacoes/${el.dataset.p}/${el.dataset.v}`); vAtividade(el.dataset.id); } catch (e) { toast(e.message); } },
     async 'entrar-grupo'(el) { try { await post(`/grupos/${el.dataset.id}/entrar`); vGrupo(el.dataset.id); } catch (e) { toast(e.message); } },
+    async 'cancelar-pedido-grupo'(el) { try { await post(`/grupos/${el.dataset.id}/sair`); vGrupo(el.dataset.id); } catch (e) { toast(e.message); } },
+    async 'aceitar-pedido'(el) { try { await post(`/grupos/${el.dataset.id}/pedidos/${el.dataset.v}/aceitar`); toast('Pedido aceito.'); vGrupo(el.dataset.id, 'membros'); } catch (e) { toast(e.message); } },
+    async 'recusar-pedido'(el) { try { await post(`/grupos/${el.dataset.id}/pedidos/${el.dataset.v}/recusar`); vGrupo(el.dataset.id, 'membros'); } catch (e) { toast(e.message); } },
+    async 'remover-membro'(el) { if (!confirm('Remover esta pessoa do grupo?')) return; try { await post(`/grupos/${el.dataset.id}/membros/${el.dataset.v}/remover`); toast('Pessoa removida.'); vGrupo(el.dataset.id, 'membros'); } catch (e) { toast(e.message); } },
     async 'sair-grupo'(el) { if (!confirm('Sair do grupo?')) return; try { await post(`/grupos/${el.dataset.id}/sair`); location.hash = '#/grupos'; } catch (e) { toast(e.message); } },
     'aba-grupo'(el) { vGrupo(el.dataset.id, el.dataset.v); },
     async promover(el) { try { await post(`/grupos/${el.dataset.id}/promover/${el.dataset.v}`); vGrupo(el.dataset.id, 'membros'); } catch (e) { toast(e.message); } },

@@ -10,7 +10,7 @@ from .. import armazenamento, comunidades, contas, convites, midia, privacidade,
 from ..deps import Atual, AtualLivre, Opcional, Sessao
 from ..erros import NaoEncontrado
 from ..models import Midia, Publicacao, Usuario
-from .app import app, pagina, templates, voltar
+from .app import _sem_plano, app, pagina, templates, voltar
 
 # ---------------------------------------------------------------- termos, política e cadastro completo
 
@@ -99,6 +99,8 @@ def listar_comunidades(request: Request, s: Sessao, usuario: Atual, q: str = "")
 
 @app.get("/comunidades/nova")
 def nova_comunidade(request: Request, s: Sessao, usuario: Atual):
+    if (r := _sem_plano(request, s, usuario, "comunidade")) is not None:
+        return r
     return pagina(request, s, usuario, "comunidade_nova.html", "comunidades")
 
 

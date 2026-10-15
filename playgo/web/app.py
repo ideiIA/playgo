@@ -143,6 +143,8 @@ _SEM_PLANO = {
     "atividade": "Organizar atividades faz parte do plano Pro. Veja os planos.",
     "campeonato": "Criar campeonatos faz parte do plano Organizador. Veja os planos.",
     "arena": "Cadastrar e gerir arenas faz parte do plano Arena. Veja os planos.",
+    "grupo": "Criar e gerir grupos faz parte do plano Pro (ou superior). Veja os planos.",
+    "comunidade": "Criar comunidades é para os planos Organizador e Arena; qualquer usuário pode participar delas. Veja os planos.",
 }
 
 
@@ -156,6 +158,13 @@ def _sem_plano(request: Request, s, usuario: Usuario, recurso: str) -> RedirectR
 
 def voltar(request: Request, padrao: str = "/") -> RedirectResponse:
     return RedirectResponse(request.headers.get("referer") or padrao, status_code=303)
+
+
+def _data_ou_none(texto: str | None):
+    try:
+        return date.fromisoformat((texto or "").strip()) if (texto or "").strip() else None
+    except ValueError:
+        return None
 
 
 def _num(texto: str | None, tipo=Decimal):
@@ -383,6 +392,8 @@ def listar_grupos(request: Request, s: Sessao, usuario: Atual):
 
 @app.get("/grupos/novo")
 def novo_grupo(request: Request, s: Sessao, usuario: Atual):
+    if (r := _sem_plano(request, s, usuario, "grupo")) is not None:
+        return r
     la, ln, informada = descoberta.localizacao(usuario)
     return pagina(request, s, usuario, "grupo_novo.html", "grupos", centro={"latitude": la, "longitude": ln, "informada": informada})
 
@@ -390,9 +401,9 @@ def novo_grupo(request: Request, s: Sessao, usuario: Atual):
 @app.post("/grupos")
 def criar_grupo(
     s: Sessao, usuario: Atual, nome: str = Form(), modalidade_id: int = Form(), cidade: str = Form(""), local_habitual: str = Form(""),
-    descricao: str = Form(""), latitude: str = Form(""), longitude: str = Form(""),
+    descricao: str = Form(""), latitude: str = Form(""), longitude: str = Form(""), entrada: str = Form("aprovacao"),
 ):
-    g = grupos.criar(s, usuario, nome, modalidade_id, descricao or None, cidade or None, local_habitual or None, _num(latitude, float), _num(longitude, float))
+    g = grupos.criar(s, usuario, nome, modalidade_id, descricao or None, cidade or None, local_habitual or None, _num(latitude, float), _num(longitude, float), entrada)
     return RedirectResponse(f"/grupos/{g.id}", status_code=303)
 
 
@@ -406,8 +417,22 @@ def ver_grupo(grupo_id: int, request: Request, s: Sessao, usuario: Atual):
 
 
 @app.post("/grupos/{grupo_id}/entrar")
-def entrar_grupo(grupo_id: int, s: Sessao, usuario: Atual):
-    grupos.entrar(s, grupo_id, usuario)
+def entrar_grupo(grupo_id: int, request: Request, s: Sessao, usuario: Atual):
+    m = grupos.entrar(s, grupo_id, usuario)
+    if m.status == "pendente":
+        request.session["ok"] = "Pedido enviado. Um administrador do grupo vai avaliar."
+    return RedirectResponse(f"/grupos/{grupo_id}", status_code=303)
+
+
+@app.post("/grupos/{grupo_id}/pedidos/{alvo_id}/{acao}")
+def decidir_pedido_grupo(grupo_id: int, alvo_id: int, acao: str, s: Sessao, usuario: Atual):
+    grupos.decidir_pedido(s, grupo_id, alvo_id, usuario, acao == "aceitar")
+    return RedirectResponse(f"/grupos/{grupo_id}", status_code=303)
+
+
+@app.post("/grupos/{grupo_id}/membros/{alvo_id}/remover")
+def remover_do_grupo(grupo_id: int, alvo_id: int, s: Sessao, usuario: Atual):
+    grupos.remover(s, grupo_id, alvo_id, usuario)
     return RedirectResponse(f"/grupos/{grupo_id}", status_code=303)
 
 
@@ -439,7 +464,12 @@ def listar_campeonatos(request: Request, s: Sessao, usuario: Atual, modalidades:
         quando=quando or None, com_vagas=bool(com_vagas),
     )
     la, ln, _ = descoberta.localizacao(usuario)
-    return pagina(request, s, usuario, "campeonatos.html", "campeonatos", f=f, lista=descoberta.buscar_campeonatos(s, la, ln, f))
+    enc = None
+    if planos.permissoes(s, usuario)["campeonato"]:
+        p = request.query_params
+        enc = campeonatos.encerrados(s, usuario, p.get("enc_q", ""), _data_ou_none(p.get("enc_de")), _data_ou_none(p.get("enc_ate")), p.get("enc_org", ""))
+        enc["filtros"] = {"q": p.get("enc_q", ""), "de": p.get("enc_de", ""), "ate": p.get("enc_ate", ""), "org": p.get("enc_org", "")}
+    return pagina(request, s, usuario, "campeonatos.html", "campeonatos", f=f, lista=descoberta.buscar_campeonatos(s, la, ln, f), enc=enc)
 
 
 @app.get("/tutorial/campeonatos")

@@ -48,8 +48,8 @@ def montar(s: SessaoORM, usuario: Usuario, lat: float | None = None, lng: float 
 
     # 👥 Seus grupos
     grupos = []
-    for g in s.scalars(select(Grupo).join(GrupoMembro, GrupoMembro.grupo_id == Grupo.id).where(GrupoMembro.usuario_id == usuario.id, Grupo.ativo)):
-        grupos.append(ser.grupo(g, len(g.membros), None, True, _proxima_do_grupo(s, g.id)))
+    for g in s.scalars(select(Grupo).join(GrupoMembro, GrupoMembro.grupo_id == Grupo.id).where(GrupoMembro.usuario_id == usuario.id, GrupoMembro.status == "ativo", Grupo.ativo)):
+        grupos.append(ser.grupo(g, len([m for m in g.membros if m.status == "ativo"]), None, True, _proxima_do_grupo(s, g.id)))
 
     f_perto = Filtros(raio_km=raio)
     ate_5km = [a for a in perto_todas if a["distancia_km"] is not None and a["distancia_km"] <= 5 and a["vagas"] > 0 and a["minutos_para_inicio"] <= 24 * 60]

@@ -38,8 +38,10 @@ def pode_acessar_atividade(s: SessaoORM, usuario: Usuario, a: Atividade, token: 
         return True
     if s.scalar(select(Convite.id).where(Convite.escopo == "atividade", Convite.escopo_id == a.id, Convite.convidado_id == usuario.id)):
         return True
-    if a.grupo_id and s.get(GrupoMembro, (a.grupo_id, usuario.id)):
-        return True
+    if a.grupo_id:
+        vinculo = s.get(GrupoMembro, (a.grupo_id, usuario.id))
+        if vinculo is not None and vinculo.status == "ativo":
+            return True
     return escopos.eh_moderador(s, usuario, "atividade", a.id)
 
 

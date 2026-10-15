@@ -13,8 +13,11 @@
     {% if g.sou_membro %}
       {% if pode.atividade %}<a class="btn purple" href="/atividades/nova?grupo_id={{ g.id }}&modalidade_id={{ g.modalidade.id }}">+ Atividade do grupo</a>{% endif %}
       <form method="post" action="/grupos/{{ g.id }}/sair" onsubmit="return confirm('Sair do grupo?')"><button class="btn perigo">Sair</button></form>
+    {% elif g.pedido_pendente %}
+      <span class="tag cinza">⏳ Pedido enviado</span>
+      <form method="post" action="/grupos/{{ g.id }}/sair"><button class="btn perigo">Cancelar pedido</button></form>
     {% else %}
-      <form method="post" action="/grupos/{{ g.id }}/entrar"><button class="btn purple">Entrar no grupo</button></form>
+      <form method="post" action="/grupos/{{ g.id }}/entrar"><button class="btn purple">{{ 'Pedir para entrar' if g.entrada == 'aprovacao' else 'Entrar no grupo' }}</button></form>
     {% endif %}
   </div>
 </div>
@@ -47,13 +50,30 @@
       <script>const c = document.getElementById('chat'); if (c) c.scrollTop = c.scrollHeight;</script>
       {% else %}<p class="suave">Entre no grupo para ver e participar da conversa.</p>{% endif %}
     </div>
+    {% if g.sou_admin and g.pedidos %}
+    <div class="panel" style="margin-top:18px;border:1px solid #ffd9a1;background:#fffaf0">
+      <h2>Pedidos para entrar ({{ g.pedidos|length }})</h2>
+      <div class="pessoas">
+        {% for m in g.pedidos %}
+        <div class="pessoa"><span class="avatar pequeno">{{ m.iniciais }}</span><span class="nome">{{ m.arroba }}</span>
+          <span class="acoes" style="display:flex;gap:6px">
+            <form method="post" action="/grupos/{{ g.id }}/pedidos/{{ m.usuario_id }}/aceitar"><button class="btn purple pequeno">Aceitar</button></form>
+            <form method="post" action="/grupos/{{ g.id }}/pedidos/{{ m.usuario_id }}/recusar"><button class="btn perigo pequeno">Recusar</button></form>
+          </span></div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
     <div class="panel" style="margin-top:18px">
       <h2>Membros</h2>
       <div class="pessoas">
         {% for m in g.membros_lista %}
         <div class="pessoa"><span class="avatar pequeno">{{ m.iniciais }}</span><span class="nome">{{ m.arroba }}</span>
           {% if m.papel == 'admin' %}<span class="tag roxo">Admin</span>
-          {% elif g.sou_admin %}<span class="acoes"><form method="post" action="/grupos/{{ g.id }}/promover/{{ m.usuario_id }}"><button class="link-botao">Tornar admin</button></form></span>{% endif %}</div>
+          {% elif g.sou_admin %}<span class="acoes" style="display:flex;gap:10px">
+            <form method="post" action="/grupos/{{ g.id }}/promover/{{ m.usuario_id }}"><button class="link-botao">Tornar admin</button></form>
+            <form method="post" action="/grupos/{{ g.id }}/membros/{{ m.usuario_id }}/remover" onsubmit="return confirm('Remover {{ m.arroba }} do grupo?')"><button class="link-botao" style="color:var(--red)">Remover</button></form>
+          </span>{% endif %}</div>
         {% endfor %}
       </div>
     </div>

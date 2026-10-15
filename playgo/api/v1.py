@@ -126,6 +126,7 @@ class GrupoIn(BaseModel):
     local_habitual: str | None = None
     latitude: float | None = None
     longitude: float | None = None
+    entrada: str = "aprovacao"  # livre | aprovacao
 
 
 class MensagemIn(BaseModel):
@@ -434,6 +435,24 @@ def sair_grupo(grupo_id: int, u: AtualApi, s: Sessao):
     return {"ok": True}
 
 
+@router.post("/grupos/{grupo_id}/pedidos/{usuario_id}/aceitar")
+def aceitar_pedido(grupo_id: int, usuario_id: int, u: AtualApi, s: Sessao):
+    grupos.decidir_pedido(s, grupo_id, usuario_id, u, True)
+    return detalhes.grupo(s, grupos.obter(s, grupo_id), u)
+
+
+@router.post("/grupos/{grupo_id}/pedidos/{usuario_id}/recusar")
+def recusar_pedido(grupo_id: int, usuario_id: int, u: AtualApi, s: Sessao):
+    grupos.decidir_pedido(s, grupo_id, usuario_id, u, False)
+    return detalhes.grupo(s, grupos.obter(s, grupo_id), u)
+
+
+@router.post("/grupos/{grupo_id}/membros/{usuario_id}/remover")
+def remover_membro(grupo_id: int, usuario_id: int, u: AtualApi, s: Sessao):
+    grupos.remover(s, grupo_id, usuario_id, u)
+    return detalhes.grupo(s, grupos.obter(s, grupo_id), u)
+
+
 @router.post("/grupos/{grupo_id}/promover/{usuario_id}")
 def promover(grupo_id: int, usuario_id: int, u: AtualApi, s: Sessao):
     grupos.promover(s, grupo_id, usuario_id, u)
@@ -460,6 +479,11 @@ def postar(grupo_id: int, corpo: MensagemIn, u: AtualApi, s: Sessao):
 def criar_campeonato(corpo: CampeonatoIn, u: AtualApi, s: Sessao):
     c = campeonatos.criar(s, u, campeonatos.NovoCampeonato(**corpo.model_dump()))
     return detalhes.campeonato(s, c, u)
+
+
+@router.get("/campeonatos/encerrados")
+def campeonatos_encerrados(u: AtualApi, s: Sessao, q: str = "", de: date | None = None, ate: date | None = None, organizador: str = ""):
+    return campeonatos.encerrados(s, u, q, de, ate, organizador)
 
 
 @router.get("/campeonatos/{campeonato_id}")

@@ -285,6 +285,7 @@ class Grupo(Base):
     longitude: Mapped[float | None] = mapped_column(Float)
     foto_url: Mapped[str | None] = mapped_column(Text)
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+    entrada: Mapped[str] = mapped_column(String(10), default="livre")  # livre | aprovacao (um admin do grupo aceita cada pedido)
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
 
     modalidade: Mapped[Modalidade] = relationship(lazy="joined")
@@ -297,6 +298,7 @@ class GrupoMembro(Base):
     grupo_id: Mapped[int] = mapped_column(ForeignKey("grupos.id", ondelete="CASCADE"), primary_key=True)
     usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"), primary_key=True)
     papel: Mapped[str] = mapped_column(String(10), default="membro")  # admin | membro
+    status: Mapped[str] = mapped_column(String(10), default="ativo")  # ativo | pendente (aguarda aceite de um admin do grupo)
     entrou_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
 
     grupo: Mapped[Grupo] = relationship(back_populates="membros")

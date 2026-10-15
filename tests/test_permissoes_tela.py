@@ -31,7 +31,7 @@ def test_usuario_comum_nao_ve_nem_abre_telas_de_criacao(banco):
 
         # a API informa as permissões que o app usa para esconder as opções
         me = cli.get("/api/v1/me").json()
-        assert me["permissoes"] == {"atividade": False, "campeonato": False, "arena": False}
+        assert me["permissoes"] == {"atividade": False, "campeonato": False, "arena": False, "grupo": False, "comunidade": False}
 
         # menu do site: sem "Criar atividade" e sem "Minha Arena"
         home = cli.get("/").text

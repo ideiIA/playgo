@@ -180,7 +180,7 @@ def buscar_arenas(s: SessaoORM, lat: float, lng: float, f: Filtros, limite: int 
 
 def buscar_grupos(s: SessaoORM, usuario: Usuario | None, lat: float, lng: float, f: Filtros, limite: int | None = None) -> list[dict]:
     dist = distancia_sql(Grupo.latitude, Grupo.longitude, lat, lng)
-    membros = select(func.count()).where(GrupoMembro.grupo_id == Grupo.id).correlate(Grupo).scalar_subquery()
+    membros = select(func.count()).where(GrupoMembro.grupo_id == Grupo.id, GrupoMembro.status == "ativo").correlate(Grupo).scalar_subquery()
     q = select(Grupo, dist, membros).join(Modalidade, Modalidade.id == Grupo.modalidade_id).where(Grupo.ativo)
     if f.raio_km:
         q = q.where(Grupo.latitude.is_not(None), caixa_sql(Grupo.latitude, Grupo.longitude, lat, lng, f.raio_km), dist <= f.raio_km)
@@ -190,7 +190,7 @@ def buscar_grupos(s: SessaoORM, usuario: Usuario | None, lat: float, lng: float,
         t = f"%{f.q.strip()}%"
         q = q.where(or_(Grupo.nome.ilike(t), Grupo.cidade.ilike(t), Modalidade.nome.ilike(t)))
     q = q.order_by(membros.desc()).limit(limite or settings.limite_resultados)
-    meus = set(s.scalars(select(GrupoMembro.grupo_id).where(GrupoMembro.usuario_id == usuario.id))) if usuario else set()
+    meus = set(s.scalars(select(GrupoMembro.grupo_id).where(GrupoMembro.usuario_id == usuario.id, GrupoMembro.status == "ativo"))) if usuario else set()
     return [ser.grupo(g, int(m), km, g.id in meus) for g, km, m in s.execute(q).unique()]
 
 

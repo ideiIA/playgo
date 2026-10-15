@@ -157,7 +157,7 @@ def test_grupos_e_campeonatos_pela_api(cliente):
     a, _ = _cadastrar(cliente, "Dono")
     b, _ = _cadastrar(cliente, "Membro")
     mods = _ids_modalidades(cliente, a)
-    g = cliente.post("/api/v1/grupos", headers=a, json={"nome": "Corre CG", "modalidade_id": mods["corrida"]}).json()
+    g = cliente.post("/api/v1/grupos", headers=a, json={"nome": "Corre CG", "modalidade_id": mods["corrida"], "entrada": "livre"}).json()
     assert g["sou_admin"] and g["membros"] == 1
     assert cliente.post(f"/api/v1/grupos/{g['id']}/entrar", headers=b).json()["sou_membro"]
     assert cliente.post(f"/api/v1/grupos/{g['id']}/mensagens", headers=b, json={"texto": "Oi!"}).status_code == 201

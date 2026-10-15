@@ -2,7 +2,7 @@
 {% import "_cards.html" as c %}
 {% block titulo %}Meus grupos — PlayGo{% endblock %}
 {% block conteudo %}
-<div class="section-title"><h2>Meus grupos</h2><a class="btn purple" href="/grupos/novo">+ Criar grupo</a></div>
+<div class="section-title"><h2>Meus grupos</h2>{% if pode.grupo %}<a class="btn purple" href="/grupos/novo">+ Criar grupo</a>{% endif %}</div>
 {% if g.meus %}<div class="grid">{% for x in g.meus %}{{ c.grupo(x) }}{% endfor %}</div>
 {% else %}{{ c.vazio('Você ainda não participa de nenhum grupo. Entre em um abaixo ou crie o seu.') }}{% endif %}
 

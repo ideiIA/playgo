@@ -58,6 +58,8 @@ _COLUNAS_NOVAS: tuple[str, ...] = (
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS grupo varchar(2)",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS equipe_a2_id integer REFERENCES equipes(id) ON DELETE SET NULL",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS equipe_b2_id integer REFERENCES equipes(id) ON DELETE SET NULL",
+    "ALTER TABLE grupos ADD COLUMN IF NOT EXISTS entrada varchar(10) NOT NULL DEFAULT 'livre'",
+    "ALTER TABLE grupo_membros ADD COLUMN IF NOT EXISTS status varchar(10) NOT NULL DEFAULT 'ativo'",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS ponto_a integer NOT NULL DEFAULT 0",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS ponto_b integer NOT NULL DEFAULT 0",
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS sorteado_em timestamp",

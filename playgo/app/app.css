@@ -155,3 +155,6 @@ h3 { font-size: 16px; }
 .chip { text-decoration: none; display: inline-block; }
 .avatar { overflow: hidden; }
 .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.filtros-enc { display: grid; gap: 8px; margin-bottom: 12px; }
+.filtros-enc input { width: 100%; padding: 10px 12px; border: 1px solid var(--borda, #e9eaf0); border-radius: 12px; font: inherit; }

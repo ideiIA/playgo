@@ -17,4 +17,37 @@
 
 {% if lista %}<div class="grid">{% for x in lista %}{{ c.campeonato(x, loop.first and not f.modalidades) }}{% endfor %}</div>
 {% else %}{{ c.vazio('Nenhum campeonato encontrado com esses filtros.') }}{% endif %}
+
+{% if enc is not none %}
+<div class="section-title" id="encerrados" style="margin-top:34px"><h2>🏁 Campeonatos encerrados</h2>
+  <span class="suave">{{ 'Todos os campeonatos da plataforma' if enc.todos else 'Os seus campeonatos e os realizados nas suas arenas' }}</span></div>
+<form class="filtros" method="get" action="/campeonatos#encerrados">
+  <div class="campo"><label>Buscar por nome</label><input name="enc_q" value="{{ enc.filtros.q }}" placeholder="nome do campeonato"></div>
+  <div class="campo"><label>De</label><input type="date" name="enc_de" value="{{ enc.filtros.de }}"></div>
+  <div class="campo"><label>Até</label><input type="date" name="enc_ate" value="{{ enc.filtros.ate }}"></div>
+  {% if enc.todos %}<div class="campo"><label>Organizador</label><input name="enc_org" value="{{ enc.filtros.org }}" placeholder="@usuario ou nome"></div>{% endif %}
+  <div class="campo" style="flex:0 0 auto"><label>&nbsp;</label><button class="btn purple">Filtrar</button></div>
+  {% if enc.filtros.q or enc.filtros.de or enc.filtros.ate or enc.filtros.org %}<div class="campo" style="flex:0 0 auto"><label>&nbsp;</label><a class="btn soft" href="/campeonatos#encerrados">Limpar</a></div>{% endif %}
+</form>
+{% if enc.itens %}
+<div class="panel" style="padding:0;overflow-x:auto">
+  <table class="tabela" style="width:100%;border-collapse:collapse;font-size:14px">
+    <thead><tr style="text-align:left;background:#f6f4ff"><th style="padding:10px 14px">Campeonato</th><th>Modalidade</th><th>Encerrou</th><th>Equipes</th>{% if enc.todos %}<th>Organizador</th>{% endif %}<th>Local</th></tr></thead>
+    <tbody>
+    {% for x in enc.itens %}
+      <tr style="border-top:1px solid var(--border)">
+        <td style="padding:10px 14px"><a href="/campeonatos/{{ x.id }}"><b>{{ x.nome }}</b></a>{% if x.categoria %}<div class="suave">{{ x.categoria }}</div>{% endif %}</td>
+        <td>{{ x.icone }} {{ x.modalidade }}</td>
+        <td>{{ x.data_fim[8:] }}/{{ x.data_fim[5:7] }}/{{ x.data_fim[:4] }}</td>
+        <td>{{ x.equipes }}</td>
+        {% if enc.todos %}<td>{{ x.organizador }}</td>{% endif %}
+        <td>{{ x.arena or x.local }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="suave">{{ enc.total }} campeonato{{ 's' if enc.total != 1 }} encerrado{{ 's' if enc.total != 1 }}.</p>
+{% else %}{{ c.vazio('Nenhum campeonato encerrado com esses filtros.') }}{% endif %}
+{% endif %}
 {% endblock %}

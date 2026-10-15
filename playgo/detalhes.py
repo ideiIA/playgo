@@ -70,11 +70,16 @@ def atividade(s: SessaoORM, a: Atividade, usuario: Usuario | None) -> dict:
 def grupo(s: SessaoORM, g: Grupo, usuario: Usuario | None) -> dict:
     n = agora()
     sou = grupos.membro(s, g.id, usuario) if usuario else None
-    d = ser.grupo(g, len(g.membros), _dist(usuario, g.latitude, g.longitude) if g.latitude is not None else None, sou is not None)
+    ativos = [m for m in g.membros if m.status == "ativo"]
+    sou_admin = bool(sou and sou.papel == "admin") or bool(usuario and usuario.admin)
+    d = ser.grupo(g, len(ativos), _dist(usuario, g.latitude, g.longitude) if g.latitude is not None else None, sou is not None)
     d.update(
         {
-            "sou_admin": bool(sou and sou.papel == "admin") or bool(usuario and usuario.admin),
-            "membros_lista": [_pessoa(m.usuario, {"papel": m.papel}) for m in sorted(g.membros, key=lambda m: (m.papel != "admin", m.usuario.nome))],
+            "sou_admin": sou_admin,
+            "entrada": g.entrada,
+            "pedido_pendente": bool(usuario and grupos.pedido(s, g.id, usuario)),
+            "pedidos": [_pessoa(m.usuario, {"papel": m.papel}) for m in g.membros if m.status == "pendente"] if sou_admin else [],
+            "membros_lista": [_pessoa(m.usuario, {"papel": m.papel}) for m in sorted(ativos, key=lambda m: (m.papel != "admin", m.usuario.nome))],
             "agenda": [ser.atividade(a, n, _dist(usuario, a.latitude, a.longitude)) for a in grupos.agenda(s, g.id)],
             "historico": [ser.atividade(a, n) for a in grupos.historico(s, g.id)],
             "avisos": [{"id": m.id, "texto": m.texto, "autor": m.usuario.arroba, "quando": ser.texto_quando(m.criado_em, n)} for m in grupos.avisos(s, g.id)],

@@ -5,7 +5,7 @@ aparecem pelo @usuario."""
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session as SessaoORM
 
-from . import auditoria, convites, escopos, notificacoes
+from . import planos, auditoria, convites, escopos, notificacoes
 from .erros import ErroNegocio, NaoEncontrado, SemPermissao
 from .models import VISIBILIDADES, Comunidade, ComunidadeMembro, Convite, Usuario
 
@@ -24,6 +24,7 @@ def membro(s: SessaoORM, comunidade_id: int, usuario: Usuario) -> ComunidadeMemb
 
 
 def criar(s: SessaoORM, usuario: Usuario, nome: str, descricao: str | None = None, regras: str | None = None, cidade: str | None = None, visibilidade: str = "publica") -> Comunidade:
+    planos.exigir(s, usuario, "comunidade")
     if not nome.strip():
         raise ErroNegocio("Dê um nome à comunidade.")
     if visibilidade not in {v for v, _ in VISIBILIDADES}:

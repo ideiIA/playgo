@@ -117,7 +117,8 @@ def criar(s: SessaoORM, organizador: Usuario, d: NovaAtividade) -> Atividade:
     grupo = None
     if d.grupo_id:
         grupo = s.get(Grupo, d.grupo_id)
-        if grupo is None or not s.get(GrupoMembro, (grupo.id, organizador.id)):
+        vinculo = s.get(GrupoMembro, (grupo.id, organizador.id)) if grupo is not None else None
+        if grupo is None or vinculo is None or vinculo.status != "ativo":
             raise SemPermissao("Só membros do grupo podem criar atividades nele.")
 
     usado = _pode_usar_quadra(s, quadra, organizador, d.inicio) if quadra is not None else None
@@ -147,7 +148,7 @@ def criar(s: SessaoORM, organizador: Usuario, d: NovaAtividade) -> Atividade:
     s.flush()
 
     if grupo is not None:
-        for m in s.scalars(select(GrupoMembro).where(GrupoMembro.grupo_id == grupo.id, GrupoMembro.usuario_id != organizador.id)):
+        for m in s.scalars(select(GrupoMembro).where(GrupoMembro.grupo_id == grupo.id, GrupoMembro.status == "ativo", GrupoMembro.usuario_id != organizador.id)):
             if m.usuario.notif_grupos:
                 notificacoes.avisar(
                     s, m.usuario_id, "grupo", f"{modalidade.icone} {grupo.nome} criou uma atividade",

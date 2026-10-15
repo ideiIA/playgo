@@ -21,6 +21,7 @@ from .geo import distancia_sql, formatar_km
 from .models import (
     C_ABERTO,
     C_CANCELADO,
+    C_ENCERRADO,
     E_CANCELADA,
     E_CONFIRMADA,
     E_PENDENTE,
@@ -89,6 +90,42 @@ def pode_gerir(c: Campeonato, usuario: Usuario) -> bool:
 def exigir_gestao(c: Campeonato, usuario: Usuario) -> None:
     if not pode_gerir(c, usuario):
         raise SemPermissao("Só quem organiza o campeonato pode fazer isso.")
+
+
+def encerrados(
+    s: SessaoORM, usuario: Usuario, q: str = "", de: date | None = None, ate: date | None = None, organizador: str = "", limite: int = 100,
+) -> dict:
+    """Campeonatos já encerrados, para a organização. O administrador vê todos (e filtra por organizador); organizadores e arenas
+    veem só os seus (que criaram ou que acontecem em arena sua). `de`/`ate` filtram pela data final (ou inicial, sem final)."""
+    if not planos.permissoes(s, usuario)["campeonato"]:
+        raise SemPermissao("O histórico de campeonatos encerrados é para quem organiza campeonatos.")
+    fim = func.coalesce(Campeonato.data_fim, Campeonato.data_inicio)
+    cons = select(Campeonato, fim.label("fim")).where(Campeonato.status == C_ENCERRADO)
+    if not usuario.admin:
+        minhas_arenas = [a.id for a in usuario.arenas]
+        meu = Campeonato.organizador_id == usuario.id
+        cons = cons.where(meu | Campeonato.arena_id.in_(minhas_arenas) if minhas_arenas else meu)
+    if q.strip():
+        cons = cons.where(Campeonato.nome.ilike(f"%{q.strip()}%"))
+    if de is not None:
+        cons = cons.where(fim >= de)
+    if ate is not None:
+        cons = cons.where(fim <= ate)
+    if organizador.strip() and usuario.admin:
+        t = f"%{organizador.strip().lstrip('@')}%"
+        cons = cons.join(Usuario, Usuario.id == Campeonato.organizador_id).where(Usuario.usuario.ilike(t) | Usuario.nome.ilike(t))
+    linhas = list(s.execute(cons.order_by(fim.desc(), Campeonato.id.desc()).limit(limite)).unique())
+    ids = [c.id for c, _ in linhas]
+    equipes = dict(s.execute(select(Equipe.campeonato_id, func.count()).where(Equipe.campeonato_id.in_(ids or [0]), Equipe.status == E_CONFIRMADA).group_by(Equipe.campeonato_id)).all())
+    itens = [
+        {
+            "id": c.id, "nome": c.nome, "modalidade": c.modalidade.nome, "icone": c.modalidade.icone, "categoria": c.categoria,
+            "organizador": c.organizador.arroba, "arena": c.arena.nome if c.arena is not None else None, "local": c.local_nome,
+            "data_inicio": c.data_inicio.isoformat(), "data_fim": f.isoformat(), "equipes": int(equipes.get(c.id, 0)), "formato": c.formato,
+        }
+        for c, f in linhas
+    ]
+    return {"itens": itens, "todos": usuario.admin, "total": len(itens)}
 
 
 def equipes_ativas(s: SessaoORM, c: Campeonato) -> int:

@@ -10,6 +10,8 @@
       <select name="modalidade_id" id="modalidade_id">{% for m in modalidades %}<option value="{{ m.id }}">{{ m.icone }} {{ m.nome }}</option>{% endfor %}</select></div>
     <div class="field"><label for="cidade">Cidade</label><input name="cidade" id="cidade" value="{{ usuario.cidade or '' }}"></div>
     <div class="field"><label for="local_habitual">Local habitual</label><input name="local_habitual" id="local_habitual" placeholder="Ex.: Parque das Nações"></div>
+    <div class="field"><label for="entrada">Entrada no grupo</label>
+      <select name="entrada" id="entrada"><option value="aprovacao">Com aprovação (você aceita cada pedido)</option><option value="livre">Livre (entra quem quiser)</option></select></div>
     <div class="field full"><label for="descricao">Descrição</label><textarea name="descricao" id="descricao" placeholder="Para quem é o grupo, ritmo, dias…"></textarea></div>
     {{ c.seletor_local(centro, centro.latitude if centro.informada else '', centro.longitude if centro.informada else '') }}
   </div>

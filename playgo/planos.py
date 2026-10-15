@@ -189,9 +189,13 @@ def permissoes(s: SessaoORM, u: Usuario) -> dict:
     """O que o plano da pessoa libera na tela: organizar atividade, criar campeonato e cadastrar/gerir arena.
     A tela esconde o que não vale; a regra de verdade continua em `exigir` dentro dos serviços."""
     if u.admin:
-        return {"atividade": True, "campeonato": True, "arena": True}
+        return {"atividade": True, "campeonato": True, "arena": True, "grupo": True, "comunidade": True}
     r = regras(s, situacao(s, u)["plano"])
-    return {"atividade": bool(r.pode_atividade), "campeonato": bool(r.pode_campeonato), "arena": bool(r.pode_arena)}
+    return {
+        "atividade": bool(r.pode_atividade), "campeonato": bool(r.pode_campeonato), "arena": bool(r.pode_arena),
+        "grupo": bool(r.pode_atividade),  # grupos: do Pro em diante (quem organiza atividades)
+        "comunidade": bool(r.pode_campeonato or r.pode_arena),  # comunidades: só Organizador e Arena; os demais participam
+    }
 
 
 ACESSO_VIGENTE = ("administrador", "teste", "ativa", "cancelada", "tolerancia")
@@ -297,6 +301,14 @@ def exigir(s: SessaoORM, u: Usuario, recurso: str, max_participantes: int | None
         if r.pode_campeonato:
             return
         motivo, necessario = "criar campeonatos", "organizador"
+    elif recurso == "grupo":
+        if r.pode_atividade:
+            return
+        motivo, necessario = "criar e gerir grupos (aceitar e remover participantes)", "pro"
+    elif recurso == "comunidade":
+        if r.pode_campeonato or r.pode_arena:
+            return
+        motivo, necessario = "criar comunidades (os demais usuários participam delas)", "organizador"
     elif recurso == "arena":
         if r.pode_arena:
             return

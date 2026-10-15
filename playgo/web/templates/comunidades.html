@@ -2,7 +2,7 @@
 {% import "_cards.html" as k %}
 {% block titulo %}Comunidades — PlayGo{% endblock %}
 {% block conteudo %}
-<div class="section-title"><h2>Comunidades</h2><a class="btn purple" href="/comunidades/nova">+ Criar comunidade</a></div>
+<div class="section-title"><h2>Comunidades</h2>{% if pode.comunidade %}<a class="btn purple" href="/comunidades/nova">+ Criar comunidade</a>{% endif %}</div>
 <p class="suave" style="margin:-6px 0 14px">Espaços de relacionamento dentro do app — por interesse, bairro, modalidade ou jeito de jogar — cada um com seu mural.</p>
 <form class="filtros" method="get"><div class="campo"><label>Buscar</label><input name="q" value="{{ busca }}" placeholder="nome, assunto ou cidade"></div><div class="campo" style="flex:0 0 auto"><label>&nbsp;</label><button class="btn purple">Buscar</button></div></form>
 
