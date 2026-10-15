@@ -46,11 +46,11 @@
   }
 
   // Super 8: ranking individual (cada atleta recebe o resultado da dupla em que jogou)
-  function tabelaSuper8(c) {
+  function tabelaSuper8(c, total) {
     if (!c.length) return '';
-    return '<div class="ch-tabela-wrap"><table class="ch-tabela"><thead><tr><th>#</th><th>Atleta</th><th>V</th><th>D</th><th>J</th><th>Games</th><th>Saldo</th></tr></thead><tbody>' +
-      c.map((l) => '<tr><td>' + l.posicao + '</td><td class="ch-eq">' + esc(l.equipe.nome) + '</td><td><b>' + l.vitorias + '</b></td><td>' + l.derrotas + '</td><td>' + l.jogos + '</td><td>' + l.pro + '–' + l.contra + '</td><td>' + (l.saldo > 0 ? '+' : '') + l.saldo + '</td></tr>').join('') +
-      '</tbody></table></div><p class="ch-sub">Ranking individual: mais vitórias; desempate por saldo de games e depois games feitos. Cada atleta joga uma vez com cada outro como parceiro.</p>';
+    return '<div class="ch-tabela-wrap"><table class="ch-tabela"><thead><tr><th>#</th><th>Atleta</th>' + (total ? '<th>Pts</th>' : '') + '<th>V</th><th>D</th><th>J</th><th>Games</th><th>Saldo</th></tr></thead><tbody>' +
+      c.map((l) => '<tr><td>' + l.posicao + '</td><td class="ch-eq">' + esc(l.equipe.nome) + '</td>' + (total ? '<td><b>' + l.pontos + '</b></td>' : '') + '<td>' + (total ? l.vitorias : '<b>' + l.vitorias + '</b>') + '</td><td>' + l.derrotas + '</td><td>' + l.jogos + '</td><td>' + l.pro + '–' + l.contra + '</td><td>' + (l.saldo > 0 ? '+' : '') + l.saldo + '</td></tr>').join('') +
+      '</tbody></table></div><p class="ch-sub">' + (total ? 'Ranking individual: cada game que a dupla faz vale 1 ponto para cada atleta (todos os games de cada jogo são disputados). Desempate: vitórias e saldo de games.' : 'Ranking individual: mais vitórias; desempate por saldo de games e depois games feitos.') + ' Cada atleta joga uma vez com cada outro como parceiro.</p>';
   }
 
   function tabelaGrupo(g, sets) {
@@ -84,7 +84,7 @@
     } else if (d.formato === 'eliminatoria') {
       h += '<div class="ch-chave">' + d.rodadas.map((r) => '<div class="ch-coluna"><h4>' + esc(r.nome) + '</h4><div class="ch-col-jogos">' + r.jogos.map((j) => cartao(j, href)).join('') + '</div></div>').join('') + '</div>';
     } else if (d.formato === 'super8') {
-      (d.ranking_super8 || []).forEach((g) => { h += '<h3 class="ch-tit">' + (g.grupo ? 'Ranking — Grupo ' + esc(g.grupo) : 'Ranking') + '</h3>' + tabelaSuper8(g.classificacao); });
+      (d.ranking_super8 || []).forEach((g) => { h += '<h3 class="ch-tit">' + (g.grupo ? 'Ranking — Grupo ' + esc(g.grupo) : 'Ranking') + '</h3>' + tabelaSuper8(g.classificacao, d.regras_placar && d.regras_placar.estilo === 'total'); });
       h += d.rodadas.map((r) => '<h3 class="ch-tit">' + esc(r.nome) + '</h3><div class="ch-grade">' + r.jogos.map((j) => cartao(j, href)).join('') + '</div>').join('');
     } else {
       h += '<h3 class="ch-tit">Classificação</h3>' + tabela(d.classificacao, d.regras_placar && d.regras_placar.modo === 'sets');
@@ -311,16 +311,17 @@
     const est = r.estilo || r.modo;
     const trava = d.placar_travado ? ' disabled' : '';
     const games = est === 'games';
+    const total = est === 'total';
     return '<div class="ch-painel"><h3>🏐 Regras de pontuação</h3><p class="ch-sub">' + (d.placar_travado ? 'Já há jogos começados: as regras não podem mais ser trocadas.' : 'Defina antes de iniciar os jogos. Por sets (vôlei) o placar mostra os pontos de cada set; por games (beach tennis, tênis, padel) mostra os games de cada set.') + '</p>' +
-      '<div class="ch-campo ch-agenda"><label>Pontuação<select id="rg-modo"' + trava + '><option value="simples"' + (est === 'simples' ? ' selected' : '') + '>Simples (gols/pontos corridos)</option><option value="sets"' + (est === 'sets' ? ' selected' : '') + '>Por sets (vôlei, futevôlei…)</option><option value="games"' + (games ? ' selected' : '') + '>Por games (beach tennis, tênis, padel)</option></select></label>' +
+      '<div class="ch-campo ch-agenda"><label>Pontuação<select id="rg-modo"' + trava + '><option value="simples"' + (est === 'simples' ? ' selected' : '') + '>Simples (gols/pontos corridos)</option><option value="sets"' + (est === 'sets' ? ' selected' : '') + '>Por sets (vôlei, futevôlei…)</option><option value="games"' + (games ? ' selected' : '') + '>Por games (beach tennis, tênis, padel)</option><option value="total"' + (est === 'total' ? ' selected' : '') + '>Total fixo de games (Super 8: todos são jogados)</option></select></label>' +
       '<label id="rg-preset-w"' + (games ? '' : ' hidden') + '>Modelo pronto<select id="rg-preset"' + trava + '><option value="">Personalizado</option>' +
       '<option value="1,6,10">Set único de 6 games (7×6 no tie-break)</option><option value="1,8,10">Set único de 8 games (pro set)</option><option value="1,4,10">Set único de 4 games (rápido)</option>' +
       '<option value="3,6,10">Melhor de 3 sets de 6 games (3º = super tie-break de 10)</option></select></label></div>' +
-      '<div class="ch-campo ch-agenda" id="rg-sets"' + (r.modo === 'sets' ? '' : ' hidden') + '>' +
-      '<label>Quantos sets (vence a maioria)<select id="rg-melhor"' + trava + '>' + [1, 3, 5, 7].map((n) => '<option value="' + n + '"' + (r.melhor_de === n ? ' selected' : '') + '>Melhor de ' + n + (n > 1 ? ' (vence com ' + (Math.floor(n / 2) + 1) + ')' : '') + '</option>').join('') + '</select></label>' +
-      '<label><span id="rg-l-pontos">' + (games ? 'Games por set' : 'Pontos por set') + '</span><input type="number" id="rg-pontos" min="1" max="99" value="' + r.pontos_set + '"' + trava + '></label>' +
-      '<label><span id="rg-l-tie">' + (games ? 'Pontos do super tie-break (set decisivo)' : 'Pontos do set decisivo (tiebreak)') + '</span><input type="number" id="rg-tie" min="1" max="99" value="' + r.pontos_tiebreak + '"' + trava + '></label>' +
-      '<label id="rg-dif-w"' + (games ? ' hidden' : '') + '>Diferença mínima para fechar o set<input type="number" id="rg-dif" min="1" max="5" value="' + r.diferenca + '"' + trava + '></label></div>' +
+      '<div class="ch-campo ch-agenda" id="rg-sets"' + (r.modo === 'sets' || total ? '' : ' hidden') + '>' +
+      '<label id="rg-melhor-w"' + (total ? ' hidden' : '') + '>Quantos sets (vence a maioria)<select id="rg-melhor"' + trava + '>' + [1, 3, 5, 7].map((n) => '<option value="' + n + '"' + (r.melhor_de === n ? ' selected' : '') + '>Melhor de ' + n + (n > 1 ? ' (vence com ' + (Math.floor(n / 2) + 1) + ')' : '') + '</option>').join('') + '</select></label>' +
+      '<label><span id="rg-l-pontos">' + (total ? 'Games por jogo (todos são disputados)' : games ? 'Games por set' : 'Pontos por set') + '</span><input type="number" id="rg-pontos" min="1" max="99" value="' + r.pontos_set + '"' + trava + '></label>' +
+      '<label id="rg-tie-w"' + (total ? ' hidden' : '') + '><span id="rg-l-tie">' + (games ? 'Pontos do super tie-break (set decisivo)' : 'Pontos do set decisivo (tiebreak)') + '</span><input type="number" id="rg-tie" min="1" max="99" value="' + r.pontos_tiebreak + '"' + trava + '></label>' +
+      '<label id="rg-dif-w"' + (games || total ? ' hidden' : '') + '>Diferença mínima para fechar o set<input type="number" id="rg-dif" min="1" max="5" value="' + r.diferenca + '"' + trava + '></label></div>' +
       '<p class="ch-sub" id="rg-dica"' + (games ? '' : ' hidden') + '>Em games: o set termina em N games com 2 de vantagem, ou 7×5 / 7×6 (tie-break de 7 pontos). No set decisivo de melhor de 3, joga-se um super tie-break (10 pontos, 2 de vantagem). Ponto de ouro (no-ad) é regra de quadra: o placar só conta games.</p>' +
       '<button class="ch-btn" id="bt-regras"' + trava + '>Salvar regras</button></div>';
   }
@@ -356,7 +357,7 @@
         (!jaTem || d.pode_sortear_de_novo ? '<div class="ch-campo"><label><input type="radio" name="formato" value="eliminatoria" checked> <b>Eliminatória (mata-mata)</b> — quem perde sai; equipes sem adversário passam direto.</label>' +
           '<label><input type="radio" name="formato" value="grupos"> <b>Fase de grupos + mata-mata</b> — grupos todos contra todos; os melhores de cada grupo seguem para o mata-mata.</label>' +
           '<label><input type="radio" name="formato" value="pontos_corridos"> <b>Pontos corridos</b> — todos jogam contra todos; vale a classificação.</label>' +
-          '<label><input type="radio" name="formato" value="super8"> <b>Super 8</b> — grupos de 4 duplas inscritas (8 atletas; 8 duplas = 2 grupos). O 1º jogo é entre as duplas inscritas; depois os atletas se misturam (7 rodadas) e o ranking é individual, por grupo. Também aceita atletas individuais (1 por equipe, de 8 em 8).</label></div>' +
+          '<label><input type="radio" name="formato" value="super8"> <b>Super 8</b> — grupos de 4 duplas inscritas (8 atletas; 8 duplas = 2 grupos). O 1º jogo é entre as duplas inscritas; depois os atletas se misturam (7 rodadas) e o ranking é individual, por grupo. Pontuação: set em games ou total fixo de games (ex.: 5 games, todos disputados, cada game vale ponto). Também aceita atletas individuais (1 por equipe, de 8 em 8).</label></div>' +
           '<div class="ch-campo" id="op-grupos" hidden><div style="display:flex;gap:10px;flex-wrap:wrap"><label>Grupos <select id="n-grupos">' + opcoes(2, Math.max(2, Math.floor(d.equipes_confirmadas / 2)), 2) + '</select></label>' +
           '<label>Classificam por grupo <select id="n-classif">' + opcoes(1, 4, 2) + '</select></label></div><p class="ch-sub">Cada grupo precisa de pelo menos 2 equipes e recebe no máximo um cabeça de chave.</p></div>' +
           '<div class="ch-campo" id="op-cabecas"><b>Cabeças de chave</b><p class="ch-sub" style="margin:0">Opcional. Numere as equipes mais fortes (1 = principal); elas ficam nas melhores posições e, nos grupos, em grupos diferentes. As demais são sorteadas.</p>' +
@@ -392,11 +393,15 @@
       if (rgModo) {
         const ajustarRegras = () => {
           const g = rgModo.value === 'games';
+          const t = rgModo.value === 'total';
           el.querySelector('#rg-sets').hidden = rgModo.value === 'simples';
           el.querySelector('#rg-preset-w').hidden = !g;
-          el.querySelector('#rg-dif-w').hidden = g;
+          el.querySelector('#rg-melhor-w').hidden = t;
+          el.querySelector('#rg-tie-w').hidden = t;
+          el.querySelector('#rg-dif-w').hidden = g || t;
           el.querySelector('#rg-dica').hidden = !g;
-          el.querySelector('#rg-l-pontos').textContent = g ? 'Games por set' : 'Pontos por set';
+          el.querySelector('#rg-l-pontos').textContent = t ? 'Games por jogo (todos são disputados)' : g ? 'Games por set' : 'Pontos por set';
+          if (t && Number(el.querySelector('#rg-pontos').value) > 20) el.querySelector('#rg-pontos').value = 5;
           el.querySelector('#rg-l-tie').textContent = g ? 'Pontos do super tie-break (set decisivo)' : 'Pontos do set decisivo (tiebreak)';
           if (g) el.querySelector('#rg-dif').value = 2;
         };
@@ -412,7 +417,7 @@
         el.querySelector('#bt-regras').onclick = async () => {
           const v = (i) => Number(el.querySelector('#' + i).value);
           try {
-            await post('/campeonatos/' + id + '/placar-regras', { modo: rgModo.value, melhor_de: v('rg-melhor'), pontos_set: v('rg-pontos'), pontos_tiebreak: v('rg-tie'), diferenca: v('rg-dif') });
+            await post('/campeonatos/' + id + '/placar-regras', { modo: rgModo.value, melhor_de: rgModo.value === 'total' ? 1 : v('rg-melhor'), pontos_set: v('rg-pontos'), pontos_tiebreak: v('rg-tie'), diferenca: v('rg-dif') });
             if (toast) toast('Regras de pontuação salvas.');
             desenhar(await get('/campeonatos/' + id + '/chaves'));
           } catch (e) { if (toast) toast(e.message); }

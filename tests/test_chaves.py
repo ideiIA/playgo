@@ -675,3 +675,35 @@ def test_super8_com_8_duplas_do_elenco_faz_2_grupos_e_a_rodada_1_e_a_dupla_inscr
     d = chaves.chaveamento(s, c, org)
     assert [g["grupo"] for g in d["ranking_super8"]] == ["A", "B"] and all(len(g["classificacao"]) == 8 for g in d["ranking_super8"])
     assert d["campeao"] is None
+
+
+def test_super8_total_fixo_de_5_games_todos_sao_jogados_e_cada_game_vale_ponto(s, fabrica):
+    org = fabrica.atleta("Org")
+    c = _campeonato_de(s, fabrica, org, "beach_tennis", 8, atletas_por_equipe=1)
+    with pytest.raises(ErroNegocio, match="1 a 20"):
+        chaves.configurar_placar(s, c.id, org, "total", melhor_de=1, pontos_set=30)
+    r = chaves.configurar_placar(s, c.id, org, "total", melhor_de=1, pontos_set=5)
+    assert r["estilo"] == "total" and r["total_games"] == 5 and r["modo"] == "simples"
+    chaves.sortear(s, c.id, org, "super8")
+    assert c.placar_modo == "total" and c.pontos_set == 5  # o sorteio respeita a escolha
+    j = _jogos(s, c)[0]
+    chaves.iniciar(s, c.id, j.id, org)
+    for _ in range(3):
+        chaves.marcar(s, c.id, j.id, org, "a", 1)
+    chaves.marcar(s, c.id, j.id, org, "b", 1)
+    with pytest.raises(ErroNegocio, match="faltam 1"):
+        chaves.encerrar(s, c.id, j.id, org)
+    chaves.marcar(s, c.id, j.id, org, "b", 1)  # 3×2: os 5 games foram jogados
+    with pytest.raises(ErroNegocio, match="já foram disputados"):
+        chaves.marcar(s, c.id, j.id, org, "a", 1)
+    with pytest.raises(ErroNegocio, match="passa disso"):
+        chaves.definir_placar(s, c.id, j.id, org, 4, 3)
+    chaves.encerrar(s, c.id, j.id, org)
+    tab = chaves.classificacao_super8(_jogos(s, c), list(s.scalars(select(Equipe).where(Equipe.campeonato_id == c.id))), c)
+    por_nome = {L["equipe"]["id"]: L for L in tab}
+    j = s.get(Jogo, j.id)
+    for eid in (j.equipe_a_id, j.equipe_a2_id):
+        assert por_nome[eid]["pontos"] == 3 and por_nome[eid]["vitorias"] == 1
+    for eid in (j.equipe_b_id, j.equipe_b2_id):
+        assert por_nome[eid]["pontos"] == 2 and por_nome[eid]["derrotas"] == 1
+    assert tab[0]["pontos"] == 3  # o ranking é por games feitos

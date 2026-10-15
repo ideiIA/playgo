@@ -191,10 +191,11 @@ def sortear(
         cabecas = []  # as duplas mudam a cada rodada; a posição no sorteio só define a tabela
     _limpar_chaves(s, c)
     if formato == "super8":  # cada jogo é um set único em games; a organização pode mudar a quantidade de games antes do 1º jogo
-        c.placar_modo, c.sets_melhor_de, c.diferenca_set = "games", 1, 2
-        if not 2 <= (c.pontos_set or 0) <= 12:
-            c.pontos_set = 6
-        c.pontos_tiebreak = c.pontos_tiebreak or 10
+        if c.placar_modo != "total":  # o total fixo de games, se a organização já escolheu, é mantido
+            c.placar_modo, c.sets_melhor_de, c.diferenca_set = "games", 1, 2
+            if not 2 <= (c.pontos_set or 0) <= 12:
+                c.pontos_set = 6
+            c.pontos_tiebreak = c.pontos_tiebreak or 10
 
     semente = secrets.randbits(62)
     rnd = random.Random(semente)
@@ -406,6 +407,15 @@ def _evento(s: SessaoORM, j: Jogo, tipo: str, por: Usuario, texto: str | None = 
 # ---------------------------------------------------------------- pontuação por sets (vôlei, tênis…)
 
 
+def modo_total(c: Campeonato) -> bool:
+    """Total fixo de games (Super 8): todos os games do jogo são disputados; cada game conta para o ranking."""
+    return c.placar_modo == "total"
+
+
+def _total_games(c: Campeonato) -> int:
+    return c.pontos_set or 5
+
+
 def modo_sets(c: Campeonato) -> bool:
     return (c.placar_modo or "simples") in ("sets", "games")
 
@@ -413,7 +423,8 @@ def modo_sets(c: Campeonato) -> bool:
 def regras_placar(c: Campeonato) -> dict:
     melhor_de = c.sets_melhor_de or 3
     return {
-        "modo": "sets" if modo_sets(c) else "simples", "estilo": c.placar_modo if modo_sets(c) else "simples",
+        "modo": "sets" if modo_sets(c) else "simples", "estilo": c.placar_modo if (modo_sets(c) or c.placar_modo == "total") else "simples",
+        "total_games": (c.pontos_set or 5) if c.placar_modo == "total" else None,
         "unidade": "games" if c.placar_modo == "games" else "pontos", "melhor_de": melhor_de, "sets_para_vencer": melhor_de // 2 + 1,
         "pontos_set": c.pontos_set or 25, "pontos_tiebreak": c.pontos_tiebreak or 15, "diferenca": c.diferenca_set or 2,
     }
@@ -460,10 +471,10 @@ def configurar_placar(s: SessaoORM, campeonato_id: int, por: Usuario, modo: str,
     """Regras de pontuação do campeonato. Só enquanto nenhum jogo começou (não mistura placar simples com sets)."""
     c = campeonatos.obter(s, campeonato_id)
     campeonatos.exigir_gestao(c, por)
-    if modo not in ("simples", "sets", "games"):
-        raise ErroNegocio("Escolha a pontuação: simples, por sets ou por games.")
-    if c.formato == "super8" and (modo != "games" or melhor_de != 1):
-        raise ErroNegocio("No Super 8 cada jogo é um set único contado em games.")
+    if modo not in ("simples", "sets", "games", "total"):
+        raise ErroNegocio("Escolha a pontuação: simples, por sets, por games ou total fixo de games.")
+    if c.formato == "super8" and (modo not in ("games", "total") or (modo == "games" and melhor_de != 1)):
+        raise ErroNegocio("No Super 8 cada jogo é um set único em games, ou um total fixo de games.")
     if any(j.status != J_AGENDADO and not j.folga for j in s.scalars(select(Jogo).where(Jogo.campeonato_id == c.id))):
         raise ErroNegocio("Já há jogos começados: não dá mais para trocar as regras de pontuação.")
     if modo in ("sets", "games"):
@@ -478,6 +489,10 @@ def configurar_placar(s: SessaoORM, campeonato_id: int, por: Usuario, modo: str,
         if not 1 <= diferenca <= 5:
             raise ErroNegocio("A vantagem mínima para fechar o set vai de 1 a 5 pontos.")
         c.sets_melhor_de, c.pontos_set, c.pontos_tiebreak, c.diferenca_set = melhor_de, pontos_set, pontos_tiebreak, diferenca
+    if modo == "total":
+        if not 1 <= pontos_set <= 20:
+            raise ErroNegocio("O total de games por jogo vai de 1 a 20.")
+        c.sets_melhor_de, c.pontos_set = 1, pontos_set
     c.placar_modo = modo
     auditoria.registrar(s, por.id, "campeonato_regras_placar", "campeonato", c.id, modo=modo, melhor_de=melhor_de, pontos_set=pontos_set, pontos_tiebreak=pontos_tiebreak, diferenca=diferenca)
     s.commit()
@@ -672,6 +687,8 @@ def marcar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario, lado: s
         return _marcar_sets(s, c, j, por, lado, delta)
     atual = j.placar_a if lado == "a" else j.placar_b
     novo = max(0, min(MAX_PLACAR, atual + delta))
+    if modo_total(c) and delta > 0 and j.placar_a + j.placar_b >= _total_games(c):
+        raise ErroNegocio(f"Os {_total_games(c)} games do jogo já foram disputados. Encerre o jogo (ou corrija com −1).")
     if novo == atual:
         return j
     if lado == "a":
@@ -693,6 +710,8 @@ def definir_placar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario,
         raise ErroNegocio("Neste campeonato o placar é por sets: marque os pontos ou lance os sets.")
     if not (0 <= a <= MAX_PLACAR and 0 <= b <= MAX_PLACAR):
         raise ErroNegocio(f"O placar vai de 0 a {MAX_PLACAR}.")
+    if modo_total(c) and a + b > _total_games(c):
+        raise ErroNegocio(f"O jogo tem {_total_games(c)} games no total: {a}×{b} passa disso.")
     if (a, b) != (j.placar_a, j.placar_b):
         j.placar_a, j.placar_b = a, b
         _evento(s, j, "placar", por, "Placar ajustado pela mesa")
@@ -722,6 +741,9 @@ def encerrar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario, vence
     _exigir_pontuar(s, c, por)
     _exigir_ao_vivo(j)
     eliminatoria = c.formato == "eliminatoria" or j.fase == "mata_mata"
+    if modo_total(c) and j.placar_a + j.placar_b != _total_games(c):
+        faltam = _total_games(c) - j.placar_a - j.placar_b
+        raise ErroNegocio(f"O jogo tem {_total_games(c)} games e todos são disputados: faltam {faltam}.")
     if modo_sets(c) and max(j.placar_a, j.placar_b) < regras_placar(c)["sets_para_vencer"]:
         raise ErroNegocio(f"O jogo ainda não terminou: quem vence precisa de {regras_placar(c)['sets_para_vencer']} sets.")
     if j.placar_a != j.placar_b:
@@ -969,10 +991,16 @@ def classificacao_super8(jogos: list[Jogo], atletas: list[Equipe], c: Campeonato
                 else:
                     L["empates"] += 1
     out = list(linhas.values())
+    total = c is not None and modo_total(c)
     for L in out:
         L["saldo"] = L["pro"] - L["contra"]
         L["pts_saldo"] = 0
-    out.sort(key=lambda L: (-L["vitorias"], -L["saldo"], -L["pro"], L["equipe"]["nome"].lower()))
+        if total:
+            L["pontos"] = L["pro"]  # cada game que a dupla faz vale um ponto para o atleta
+    if total:
+        out.sort(key=lambda L: (-L["pontos"], -L["vitorias"], -L["saldo"], L["equipe"]["nome"].lower()))
+    else:
+        out.sort(key=lambda L: (-L["vitorias"], -L["saldo"], -L["pro"], L["equipe"]["nome"].lower()))
     for i, L in enumerate(out, 1):
         L["posicao"] = i
     return out
