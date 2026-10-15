@@ -30,6 +30,7 @@
 <script>
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const PERFIS = { usuario: 'Usuário', moderador: 'Moderador geral', admin: 'Administrador' };
+  const PLANOS = { gratuito: 'Usuário', pro: 'Pro', organizador: 'Organizador', arena: 'Arena' };
   async function carregar() {
     const f = document.getElementById('filtros');
     const q = new URLSearchParams({ q: f.q.value, perfil: f.perfil.value }).toString();
@@ -39,7 +40,8 @@
       document.getElementById('lista').innerHTML = r.itens.map((i) => `<div class="pessoa" style="flex-wrap:wrap"><span class="avatar pequeno">${i.foto_url ? `<img src="${esc(i.foto_url)}" alt="">` : esc(i.iniciais)}</span>
         <div><b>${esc(i.arroba)}</b>${i.id === PLAYGO.eu.id ? ' <span class="tag roxo">você</span>' : ''}<div class="suave">${esc(i.nome)} · ${esc(i.email)}</div></div>
         <span class="suave">Plano: <b>${esc(i.plano)}</b>${i.plano_fim ? ' até ' + esc(i.plano_fim.split('-').reverse().join('/')) : ''} (${esc(i.plano_status)})</span>
-        <button class="link-botao" data-plano="${i.id}">Conceder plano</button>
+        <label class="suave" style="display:flex;align-items:center;gap:6px">Alterar plano
+          <select data-plano-sel="${i.id}" data-atual="${esc(i.plano)}" style="border:1px solid var(--border);border-radius:10px;padding:8px">${Object.entries(PLANOS).map(([k, n]) => `<option value="${k}" ${i.plano === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
         <span class="acoes"><select data-id="${i.id}" style="border:1px solid var(--border);border-radius:10px;padding:8px">${Object.entries(PERFIS).map(([k, n]) => `<option value="${k}" ${i.perfil === k ? 'selected' : ''}>${n}</option>`).join('')}</select></span></div>`).join('') || '<p class="suave">Ninguém encontrado.</p>';
     } catch (e) { document.getElementById('lista').innerHTML = `<p class="vazio">${esc(e.message)}</p>`; }
   }
@@ -73,14 +75,20 @@
       const num = (x) => (x.value.trim() === '' ? 0 : Number(x.value.replace(',', '.')));
       try { await webApi('/admin/planos/' + salvar.dataset.salvarPlano, { metodo: 'PUT', corpo: { valor_mensal: String(num(v('valor_mensal'))), max_participantes: num(v('max_participantes')), max_atividades_abertas: num(v('max_atividades_abertas')), pode_atividade: v('pode_atividade').checked, pode_campeonato: v('pode_campeonato').checked, pode_arena: v('pode_arena').checked } }); toast('Plano salvo.'); } catch (e) { toast(e.message); }
     }
-    const conceder = ev.target.closest('[data-plano]');
-    if (conceder) {
-      const plano = prompt('Plano a conceder: gratuito (Usuário), pro, organizador ou arena', 'pro');
-      if (!plano) return;
-      const ate = prompt(plano.trim() === 'gratuito' ? 'Válido até (AAAA-MM-DD). Deixe em branco para voltar ao plano Usuário sem acesso pago.' : 'Válido até (AAAA-MM-DD)', '') || null;
-      if (!ate && plano.trim() !== 'gratuito') return;
-      try { await webApi('/admin/usuarios/' + conceder.dataset.plano + '/plano', { metodo: 'POST', corpo: { plano: plano.trim(), ate } }); toast('Plano atualizado.'); carregar(); } catch (e) { toast(e.message); }
-    }
+  });
+  // Alterar plano de uma pessoa: escolhe na lista; planos pagos pedem a data de validade (cortesia ou cobrança fora do app)
+  document.addEventListener('change', async (ev) => {
+    const sel = ev.target.closest('select[data-plano-sel]');
+    if (!sel) return;
+    const plano = sel.value;
+    let ate = null;
+    if (plano !== 'gratuito') {
+      const sugestao = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+      ate = prompt(`Plano ${PLANOS[plano]} válido até (AAAA-MM-DD):`, sugestao);
+      if (!ate) return carregar();
+    } else if (!confirm('Voltar esta pessoa para o plano Usuário? O acesso pago atual termina.')) return carregar();
+    try { await webApi('/admin/usuarios/' + sel.dataset.planoSel + '/plano', { metodo: 'POST', corpo: { plano, ate } }); toast('Plano atualizado.'); } catch (e) { toast(e.message); }
+    carregar();
   });
   async function carregarInstagram() {
     const el = document.getElementById('estado-instagram');
