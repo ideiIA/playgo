@@ -42,7 +42,19 @@ FORMATOS = {
     "eliminatoria": "Eliminatória (mata-mata)",
     "pontos_corridos": "Pontos corridos (todos contra todos)",
     "grupos": "Fase de grupos + mata-mata",
+    "super8": "Super 8 (8 atletas, duplas que mudam a cada rodada)",
 }
+# Tabela do Super 8: 7 rodadas × 2 jogos. Cada atleta (0-7, na ordem do sorteio) joga com cada outro uma vez como parceiro e
+# enfrenta cada outro exatamente duas vezes. Cada jogo é (dupla A) x (dupla B).
+SUPER8 = (
+    (((0, 1), (2, 3)), ((4, 5), (6, 7))),
+    (((0, 4), (1, 5)), ((2, 6), (3, 7))),
+    (((0, 6), (1, 7)), ((2, 4), (3, 5))),
+    (((0, 2), (4, 6)), ((1, 3), (5, 7))),
+    (((0, 5), (2, 7)), ((1, 4), (3, 6))),
+    (((0, 7), (3, 4)), ((1, 6), (2, 5))),
+    (((0, 3), (5, 6)), ((1, 2), (4, 7))),
+)
 LETRAS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 PONTOS = {"vitoria": 3, "empate": 1, "derrota": 0}
 MAX_PLACAR = 999
@@ -134,7 +146,7 @@ def sortear(
     c = campeonatos.obter(s, campeonato_id)
     campeonatos.exigir_gestao(c, por)
     if formato not in FORMATOS:
-        raise ErroNegocio("Escolha o formato: eliminatória, pontos corridos ou fase de grupos.")
+        raise ErroNegocio("Escolha o formato: eliminatória, pontos corridos, fase de grupos ou Super 8.")
     if c.status == C_CANCELADO:
         raise ErroNegocio("Este campeonato foi cancelado.")
     equipes = list(s.scalars(select(Equipe).where(Equipe.campeonato_id == c.id, Equipe.status == E_CONFIRMADA).order_by(Equipe.id)))
@@ -160,7 +172,18 @@ def sortear(
             raise ErroNegocio("O mata-mata precisa de pelo menos 2 classificados.")
     elif formato == "pontos_corridos":
         cabecas = []  # todos jogam contra todos: a posição na tabela não depende do sorteio
+    elif formato == "super8":
+        if len(equipes) != 8:
+            raise ErroNegocio(f"O Super 8 precisa de exatamente 8 atletas confirmados (há {len(equipes)}).")
+        if c.atletas_por_equipe != 1:
+            raise ErroNegocio("O Super 8 é individual: edite o campeonato e deixe 'Atletas por equipe' em 1 (cada atleta se inscreve sozinho).")
+        cabecas = []  # as duplas mudam a cada rodada; a posição no sorteio só define a tabela
     _limpar_chaves(s, c)
+    if formato == "super8":  # cada jogo é um set único em games; a organização pode mudar a quantidade de games antes do 1º jogo
+        c.placar_modo, c.sets_melhor_de, c.diferenca_set = "games", 1, 2
+        if not 2 <= (c.pontos_set or 0) <= 12:
+            c.pontos_set = 6
+        c.pontos_tiebreak = c.pontos_tiebreak or 10
 
     semente = secrets.randbits(62)
     rnd = random.Random(semente)
@@ -174,6 +197,8 @@ def sortear(
             _montar_pontos_corridos(s, c, lista, grupo=LETRAS[g], fase="grupos")
             for e in lista:
                 s.add(ChaveEquipe(campeonato_id=c.id, equipe_id=e.id, grupo=LETRAS[g], cabeca=cabecas.index(e.id) + 1 if e.id in cabecas else None))
+    elif formato == "super8":
+        _montar_super8(s, c, resto)
     else:
         _montar_pontos_corridos(s, c, resto)
     c.grupos_qtd, c.classificam = (grupos, q) if formato == "grupos" else (None, None)
@@ -264,6 +289,25 @@ def _montar_pontos_corridos(s: SessaoORM, c: Campeonato, equipes: list[Equipe], 
         lista = [lista[0], lista[-1], *lista[1:-1]]
 
 
+def _montar_super8(s: SessaoORM, c: Campeonato, atletas: list[Equipe]) -> None:
+    """`atletas`: os 8 inscritos já embaralhados. 7 rodadas de 2 jogos (duas quadras); todos jogam em todas as rodadas."""
+    for r, partidas in enumerate(SUPER8, 1):
+        for p, ((a1, a2), (b1, b2)) in enumerate(partidas):
+            s.add(Jogo(
+                campeonato_id=c.id, rodada=r, posicao=p, rodada_nome=f"Rodada {r}",
+                equipe_a_id=atletas[a1].id, equipe_a2_id=atletas[a2].id, equipe_b_id=atletas[b1].id, equipe_b2_id=atletas[b2].id,
+            ))
+
+
+def _ids_do_jogo(j: Jogo) -> list[int]:
+    return [i for i in (j.equipe_a_id, j.equipe_a2_id, j.equipe_b_id, j.equipe_b2_id) if i]
+
+
+def _nome_lado(j: Jogo, lado: str) -> str:
+    e, p = (j.equipe_a, j.equipe_a2) if lado == "a" else (j.equipe_b, j.equipe_b2)
+    return _nome(e) + (f" + {_nome(p)}" if p is not None else "")
+
+
 def _avancar(s: SessaoORM, j: Jogo) -> None:
     if j.proximo_id is None or j.vencedor_id is None:
         return
@@ -295,13 +339,14 @@ def _evento(s: SessaoORM, j: Jogo, tipo: str, por: Usuario, texto: str | None = 
 
 
 def modo_sets(c: Campeonato) -> bool:
-    return (c.placar_modo or "simples") == "sets"
+    return (c.placar_modo or "simples") in ("sets", "games")
 
 
 def regras_placar(c: Campeonato) -> dict:
     melhor_de = c.sets_melhor_de or 3
     return {
-        "modo": "sets" if modo_sets(c) else "simples", "melhor_de": melhor_de, "sets_para_vencer": melhor_de // 2 + 1,
+        "modo": "sets" if modo_sets(c) else "simples", "estilo": c.placar_modo if modo_sets(c) else "simples",
+        "unidade": "games" if c.placar_modo == "games" else "pontos", "melhor_de": melhor_de, "sets_para_vencer": melhor_de // 2 + 1,
         "pontos_set": c.pontos_set or 25, "pontos_tiebreak": c.pontos_tiebreak or 15, "diferenca": c.diferenca_set or 2,
     }
 
@@ -311,8 +356,27 @@ def _alvo_do_set(c: Campeonato, numero: int) -> int:
     return r["pontos_tiebreak"] if r["melhor_de"] > 1 and numero >= r["melhor_de"] else r["pontos_set"]
 
 
+def _set_decisivo(c: Campeonato, numero: int) -> bool:
+    r = regras_placar(c)
+    return r["melhor_de"] > 1 and numero >= r["melhor_de"]
+
+
 def _set_fechado(c: Campeonato, numero: int, a: int, b: int) -> bool:
-    return max(a, b) >= _alvo_do_set(c, numero) and abs(a - b) >= regras_placar(c)["diferenca"]
+    alvo, topo = _alvo_do_set(c, numero), max(a, b)
+    if topo >= alvo and abs(a - b) >= regras_placar(c)["diferenca"]:
+        return True
+    # em games, o set comum termina no tie-break: 6-6 vira 7-6 (o decisivo é um super tie-break, pontos com diferença)
+    return c.placar_modo == "games" and not _set_decisivo(c, numero) and topo >= alvo + 1
+
+
+def _resultado_do_set_vale(c: Campeonato, numero: int, a: int, b: int) -> bool:
+    """Set lançado de uma vez: em games só valem os placares que existem (6-4, 7-5, 7-6…), nunca 8-6 ou 9-7."""
+    if not _set_fechado(c, numero, a, b):
+        return False
+    if c.placar_modo != "games" or _set_decisivo(c, numero):
+        return True
+    alvo, topo, base = _alvo_do_set(c, numero), max(a, b), min(a, b)
+    return (topo == alvo and base <= alvo - 2) or (topo == alvo + 1 and base in (alvo - 1, alvo))
 
 
 def _sets_do_jogo(s: SessaoORM, j: Jogo) -> list[JogoSet]:
@@ -328,11 +392,17 @@ def configurar_placar(s: SessaoORM, campeonato_id: int, por: Usuario, modo: str,
     """Regras de pontuação do campeonato. Só enquanto nenhum jogo começou (não mistura placar simples com sets)."""
     c = campeonatos.obter(s, campeonato_id)
     campeonatos.exigir_gestao(c, por)
-    if modo not in ("simples", "sets"):
-        raise ErroNegocio("Escolha a pontuação: simples ou por sets.")
+    if modo not in ("simples", "sets", "games"):
+        raise ErroNegocio("Escolha a pontuação: simples, por sets ou por games.")
+    if c.formato == "super8" and (modo != "games" or melhor_de != 1):
+        raise ErroNegocio("No Super 8 cada jogo é um set único contado em games.")
     if any(j.status != J_AGENDADO and not j.folga for j in s.scalars(select(Jogo).where(Jogo.campeonato_id == c.id))):
         raise ErroNegocio("Já há jogos começados: não dá mais para trocar as regras de pontuação.")
-    if modo == "sets":
+    if modo in ("sets", "games"):
+        if modo == "games":
+            diferenca = 2
+            if not 2 <= pontos_set <= 12:
+                raise ErroNegocio("Os games do set vão de 2 a 12 (o padrão do beach tennis é 6).")
         if melhor_de not in (1, 3, 5, 7):
             raise ErroNegocio("Escolha jogar em 1, 3, 5 ou 7 sets (vence quem ganhar a maioria).")
         if not 1 <= pontos_set <= 99 or not 1 <= pontos_tiebreak <= 99:
@@ -350,7 +420,7 @@ def _marcar_sets(s: SessaoORM, c: Campeonato, j: Jogo, por: Usuario, lado: str, 
     sets = _sets_do_jogo(s, j)
     r = regras_placar(c)
     equipe = j.equipe_a if lado == "a" else j.equipe_b
-    quem = _nome(equipe)
+    quem = _nome_lado(j, lado)
     if delta > 0:
         if max(j.placar_a, j.placar_b) >= r["sets_para_vencer"]:
             raise ErroNegocio("O jogo já está decidido. Encerre-o (ou corrija com −1).")
@@ -377,8 +447,8 @@ def _marcar_sets(s: SessaoORM, c: Campeonato, j: Jogo, por: Usuario, lado: str, 
     atual.encerrado = _set_fechado(c, atual.numero, atual.pontos_a, atual.pontos_b)
     _contar_sets(j, sets)
     if atual.encerrado and not antes:
-        ganhou = j.equipe_a if atual.pontos_a > atual.pontos_b else j.equipe_b
-        texto += f" · Fim do set {atual.numero}: {atual.pontos_a}×{atual.pontos_b} para {_nome(ganhou)} (sets {j.placar_a}×{j.placar_b})"
+        ganhou = _nome_lado(j, "a" if atual.pontos_a > atual.pontos_b else "b")
+        texto += f" · Fim do set {atual.numero}: {atual.pontos_a}×{atual.pontos_b} para {ganhou} (sets {j.placar_a}×{j.placar_b})"
     elif antes and not atual.encerrado:
         texto += f" · Set {atual.numero} reaberto"
     _evento(s, j, "placar", por, texto[:200], equipe.id if equipe else None, atual.pontos_a, atual.pontos_b)
@@ -402,7 +472,9 @@ def definir_sets(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario, s
         if len(par) != 2 or any(not isinstance(x, int) or x < 0 or x > 999 for x in par):
             raise ErroNegocio(f"Set {i}: informe os pontos das duas equipes.")
         a, b = par
-        if not _set_fechado(c, i, a, b):
+        if not _resultado_do_set_vale(c, i, a, b):
+            if c.placar_modo == "games" and not _set_decisivo(c, i):
+                raise ErroNegocio(f"Set {i} ({a}×{b}) não termina assim: são {_alvo_do_set(c, i)} games com 2 de vantagem, ou 7×5 e 7×6 (tie-break).")
             raise ErroNegocio(f"Set {i} ({a}×{b}) não termina assim: são {_alvo_do_set(c, i)} pontos e {r['diferenca']} de vantagem.")
         if max(ga, gb) >= r["sets_para_vencer"]:
             raise ErroNegocio(f"O jogo já estava decidido antes do set {i}.")
@@ -512,7 +584,7 @@ def iniciar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> Jog
     j.status, j.iniciado_em = J_AO_VIVO, agora()
     _evento(s, j, "inicio", por, "Bola rolando!")
     auditoria.registrar(s, por.id, "jogo_iniciar", "jogo", j.id)
-    _avisar_equipes(s, c, [j.equipe_a_id, j.equipe_b_id], f"🔴 Ao vivo: {_nome(j.equipe_a)} x {_nome(j.equipe_b)}", f"{c.nome} — acompanhe o placar.", f"jogo-vivo:{j.id}")
+    _avisar_equipes(s, c, _ids_do_jogo(j), f"🔴 Ao vivo: {_nome_lado(j, 'a')} x {_nome_lado(j, 'b')}", f"{c.nome} — acompanhe o placar.", f"jogo-vivo:{j.id}")
     s.commit()
     return j
 
@@ -539,7 +611,7 @@ def marcar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario, lado: s
     else:
         j.placar_b = novo
     equipe = j.equipe_a if lado == "a" else j.equipe_b
-    _evento(s, j, "placar", por, f"+1 {_nome(equipe)}" if delta > 0 else f"Correção: -1 {_nome(equipe)}", equipe.id if equipe else None)
+    _evento(s, j, "placar", por, f"+1 {_nome_lado(j, lado)}" if delta > 0 else f"Correção: -1 {_nome_lado(j, lado)}", equipe.id if equipe else None)
     auditoria.registrar(s, por.id, "jogo_placar", "jogo", j.id, placar=f"{j.placar_a}x{j.placar_b}")
     s.commit()
     return j
@@ -570,7 +642,7 @@ def lance(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario, texto: s
         raise ErroNegocio("Escreva o lance.")
     if len(texto) > 200:
         raise ErroNegocio("O lance passa de 200 caracteres.")
-    if equipe_id not in (None, j.equipe_a_id, j.equipe_b_id):
+    if equipe_id is not None and equipe_id not in _ids_do_jogo(j):
         raise ErroNegocio("A equipe do lance não joga esta partida.")
     _evento(s, j, "lance", por, texto, equipe_id)
     s.commit()
@@ -603,7 +675,7 @@ def encerrar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario, vence
     s.flush()
     _gerar_mata_mata_se_pronto(s, c)
     _fechar_campeonato_se_acabou(s, c)
-    _avisar_equipes(s, c, [j.equipe_a_id, j.equipe_b_id], f"🏁 Fim de jogo: {_nome(j.equipe_a)} {j.placar_a} x {j.placar_b} {_nome(j.equipe_b)}", c.nome, f"jogo-fim:{j.id}")
+    _avisar_equipes(s, c, _ids_do_jogo(j), f"🏁 Fim de jogo: {_nome_lado(j, 'a')} {j.placar_a} x {j.placar_b} {_nome_lado(j, 'b')}", c.nome, f"jogo-fim:{j.id}")
     s.commit()
     return j
 
@@ -674,6 +746,10 @@ def _fechar_campeonato_se_acabou(s: SessaoORM, c: Campeonato) -> None:
         return  # ainda falta o mata-mata
     if jogos and all(j.status == J_ENCERRADO for j in jogos) and c.status != C_CANCELADO:
         c.status = C_ENCERRADO
+        if c.formato == "super8":
+            atletas = list(s.scalars(select(Equipe).where(Equipe.campeonato_id == c.id, Equipe.status == E_CONFIRMADA)))
+            lider = classificacao_super8(jogos, atletas)[0]["equipe"]
+            _avisar_equipes(s, c, [lider["id"]], f"🏆 Campeão do Super 8: {c.nome}!", f"{lider['nome']} terminou em 1º lugar.", f"campeao:{c.id}")
         if c.formato in ("eliminatoria", "grupos"):
             final = max((j for j in jogos if j.fase != "grupos"), key=lambda j: j.rodada)
             campeao = final.equipe_a if final.vencedor_id == final.equipe_a_id else final.equipe_b
@@ -725,9 +801,17 @@ def _dt(d: datetime | None) -> str | None:
     return d.isoformat(timespec="seconds") if d else None
 
 
+def _lado(j: Jogo, lado: str) -> dict | None:
+    """Um lado do jogo. No Super 8 é a dupla: o nome vem junto ("Ana + Bia") e o `id` é o do 1º atleta."""
+    e, p = (j.equipe_a, j.equipe_a2) if lado == "a" else (j.equipe_b, j.equipe_b2)
+    if e is None or p is None:
+        return _eq(e)
+    return {"id": e.id, "nome": f"{e.nome} + {p.nome}", "parceiro_id": p.id, "dupla": [e.nome, p.nome]}
+
+
 def jogo_dict(j: Jogo) -> dict:
     return {
-        "id": j.id, "rodada": j.rodada, "rodada_nome": j.rodada_nome, "fase": j.fase, "grupo": j.grupo, "posicao": j.posicao, "a": _eq(j.equipe_a), "b": _eq(j.equipe_b),
+        "id": j.id, "rodada": j.rodada, "rodada_nome": j.rodada_nome, "fase": j.fase, "grupo": j.grupo, "posicao": j.posicao, "a": _lado(j, "a"), "b": _lado(j, "b"),
         "placar_a": j.placar_a, "placar_b": j.placar_b, "status": j.status, "vencedor_id": j.vencedor_id, "desempate": j.desempate, "folga": j.folga,
         "inicio_previsto": _dt(j.inicio_previsto), "local": j.local, "iniciado_em": _dt(j.iniciado_em),
         "sets": [{"numero": x.numero, "a": x.pontos_a, "b": x.pontos_b, "encerrado": x.encerrado} for x in j.sets],
@@ -781,6 +865,49 @@ def classificacao(jogos: list[Jogo], equipes: list[Equipe], c: Campeonato | None
     return out
 
 
+def _games_do_lado(j: Jogo) -> tuple[int, int]:
+    """Games de cada lado no jogo (soma dos sets em games; sem sets, o próprio placar)."""
+    fechados = [x for x in j.sets if x.encerrado]
+    if fechados:
+        return sum(x.pontos_a for x in fechados), sum(x.pontos_b for x in fechados)
+    return j.placar_a, j.placar_b
+
+
+def classificacao_super8(jogos: list[Jogo], atletas: list[Equipe], c: Campeonato | None = None) -> list[dict]:
+    """Ranking individual: vitórias, depois saldo de games e games feitos. Cada atleta recebe o resultado da dupla em que jogou."""
+    linhas = {e.id: {"equipe": {"id": e.id, "nome": e.nome}, "pontos": 0, "jogos": 0, "vitorias": 0, "empates": 0, "derrotas": 0, "pro": 0, "contra": 0, "pts_pro": 0, "pts_contra": 0} for e in atletas}
+    for j in jogos:
+        if j.status != J_ENCERRADO or j.folga:
+            continue
+        ga, gb = _games_do_lado(j)
+        for ids, pro, contra, venceu in (
+            ((j.equipe_a_id, j.equipe_a2_id), ga, gb, j.placar_a > j.placar_b),
+            ((j.equipe_b_id, j.equipe_b2_id), gb, ga, j.placar_b > j.placar_a),
+        ):
+            for eid in ids:
+                L = linhas.get(eid)
+                if L is None:
+                    continue
+                L["jogos"] += 1
+                L["pro"] += pro
+                L["contra"] += contra
+                if venceu:
+                    L["vitorias"] += 1
+                    L["pontos"] += 1
+                elif j.placar_a != j.placar_b:
+                    L["derrotas"] += 1
+                else:
+                    L["empates"] += 1
+    out = list(linhas.values())
+    for L in out:
+        L["saldo"] = L["pro"] - L["contra"]
+        L["pts_saldo"] = 0
+    out.sort(key=lambda L: (-L["vitorias"], -L["saldo"], -L["pro"], L["equipe"]["nome"].lower()))
+    for i, L in enumerate(out, 1):
+        L["posicao"] = i
+    return out
+
+
 def chaveamento(s: SessaoORM, c: Campeonato, u: Usuario) -> dict:
     jogos = list(s.scalars(select(Jogo).where(Jogo.campeonato_id == c.id).order_by(Jogo.rodada, Jogo.posicao).execution_options(populate_existing=True)))
     de_grupo = [j for j in jogos if j.fase == "grupos"]
@@ -814,12 +941,15 @@ def chaveamento(s: SessaoORM, c: Campeonato, u: Usuario) -> dict:
             campeao = _eq(final.equipe_a if final.vencedor_id == final.equipe_a_id else final.equipe_b)
     elif c.formato == "pontos_corridos" and chave and all(j.status == J_ENCERRADO for j in chave):
         campeao = classificacao(jogos, confirmadas, c)[0]["equipe"]
+    elif c.formato == "super8" and chave and all(j.status == J_ENCERRADO for j in chave):
+        campeao = classificacao_super8(jogos, confirmadas, c)[0]["equipe"]
     pendentes = campeonatos.contar_pendentes(s, c)
     return {
         "campeonato": {"id": c.id, "nome": c.nome, "status": c.status, "modalidade": c.modalidade.nome, "icone": c.modalidade.icone},
         "formato": c.formato, "formato_nome": FORMATOS.get(c.formato or ""), "sorteado_em": _dt(c.sorteado_em), "semente": str(c.sorteio_semente) if c.sorteio_semente else None,  # texto: passa de 2^53 e o JavaScript perderia dígitos
         "rodadas": rodadas, "ao_vivo": [jogo_dict(j) for j in jogos if j.status == J_AO_VIVO],
-        "classificacao": classificacao(chave, confirmadas, c) if c.formato == "pontos_corridos" else [], "campeao": campeao,
+        "classificacao": classificacao(chave, confirmadas, c) if c.formato == "pontos_corridos" else classificacao_super8(chave, confirmadas, c) if c.formato == "super8" else [],
+        "campeao": campeao,
         "regras_placar": regras_placar(c), "placar_travado": any(j.status != J_AGENDADO and not j.folga for j in jogos),
         "grupos": grupos_out, "classificam": c.classificam, "cabecas": cabecas, "duracao_jogo_min": c.duracao_jogo_min,
         "jogos_grupos_restantes": sum(1 for j in de_grupo if j.status != J_ENCERRADO) if c.formato == "grupos" and not chave else 0,

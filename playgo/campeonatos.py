@@ -50,6 +50,10 @@ PLACAR_POR_SETS = {
 }
 
 
+# Esportes cuja contagem é em games (jogo = set de N games, 7-6 no tie-break; decisivo = super tie-break). A organização pode mudar.
+PLACAR_EM_GAMES = {"beach_tennis", "tenis", "padel"}
+
+
 @dataclass
 class NovoCampeonato:
     modalidade_id: int
@@ -124,7 +128,7 @@ def criar(s: SessaoORM, usuario: Usuario, d: NovoCampeonato) -> Campeonato:
         atletas_por_equipe=d.atletas_por_equipe, valor_inscricao=d.valor_inscricao,
     )
     if modalidade.codigo in PLACAR_POR_SETS:
-        c.placar_modo = "sets"
+        c.placar_modo = "games" if modalidade.codigo in PLACAR_EM_GAMES else "sets"
         c.sets_melhor_de, c.pontos_set, c.pontos_tiebreak = PLACAR_POR_SETS[modalidade.codigo]
         c.diferenca_set = 2
     s.add(c)

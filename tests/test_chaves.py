@@ -11,7 +11,7 @@ from playgo import campeonatos, chaves
 from playgo.campeonatos import NovoCampeonato
 from playgo.db import Session, agora
 from playgo.erros import ErroNegocio, SemPermissao
-from playgo.models import Jogo, Notificacao, Usuario
+from playgo.models import Equipe, Jogo, Notificacao, Usuario
 
 PERTO = (-20.4535, -54.6201)
 
@@ -506,3 +506,97 @@ def test_api_todos_acompanham_e_so_a_organizacao_conduz(banco):
         org_site = TestClient(app)
         org_site.post("/entrar", data={"email": org_email, "senha": "senha-de-teste-1"}, follow_redirects=False)
         assert org_site.get(f"/campeonatos/{cid}/sorteio").status_code == 200 and "Sorteio" in org_site.get(f"/campeonatos/{cid}").text
+
+
+# ---------------------------------------------------------------- beach tennis em games e Super 8
+
+
+def _campeonato_de(s, fabrica, org, codigo, n, atletas_por_equipe=5, confirmar=True):
+    hoje = agora().date()
+    c = campeonatos.criar(
+        s, org,
+        NovoCampeonato(modalidade_id=fabrica.mod(codigo).id, nome=f"Copa {codigo}", data_inicio=hoje + timedelta(days=20), inscricao_ate=hoje + timedelta(days=10),
+                       max_equipes=16, atletas_por_equipe=atletas_por_equipe, local_nome="G", latitude=PERTO[0], longitude=PERTO[1]),
+    )
+    for i in range(n):
+        e = campeonatos.inscrever_equipe(s, c.id, fabrica.atleta(f"Atleta{i}"), f"Atleta {i + 1}")
+        if confirmar:
+            campeonatos.decidir_equipe(s, e.id, org, True)
+    return c
+
+
+def test_beach_tennis_nasce_em_games_e_o_set_fecha_em_6x4_7x5_ou_7x6(s, fabrica):
+    org = fabrica.atleta("Org")
+    c = _campeonato_de(s, fabrica, org, "beach_tennis", 2)
+    assert c.placar_modo == "games"
+    r = chaves.regras_placar(c)
+    assert r["modo"] == "sets" and r["estilo"] == "games" and r["unidade"] == "games"
+    with pytest.raises(ErroNegocio, match="2 a 12"):
+        chaves.configurar_placar(s, c.id, org, "games", pontos_set=30)
+    chaves.configurar_placar(s, c.id, org, "games", melhor_de=1, pontos_set=6, pontos_tiebreak=10)
+    chaves.sortear(s, c.id, org, "eliminatoria")
+    j = _jogos(s, c)[0]
+    chaves.iniciar(s, c.id, j.id, org)
+    with pytest.raises(ErroNegocio, match="tie-break"):
+        chaves.definir_sets(s, c.id, j.id, org, [[8, 6]])  # em games não existe 8×6: 6×6 vai a 7×6
+    for _ in range(5):
+        chaves.marcar(s, c.id, j.id, org, "a", 1)
+    for _ in range(5):
+        chaves.marcar(s, c.id, j.id, org, "b", 1)
+    chaves.marcar(s, c.id, j.id, org, "a", 1)  # 6×5: ainda não fecha (precisa de 2 de vantagem ou tie-break)
+    assert max(s.get(Jogo, j.id).placar_a, s.get(Jogo, j.id).placar_b) == 0
+    chaves.marcar(s, c.id, j.id, org, "b", 1)  # 6×6: tie-break
+    assert (s.get(Jogo, j.id).placar_a, s.get(Jogo, j.id).placar_b) == (0, 0)
+    chaves.marcar(s, c.id, j.id, org, "a", 1)  # 7×6 fecha o set
+    assert s.get(Jogo, j.id).placar_a == 1
+    chaves.encerrar(s, c.id, j.id, org)
+
+
+def test_super8_exige_8_atletas_individuais_e_gera_7_rodadas_com_duplas_que_giram(s, fabrica):
+    org = fabrica.atleta("Org")
+    c = _campeonato_de(s, fabrica, org, "beach_tennis", 7, atletas_por_equipe=1)
+    with pytest.raises(ErroNegocio, match="exatamente 8"):
+        chaves.sortear(s, c.id, org, "super8")
+    campeonatos.inscrever_equipe(s, c.id, fabrica.atleta("Oitavo"), "Atleta 8")
+    for e in s.query(Equipe).filter(Equipe.campeonato_id == c.id, Equipe.status != "confirmada").all():
+        campeonatos.decidir_equipe(s, e.id, org, True)
+    chaves.sortear(s, c.id, org, "super8")
+    jogos = _jogos(s, c)
+    assert len(jogos) == 14 and {j.rodada for j in jogos} == set(range(1, 8))
+    assert all(j.equipe_a2_id and j.equipe_b2_id for j in jogos)
+    # cada atleta joga em todas as rodadas, com cada outro como parceiro 1 vez e como adversário 2 vezes
+    from collections import Counter
+
+    parceiros, adversarios = Counter(), Counter()
+    for j in jogos:
+        parceiros[frozenset((j.equipe_a_id, j.equipe_a2_id))] += 1
+        parceiros[frozenset((j.equipe_b_id, j.equipe_b2_id))] += 1
+        for x in (j.equipe_a_id, j.equipe_a2_id):
+            for y in (j.equipe_b_id, j.equipe_b2_id):
+                adversarios[frozenset((x, y))] += 1
+    assert len(parceiros) == 28 and set(parceiros.values()) == {1}
+    assert len(adversarios) == 28 and set(adversarios.values()) == {2}
+    for r in range(1, 8):
+        assert len({i for j in jogos if j.rodada == r for i in (j.equipe_a_id, j.equipe_a2_id, j.equipe_b_id, j.equipe_b2_id)}) == 8
+    assert (c.placar_modo, c.sets_melhor_de, c.pontos_set) == ("games", 1, 6)
+    with pytest.raises(ErroNegocio, match="set único"):
+        chaves.configurar_placar(s, c.id, org, "simples")
+
+
+def test_super8_ranking_individual_por_vitorias_e_saldo_de_games(s, fabrica):
+    org = fabrica.atleta("Org")
+    c = _campeonato_de(s, fabrica, org, "beach_tennis", 8, atletas_por_equipe=1)
+    chaves.sortear(s, c.id, org, "super8")
+    jogos = _jogos(s, c)
+    # a dupla A vence todos os jogos por 6×3
+    for j in jogos:
+        chaves.iniciar(s, c.id, j.id, org)
+        chaves.definir_sets(s, c.id, j.id, org, [[6, 3]])
+        chaves.encerrar(s, c.id, j.id, org)
+    tab = chaves.classificacao_super8(_jogos(s, c), list(s.scalars(select(Equipe).where(Equipe.campeonato_id == c.id))), c)
+    assert len(tab) == 8 and sum(L["vitorias"] for L in tab) == 28 and all(L["jogos"] == 7 for L in tab)
+    assert sum(L["pro"] for L in tab) == 14 * (6 + 3) * 2 and sum(L["saldo"] for L in tab) == 0  # cada jogo conta 9 games para os 4 atletas
+    assert tab[0]["vitorias"] >= tab[-1]["vitorias"]
+    d = chaves.chaveamento(s, c, org)
+    assert d["formato"] == "super8" and d["campeao"]["id"] == tab[0]["equipe"]["id"] and "+" in d["rodadas"][0]["jogos"][0]["a"]["nome"]
+    assert s.get(type(c), c.id).status == "encerrado"
