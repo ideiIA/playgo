@@ -84,7 +84,7 @@
     } else if (d.formato === 'eliminatoria') {
       h += '<div class="ch-chave">' + d.rodadas.map((r) => '<div class="ch-coluna"><h4>' + esc(r.nome) + '</h4><div class="ch-col-jogos">' + r.jogos.map((j) => cartao(j, href)).join('') + '</div></div>').join('') + '</div>';
     } else if (d.formato === 'super8') {
-      h += '<h3 class="ch-tit">Ranking</h3>' + tabelaSuper8(d.classificacao);
+      (d.ranking_super8 || []).forEach((g) => { h += '<h3 class="ch-tit">' + (g.grupo ? 'Ranking — Grupo ' + esc(g.grupo) : 'Ranking') + '</h3>' + tabelaSuper8(g.classificacao); });
       h += d.rodadas.map((r) => '<h3 class="ch-tit">' + esc(r.nome) + '</h3><div class="ch-grade">' + r.jogos.map((j) => cartao(j, href)).join('') + '</div>').join('');
     } else {
       h += '<h3 class="ch-tit">Classificação</h3>' + tabela(d.classificacao, d.regras_placar && d.regras_placar.modo === 'sets');
@@ -356,7 +356,7 @@
         (!jaTem || d.pode_sortear_de_novo ? '<div class="ch-campo"><label><input type="radio" name="formato" value="eliminatoria" checked> <b>Eliminatória (mata-mata)</b> — quem perde sai; equipes sem adversário passam direto.</label>' +
           '<label><input type="radio" name="formato" value="grupos"> <b>Fase de grupos + mata-mata</b> — grupos todos contra todos; os melhores de cada grupo seguem para o mata-mata.</label>' +
           '<label><input type="radio" name="formato" value="pontos_corridos"> <b>Pontos corridos</b> — todos jogam contra todos; vale a classificação.</label>' +
-          '<label><input type="radio" name="formato" value="super8"> <b>Super 8</b> — 4 duplas inscritas (2 atletas por equipe) ou 8 atletas individuais. O 1º jogo é entre as duplas inscritas; depois os atletas se misturam (7 rodadas, 2 jogos cada) e o ranking é individual.</label></div>' +
+          '<label><input type="radio" name="formato" value="super8"> <b>Super 8</b> — grupos de 4 duplas inscritas (8 atletas; 8 duplas = 2 grupos). O 1º jogo é entre as duplas inscritas; depois os atletas se misturam (7 rodadas) e o ranking é individual, por grupo. Também aceita atletas individuais (1 por equipe, de 8 em 8).</label></div>' +
           '<div class="ch-campo" id="op-grupos" hidden><div style="display:flex;gap:10px;flex-wrap:wrap"><label>Grupos <select id="n-grupos">' + opcoes(2, Math.max(2, Math.floor(d.equipes_confirmadas / 2)), 2) + '</select></label>' +
           '<label>Classificam por grupo <select id="n-classif">' + opcoes(1, 4, 2) + '</select></label></div><p class="ch-sub">Cada grupo precisa de pelo menos 2 equipes e recebe no máximo um cabeça de chave.</p></div>' +
           '<div class="ch-campo" id="op-cabecas"><b>Cabeças de chave</b><p class="ch-sub" style="margin:0">Opcional. Numere as equipes mais fortes (1 = principal); elas ficam nas melhores posições e, nos grupos, em grupos diferentes. As demais são sorteadas.</p>' +

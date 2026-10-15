@@ -555,7 +555,7 @@ def test_beach_tennis_nasce_em_games_e_o_set_fecha_em_6x4_7x5_ou_7x6(s, fabrica)
 def test_super8_exige_8_atletas_individuais_e_gera_7_rodadas_com_duplas_que_giram(s, fabrica):
     org = fabrica.atleta("Org")
     c = _campeonato_de(s, fabrica, org, "beach_tennis", 7, atletas_por_equipe=1)
-    with pytest.raises(ErroNegocio, match="exatamente 8"):
+    with pytest.raises(ErroNegocio, match="8, 16, 24"):
         chaves.sortear(s, c.id, org, "super8")
     campeonatos.inscrever_equipe(s, c.id, fabrica.atleta("Oitavo"), "Atleta 8")
     for e in s.query(Equipe).filter(Equipe.campeonato_id == c.id, Equipe.status != "confirmada").all():
@@ -636,4 +636,42 @@ def test_super8_com_duplas_1o_jogo_e_dupla_contra_dupla_depois_mistura(s, fabric
     chaves.sortear(s, c.id, org, "super8")
     assert s.query(Equipe).filter(Equipe.campeonato_id == c.id, Equipe.status == "atleta").count() == 8
     d = chaves.chaveamento(s, c, org)
-    assert len(d["classificacao"]) == 8 and d["classificacao"][0]["equipe"]["nome"].startswith("@")
+    tab = d["ranking_super8"][0]["classificacao"]
+    assert len(tab) == 8 and tab[0]["equipe"]["nome"].startswith("@")
+
+
+def test_super8_com_8_duplas_do_elenco_faz_2_grupos_e_a_rodada_1_e_a_dupla_inscrita(s, fabrica):
+    from playgo import elenco
+
+    org = fabrica.atleta("Org")
+    hoje = agora().date()
+    c = campeonatos.criar(
+        s, org,
+        NovoCampeonato(modalidade_id=fabrica.mod("beach_tennis").id, nome="Super 8 elenco", data_inicio=hoje + timedelta(days=20), inscricao_ate=hoje + timedelta(days=10),
+                       max_equipes=16, atletas_por_equipe=2, local_nome="G", latitude=PERTO[0], longitude=PERTO[1]),
+    )
+    campeonatos.editar(s, c.id, org, cadastro_elenco=True)
+    inscritas = {}
+    for i in range(8):
+        cap = fabrica.atleta(f"Cap{i}")
+        e = campeonatos.inscrever_equipe(s, c.id, cap, f"{i + 1}")
+        elenco.adicionar(s, e.id, cap, f"Atleta {i + 1}A", f"RG-{i}-1")
+        elenco.adicionar(s, e.id, cap, f"Atleta {i + 1}B", f"RG-{i}-2")
+        if i < 7:
+            campeonatos.decidir_equipe(s, e.id, org, True)
+        inscritas[e.id] = {f"Atleta {i + 1}A", f"Atleta {i + 1}B"}
+    ultima = max(inscritas)
+    with pytest.raises(ErroNegocio, match="4, 8, 12"):
+        chaves.sortear(s, c.id, org, "super8")  # 7 confirmadas
+    campeonatos.decidir_equipe(s, ultima, org, True)
+    chaves.sortear(s, c.id, org, "super8")
+    jogos = _jogos(s, c)
+    assert len(jogos) == 28 and {j.grupo for j in jogos} == {"A", "B"}
+    nomes = {a.id: a.nome for a in s.scalars(select(Equipe).where(Equipe.campeonato_id == c.id, Equipe.status == "atleta"))}
+    assert len(nomes) == 16
+    for j in (x for x in jogos if x.rodada == 1):
+        for a, b in ((j.equipe_a_id, j.equipe_a2_id), (j.equipe_b_id, j.equipe_b2_id)):
+            assert {nomes[a], nomes[b]} in inscritas.values()  # a dupla inscrita joga junta no 1º jogo
+    d = chaves.chaveamento(s, c, org)
+    assert [g["grupo"] for g in d["ranking_super8"]] == ["A", "B"] and all(len(g["classificacao"]) == 8 for g in d["ranking_super8"])
+    assert d["campeao"] is None
