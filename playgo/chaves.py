@@ -23,6 +23,7 @@ from .models import (
     C_CANCELADO,
     C_ENCERRADO,
     E_CONFIRMADA,
+    M_CONFIRMADO,
     J_AGENDADO,
     J_AO_VIVO,
     J_ENCERRADO,
@@ -37,6 +38,8 @@ from .models import (
     JogoSet,
     Usuario,
 )
+
+E_ATLETA = "atleta"  # registro individual criado no sorteio do Super 8 com duplas (não é uma inscrição)
 
 FORMATOS = {
     "eliminatoria": "Eliminatória (mata-mata)",
@@ -173,10 +176,17 @@ def sortear(
     elif formato == "pontos_corridos":
         cabecas = []  # todos jogam contra todos: a posição na tabela não depende do sorteio
     elif formato == "super8":
-        if len(equipes) != 8:
-            raise ErroNegocio(f"O Super 8 precisa de exatamente 8 atletas confirmados (há {len(equipes)}).")
-        if c.atletas_por_equipe != 1:
-            raise ErroNegocio("O Super 8 é individual: edite o campeonato e deixe 'Atletas por equipe' em 1 (cada atleta se inscreve sozinho).")
+        if c.atletas_por_equipe == 2:
+            if len(equipes) != 4:
+                raise ErroNegocio(f"O Super 8 com duplas precisa de exatamente 4 duplas confirmadas (há {len(equipes)}).")
+            for e in equipes:
+                if len(_atletas_da_dupla(s, e)) != 2:
+                    raise ErroNegocio(f"A dupla \"{e.nome}\" precisa de 2 atletas confirmados (o convite do parceiro precisa ser aceito).")
+        elif c.atletas_por_equipe == 1:
+            if len(equipes) != 8:
+                raise ErroNegocio(f"O Super 8 individual precisa de exatamente 8 atletas confirmados (há {len(equipes)}).")
+        else:
+            raise ErroNegocio("O Super 8 usa duplas (2 atletas por equipe) ou atletas individuais (1). Edite o campeonato e ajuste 'Atletas por equipe'.")
         cabecas = []  # as duplas mudam a cada rodada; a posição no sorteio só define a tabela
     _limpar_chaves(s, c)
     if formato == "super8":  # cada jogo é um set único em games; a organização pode mudar a quantidade de games antes do 1º jogo
@@ -198,7 +208,9 @@ def sortear(
             for e in lista:
                 s.add(ChaveEquipe(campeonato_id=c.id, equipe_id=e.id, grupo=LETRAS[g], cabeca=cabecas.index(e.id) + 1 if e.id in cabecas else None))
     elif formato == "super8":
-        _montar_super8(s, c, resto)
+        # com duplas inscritas, a 1ª rodada é dupla × dupla; da 2ª em diante os atletas se misturam
+        atletas = _criar_atletas_das_duplas(s, c, resto) if c.atletas_por_equipe == 2 else resto
+        _montar_super8(s, c, atletas)
     else:
         _montar_pontos_corridos(s, c, resto)
     c.grupos_qtd, c.classificam = (grupos, q) if formato == "grupos" else (None, None)
@@ -224,6 +236,8 @@ def _limpar_chaves(s: SessaoORM, c: Campeonato) -> None:
         s.delete(j)
     for k in s.scalars(select(ChaveEquipe).where(ChaveEquipe.campeonato_id == c.id)):
         s.delete(k)
+    for a in s.scalars(select(Equipe).where(Equipe.campeonato_id == c.id, Equipe.status == E_ATLETA)):
+        s.delete(a)
     s.flush()
 
 
@@ -287,6 +301,30 @@ def _montar_pontos_corridos(s: SessaoORM, c: Campeonato, equipes: list[Equipe], 
             s.add(Jogo(campeonato_id=c.id, rodada=r + 1, posicao=pos, rodada_nome=nome, equipe_a_id=a.id, equipe_b_id=b.id, grupo=grupo, fase=fase))
             pos += 1
         lista = [lista[0], lista[-1], *lista[1:-1]]
+
+
+def _atletas_da_dupla(s: SessaoORM, e: Equipe) -> list[Usuario]:
+    ids = set(s.scalars(select(EquipeMembro.usuario_id).where(EquipeMembro.equipe_id == e.id, EquipeMembro.status == M_CONFIRMADO))) | {e.capitao_id}
+    return [s.get(Usuario, i) for i in sorted(ids)]
+
+
+def _criar_atletas_das_duplas(s: SessaoORM, c: Campeonato, duplas: list[Equipe]) -> list[Equipe]:
+    """Super 8 com duplas: cada atleta ganha um registro individual (status "atleta", fora de todas as listas de inscrição) para entrar
+    nas duplas que mudam a cada rodada. A ordem é dupla a dupla, então os índices 0-1, 2-3, 4-5 e 6-7 da tabela são as duplas inscritas."""
+    saida: list[Equipe] = []
+    for d in duplas:
+        for u in _atletas_da_dupla(s, d):
+            a = Equipe(campeonato_id=c.id, capitao_id=u.id, nome=u.arroba, status=E_ATLETA)
+            s.add(a)
+            saida.append(a)
+    s.flush()
+    return saida
+
+
+def _atletas_do_super8(s: SessaoORM, c: Campeonato) -> list[Equipe]:
+    """Os atletas que aparecem no ranking: os registros individuais criados no sorteio ou, no Super 8 individual, as próprias inscrições."""
+    atletas = list(s.scalars(select(Equipe).where(Equipe.campeonato_id == c.id, Equipe.status == E_ATLETA).order_by(Equipe.id)))
+    return atletas or list(s.scalars(select(Equipe).where(Equipe.campeonato_id == c.id, Equipe.status == E_CONFIRMADA).order_by(Equipe.id)))
 
 
 def _montar_super8(s: SessaoORM, c: Campeonato, atletas: list[Equipe]) -> None:
@@ -747,8 +785,7 @@ def _fechar_campeonato_se_acabou(s: SessaoORM, c: Campeonato) -> None:
     if jogos and all(j.status == J_ENCERRADO for j in jogos) and c.status != C_CANCELADO:
         c.status = C_ENCERRADO
         if c.formato == "super8":
-            atletas = list(s.scalars(select(Equipe).where(Equipe.campeonato_id == c.id, Equipe.status == E_CONFIRMADA)))
-            lider = classificacao_super8(jogos, atletas)[0]["equipe"]
+            lider = classificacao_super8(jogos, _atletas_do_super8(s, c))[0]["equipe"]
             _avisar_equipes(s, c, [lider["id"]], f"🏆 Campeão do Super 8: {c.nome}!", f"{lider['nome']} terminou em 1º lugar.", f"campeao:{c.id}")
         if c.formato in ("eliminatoria", "grupos"):
             final = max((j for j in jogos if j.fase != "grupos"), key=lambda j: j.rodada)
@@ -942,13 +979,13 @@ def chaveamento(s: SessaoORM, c: Campeonato, u: Usuario) -> dict:
     elif c.formato == "pontos_corridos" and chave and all(j.status == J_ENCERRADO for j in chave):
         campeao = classificacao(jogos, confirmadas, c)[0]["equipe"]
     elif c.formato == "super8" and chave and all(j.status == J_ENCERRADO for j in chave):
-        campeao = classificacao_super8(jogos, confirmadas, c)[0]["equipe"]
+        campeao = classificacao_super8(jogos, _atletas_do_super8(s, c), c)[0]["equipe"]
     pendentes = campeonatos.contar_pendentes(s, c)
     return {
         "campeonato": {"id": c.id, "nome": c.nome, "status": c.status, "modalidade": c.modalidade.nome, "icone": c.modalidade.icone},
         "formato": c.formato, "formato_nome": FORMATOS.get(c.formato or ""), "sorteado_em": _dt(c.sorteado_em), "semente": str(c.sorteio_semente) if c.sorteio_semente else None,  # texto: passa de 2^53 e o JavaScript perderia dígitos
         "rodadas": rodadas, "ao_vivo": [jogo_dict(j) for j in jogos if j.status == J_AO_VIVO],
-        "classificacao": classificacao(chave, confirmadas, c) if c.formato == "pontos_corridos" else classificacao_super8(chave, confirmadas, c) if c.formato == "super8" else [],
+        "classificacao": classificacao(chave, confirmadas, c) if c.formato == "pontos_corridos" else classificacao_super8(chave, _atletas_do_super8(s, c), c) if c.formato == "super8" else [],
         "campeao": campeao,
         "regras_placar": regras_placar(c), "placar_travado": any(j.status != J_AGENDADO and not j.folga for j in jogos),
         "grupos": grupos_out, "classificam": c.classificam, "cabecas": cabecas, "duracao_jogo_min": c.duracao_jogo_min,

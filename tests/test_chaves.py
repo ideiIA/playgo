@@ -600,3 +600,40 @@ def test_super8_ranking_individual_por_vitorias_e_saldo_de_games(s, fabrica):
     d = chaves.chaveamento(s, c, org)
     assert d["formato"] == "super8" and d["campeao"]["id"] == tab[0]["equipe"]["id"] and "+" in d["rodadas"][0]["jogos"][0]["a"]["nome"]
     assert s.get(type(c), c.id).status == "encerrado"
+
+
+def test_super8_com_duplas_1o_jogo_e_dupla_contra_dupla_depois_mistura(s, fabrica):
+    org = fabrica.atleta("Org")
+    hoje = agora().date()
+    c = campeonatos.criar(
+        s, org,
+        NovoCampeonato(modalidade_id=fabrica.mod("beach_tennis").id, nome="Super 8 duplas", data_inicio=hoje + timedelta(days=20), inscricao_ate=hoje + timedelta(days=10),
+                       max_equipes=8, atletas_por_equipe=2, local_nome="G", latitude=PERTO[0], longitude=PERTO[1]),
+    )
+    duplas = {}
+    for i in range(4):
+        cap, par = fabrica.atleta(f"Cap{i}"), fabrica.atleta(f"Par{i}")
+        e = campeonatos.inscrever_equipe(s, c.id, cap, f"Dupla {i + 1}", convidados=[par.id])
+        campeonatos.responder_convite(s, e.id, par, True)
+        campeonatos.decidir_equipe(s, e.id, org, True)
+        duplas[e.id] = {cap.id, par.id}
+    chaves.sortear(s, c.id, org, "super8")
+    jogos = _jogos(s, c)
+    assert len(jogos) == 14
+    atletas = {a.id: a.capitao_id for a in s.scalars(select(Equipe).where(Equipe.campeonato_id == c.id, Equipe.status == "atleta"))}
+    assert len(atletas) == 8
+    # rodada 1: cada lado é exatamente uma dupla inscrita
+    for j in (x for x in jogos if x.rodada == 1):
+        for a, b in ((j.equipe_a_id, j.equipe_a2_id), (j.equipe_b_id, j.equipe_b2_id)):
+            assert {atletas[a], atletas[b]} in duplas.values()
+    # nas demais rodadas nenhuma dupla inscrita se repete como parceria
+    for j in (x for x in jogos if x.rodada > 1):
+        for a, b in ((j.equipe_a_id, j.equipe_a2_id), (j.equipe_b_id, j.equipe_b2_id)):
+            assert {atletas[a], atletas[b]} not in duplas.values()
+    # as duplas inscritas continuam as únicas inscrições; os atletas não aparecem como inscrição
+    assert campeonatos.equipes_ativas(s, c) == 4
+    # sortear de novo troca os atletas, sem acumular
+    chaves.sortear(s, c.id, org, "super8")
+    assert s.query(Equipe).filter(Equipe.campeonato_id == c.id, Equipe.status == "atleta").count() == 8
+    d = chaves.chaveamento(s, c, org)
+    assert len(d["classificacao"]) == 8 and d["classificacao"][0]["equipe"]["nome"].startswith("@")
