@@ -94,7 +94,7 @@
     if (!el) return;
     if (!window.L) { el.innerHTML = '<p class="vazio">Mapa indisponível sem conexão. A lista ao lado continua funcionando.</p>'; return; }
     const mapa = L.map(el).setView([centro.latitude, centro.longitude], 13);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(mapa);
+    if (window.PlayGoMapa) PlayGoMapa.preparar(mapa); else L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(mapa);
     L.circleMarker([centro.latitude, centro.longitude], { radius: 8, color: '#fff', weight: 3, fillColor: '#6c4cff', fillOpacity: 1 }).addTo(mapa).bindTooltip('Você');
     const rotas = { atividade: '/atividades/', campeonato: '/campeonatos/', arena: '/arenas/', grupo: '/grupos/', horario: '/arenas/', local: '/locais/' };
     const limites = [[centro.latitude, centro.longitude]];
@@ -121,7 +121,7 @@
     const lat = $(campoLat), lng = $(campoLng);
     const temPonto = lat.value && lng.value;
     const mapa = L.map(el).setView([temPonto ? +lat.value : inicial.latitude, temPonto ? +lng.value : inicial.longitude], 14);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(mapa);
+    const _preparar = (aoEscolher) => (window.PlayGoMapa ? PlayGoMapa.preparar(mapa, { aoEscolher, marcar: false }) : L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(mapa));
     let marcador = null;
     const por = (la, ln, mover) => {
       lat.value = la.toFixed(6); lng.value = ln.toFixed(6);
@@ -131,6 +131,7 @@
     };
     if (temPonto) por(+lat.value, +lng.value, false);
     mapa.on('click', (e) => por(e.latlng.lat, e.latlng.lng, false));
+    _preparar((la, ln) => por(la, ln, false));
     window._seletor = { por, mapa };
   };
   window.usarMinhaLocalizacao = function () {

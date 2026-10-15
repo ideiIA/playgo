@@ -21,6 +21,7 @@
       posicao: {% if usuario.tem_localizacao %}{ lat: {{ usuario.latitude }}, lng: {{ usuario.longitude }} }{% else %}null{% endif %}
     };
   </script>
+  <script src="/static/mapa.js" defer></script>
   <script src="/static/web.js" defer></script>
   <script src="/static/mural.js" defer></script>
 </head>
