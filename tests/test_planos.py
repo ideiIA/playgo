@@ -364,6 +364,22 @@ def test_webhook_atraso_cancelamento_e_ignorados(s, fabrica, asaas):
     assert a.asaas_subscription_id is None and a.cancelada_em
 
 
+def test_webhook_de_cobranca_de_outro_sistema_com_campos_nulos_nao_da_erro(s, fabrica, asaas):
+    """O Asaas manda eventos de todas as cobranças da conta, com externalReference/subscription nulos: responde 'ignorado', nunca 500."""
+    token = "token-do-webhook"
+    outras = [
+        {"event": "PAYMENT_CREATED", "payment": {"id": "pay_outra", "externalReference": None, "subscription": None, "value": 120, "status": "PENDING", "dueDate": None}},
+        {"event": "PAYMENT_RECEIVED", "payment": {"id": "pay_o2", "externalReference": "pedido:77", "subscription": None}},
+        {"event": "PAYMENT_CONFIRMED", "payment": {"id": "pay_o3", "externalReference": "assinatura:nao-e-numero"}},
+        {"event": "PAYMENT_CONFIRMED", "payment": None, "subscription": None},
+        {"event": None},
+        {},
+    ]
+    for corpo in outras:
+        assert cobranca.processar_webhook(s, token, corpo) == "ignorado", corpo
+    assert cobranca.processar_webhook(s, token, ["lista", "inesperada"]) == "ignorado"
+
+
 def test_cancelar_mantem_o_acesso_ate_o_fim_do_periodo_pago(s, fabrica, asaas):
     u = fabrica.atleta("Cancela")
     cobranca.assinar(s, u, "organizador", "52998224725")

@@ -151,16 +151,23 @@ def processar_webhook(s: SessaoORM, token: str, corpo: dict) -> str:
     esperado = settings.asaas_webhook_token
     if not esperado or not secrets.compare_digest(token or "", esperado):
         raise NaoEncontrado("Não autorizado.")
-    evento = corpo.get("event", "")
-    pagamento = corpo.get("payment") or {}
-    sub = corpo.get("subscription") or {}
+    if not isinstance(corpo, dict):
+        return "ignorado"
+    evento = str(corpo.get("event") or "")
+    # O Asaas manda o evento de TODAS as cobranças da conta (inclusive as que não são do PlayGo) e usa null em vários campos
+    pagamento = corpo.get("payment") if isinstance(corpo.get("payment"), dict) else {}
+    sub = corpo.get("subscription") if isinstance(corpo.get("subscription"), dict) else {}
     a = None
     if pagamento.get("subscription"):
-        a = s.scalar(select(Assinatura).where(Assinatura.asaas_subscription_id == pagamento["subscription"]))
+        a = s.scalar(select(Assinatura).where(Assinatura.asaas_subscription_id == str(pagamento["subscription"])))
     if a is None and sub.get("id"):
-        a = s.scalar(select(Assinatura).where(Assinatura.asaas_subscription_id == sub["id"]))
-    if a is None and pagamento.get("externalReference", "").startswith("assinatura:"):
-        a = s.get(Assinatura, int(pagamento["externalReference"].split(":")[1]))
+        a = s.scalar(select(Assinatura).where(Assinatura.asaas_subscription_id == str(sub["id"])))
+    referencia = str(pagamento.get("externalReference") or "")
+    if a is None and referencia.startswith("assinatura:"):
+        try:
+            a = s.get(Assinatura, int(referencia.split(":", 1)[1]))
+        except ValueError:
+            a = None
     if a is None:
         return "ignorado"
     hoje = agora().date()

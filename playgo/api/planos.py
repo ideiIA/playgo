@@ -65,7 +65,10 @@ def cancelar(u: AtualApi, s: Sessao):
 @router.post("/cobranca/asaas")
 async def webhook_asaas(request: Request, s: Sessao, asaas_access_token: str = Header(default="")):
     """Webhook do Asaas (configure em Integrações > Webhooks, com o mesmo token de PLAYGO_ASAAS_WEBHOOK_TOKEN)."""
-    corpo = await request.json()
+    try:
+        corpo = await request.json()
+    except ValueError:  # teste de conexão ou corpo vazio: não é erro nosso nem motivo para o Asaas pausar a fila
+        corpo = {}
     return {"resultado": cobranca.processar_webhook(s, asaas_access_token, corpo)}
 
 
