@@ -528,6 +528,8 @@ class Jogo(Base):
     equipe_a: Mapped[Equipe | None] = relationship(foreign_keys=[equipe_a_id], lazy="joined")
     equipe_b: Mapped[Equipe | None] = relationship(foreign_keys=[equipe_b_id], lazy="joined")
     # Super 8: cada lado é uma dupla (equipe_a + equipe_a2 contra equipe_b + equipe_b2); nos demais formatos ficam vazios
+    ponto_a: Mapped[int] = mapped_column(Integer, default=0)  # pontos do game em andamento (15/30/40…); zeram quando o game termina
+    ponto_b: Mapped[int] = mapped_column(Integer, default=0)
     equipe_a2_id: Mapped[int | None] = mapped_column(ForeignKey("equipes.id", ondelete="SET NULL"))
     equipe_b2_id: Mapped[int | None] = mapped_column(ForeignKey("equipes.id", ondelete="SET NULL"))
     equipe_a2: Mapped[Equipe | None] = relationship(foreign_keys=[equipe_a2_id], lazy="joined")

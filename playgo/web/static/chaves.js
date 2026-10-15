@@ -141,11 +141,22 @@
   function quadroVivo(j, d) {
     const rg = d.regras_placar || { modo: 'simples' };
     const ss = rg.modo === 'sets' ? lerSets(j, rg) : null;
+    const porPonto = !!rg.pontos_no_game;
+    // 6×6 no set comum: tie-break (pontos numéricos). Set decisivo: os pontos já são do set.
+    const decisivo = ss && rg.melhor_de > 1 && ss.numero >= rg.melhor_de;
+    const tie = !!(ss && !decisivo && ss.aberto && ss.aberto.a === rg.pontos_set && ss.aberto.b === rg.pontos_set);
+    const txtPonto = (n) => (tie || n > 3 ? String(n) : ['0', '15', '30', '40'][n]);
     const time = (eq, l) => {
       const pl = ss ? (l === 'a' ? ss.pa : ss.pb) : (l === 'a' ? j.placar_a : j.placar_b);
       const subt = ss ? '<div class="av-sub">Sets: <b>' + (l === 'a' ? j.placar_a : j.placar_b) + '</b></div>' : '';
-      const bt = d.pode_pontuar ? '<div class="av-bt"><button class="ch-btn grande" data-av="marcar" data-j="' + j.id + '" data-lado="' + l + '" data-d="1">+1</button><button class="ch-btn suave" data-av="marcar" data-j="' + j.id + '" data-lado="' + l + '" data-d="-1">−1</button></div>' : '';
-      return '<div class="av-time"><div class="av-nome">' + esc(eq.nome) + '</div><div class="av-pl">' + pl + '</div>' + subt + bt + '</div>';
+      const pt = porPonto && !decisivo ? '<div class="av-sub">' + (tie ? 'Tie-break' : 'Game') + ': <b class="av-pt">' + txtPonto(l === 'a' ? j.ponto_a : j.ponto_b) + '</b></div>' : '';
+      const base = 'data-j="' + j.id + '" data-lado="' + l + '"';
+      const bt = !d.pode_pontuar ? ''
+        : porPonto && !decisivo
+          ? '<div class="av-bt"><button class="ch-btn grande" data-av="ponto" ' + base + ' data-d="1">+ ponto</button><button class="ch-btn suave" data-av="ponto" ' + base + ' data-d="-1">−1</button></div>' +
+            '<div class="av-bt"><button class="ch-btn suave pequeno" data-av="marcar" ' + base + ' data-d="1" title="Lançar um game inteiro">+ game</button><button class="ch-btn suave pequeno" data-av="marcar" ' + base + ' data-d="-1" title="Tirar um game">− game</button></div>'
+          : '<div class="av-bt"><button class="ch-btn grande" data-av="' + (porPonto ? 'ponto' : 'marcar') + '" ' + base + ' data-d="1">+1</button><button class="ch-btn suave" data-av="' + (porPonto ? 'ponto' : 'marcar') + '" ' + base + ' data-d="-1">−1</button></div>';
+      return '<div class="av-time"><div class="av-nome">' + esc(eq.nome) + '</div><div class="av-pl">' + pl + '</div>' + subt + pt + bt + '</div>';
     };
     const setInfo = ss ? '<div class="av-setinfo">' + (ss.decidido ? 'Jogo decidido — encerre o jogo' : 'Set ' + ss.numero + ' de ' + rg.melhor_de + ' · até ' + ss.alvo + (ss.numero >= rg.melhor_de && rg.melhor_de > 1 ? ' (decisivo)' : '')) +
       (ss.fechados.length ? ' · <span class="ch-sub">' + ss.fechados.map((x) => x.a + '–' + x.b).join(' · ') + '</span>' : '') + '</div>' : '';
@@ -190,6 +201,7 @@
       try {
         if (acao === 'iniciar') await post(base + '/iniciar', {});
         else if (acao === 'marcar') await post(base + '/marcar', { lado: b.dataset.lado, delta: Number(b.dataset.d) });
+        else if (acao === 'ponto') await post(base + '/ponto', { lado: b.dataset.lado, delta: Number(b.dataset.d) });
         else if (acao === 'encerrar') {
           if (!confirm('Encerrar o jogo com o placar atual?')) { b.disabled = false; return; }
           await post(base + '/encerrar', { vencedor_id: venc ? Number(venc) : null });

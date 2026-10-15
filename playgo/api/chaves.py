@@ -119,6 +119,12 @@ def iniciar(campeonato_id: int, jogo_id: int, u: AtualApi, s: Sessao):
     return _devolver(campeonato_id, jogo_id, u, s)
 
 
+@router.post("/{campeonato_id}/jogos/{jogo_id}/ponto")
+def ponto(campeonato_id: int, jogo_id: int, corpo: MarcarIn, u: AtualApi, s: Sessao):
+    chaves.marcar_ponto(s, campeonato_id, jogo_id, u, corpo.lado, corpo.delta)
+    return _devolver(campeonato_id, jogo_id, u, s)
+
+
 @router.post("/{campeonato_id}/jogos/{jogo_id}/marcar")
 def marcar(campeonato_id: int, jogo_id: int, corpo: MarcarIn, u: AtualApi, s: Sessao):
     chaves.marcar(s, campeonato_id, jogo_id, u, corpo.lado, corpo.delta)

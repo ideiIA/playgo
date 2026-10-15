@@ -707,3 +707,82 @@ def test_super8_total_fixo_de_5_games_todos_sao_jogados_e_cada_game_vale_ponto(s
     for eid in (j.equipe_b_id, j.equipe_b2_id):
         assert por_nome[eid]["pontos"] == 2 and por_nome[eid]["derrotas"] == 1
     assert tab[0]["pontos"] == 3  # o ranking é por games feitos
+
+
+def _pontos(s, c, org, j, lado, n):
+    for _ in range(n):
+        chaves.marcar_ponto(s, c.id, j.id, org, lado, 1)
+    return s.get(Jogo, j.id)
+
+
+def test_ponto_a_ponto_15_30_40_e_ponto_de_ouro(s, fabrica):
+    org = fabrica.atleta("Org")
+    c = _campeonato_de(s, fabrica, org, "beach_tennis", 2)
+    chaves.configurar_placar(s, c.id, org, "games", melhor_de=1, pontos_set=6, pontos_tiebreak=10)
+    chaves.sortear(s, c.id, org, "eliminatoria")
+    j = _jogos(s, c)[0]
+    with pytest.raises(ErroNegocio, match="ao vivo"):
+        chaves.marcar_ponto(s, c.id, j.id, org, "a", 1)
+    chaves.iniciar(s, c.id, j.id, org)
+    jj = _pontos(s, c, org, j, "a", 3)  # 40–0
+    assert (jj.ponto_a, jj.ponto_b) == (3, 0) and chaves.texto_do_ponto(jj.ponto_a) == "40"
+    jj = _pontos(s, c, org, j, "b", 3)  # 40–40: ponto de ouro, ninguém tem vantagem
+    assert (jj.ponto_a, jj.ponto_b) == (3, 3)
+    chaves.marcar_ponto(s, c.id, j.id, org, "b", -1)  # corrige o último ponto
+    assert s.get(Jogo, j.id).ponto_b == 2
+    chaves.marcar_ponto(s, c.id, j.id, org, "b", 1)
+    jj = _pontos(s, c, org, j, "b", 1)  # o ponto de ouro fecha o game para B
+    sets = _sets_deste(s, j)
+    assert (jj.ponto_a, jj.ponto_b) == (0, 0) and (sets[0].pontos_a, sets[0].pontos_b) == (0, 1)
+    # game fechado por 4 pontos seguidos
+    _pontos(s, c, org, j, "a", 4)
+    assert (_sets_deste(s, j)[0].pontos_a, _sets_deste(s, j)[0].pontos_b) == (1, 1)
+
+
+def _sets_deste(s, j):
+    from playgo.models import JogoSet
+
+    return list(s.scalars(select(JogoSet).where(JogoSet.jogo_id == j.id).order_by(JogoSet.numero).execution_options(populate_existing=True)))
+
+
+def test_ponto_a_ponto_tie_break_no_6x6(s, fabrica):
+    org = fabrica.atleta("Org")
+    c = _campeonato_de(s, fabrica, org, "beach_tennis", 2)
+    chaves.configurar_placar(s, c.id, org, "games", melhor_de=1, pontos_set=2, pontos_tiebreak=10)  # set curto de 2 games para o teste
+    chaves.sortear(s, c.id, org, "eliminatoria")
+    j = _jogos(s, c)[0]
+    chaves.iniciar(s, c.id, j.id, org)
+    for lado in ("a", "b", "a", "b"):  # 1×1 e depois 2×2 não, 2 games por set: vai a 2×2
+        _pontos(s, c, org, j, lado, 4)
+    st = _sets_deste(s, j)[0]
+    assert (st.pontos_a, st.pontos_b) == (2, 2)  # N×N: tie-break
+    _pontos(s, c, org, j, "a", 6)
+    assert not _sets_deste(s, j)[0].encerrado and s.get(Jogo, j.id).ponto_a == 6
+    _pontos(s, c, org, j, "b", 6)  # 6–6 no tie-break: continua
+    _pontos(s, c, org, j, "a", 1)  # 7–6: ainda sem 2 de vantagem
+    assert not _sets_deste(s, j)[0].encerrado
+    _pontos(s, c, org, j, "a", 1)  # 8–6 fecha o tie-break: 3×2 e o set termina
+    st = _sets_deste(s, j)[0]
+    assert (st.pontos_a, st.pontos_b) == (3, 2) and st.encerrado and s.get(Jogo, j.id).placar_a == 1
+
+
+def test_ponto_a_ponto_no_total_fixo_e_so_em_games(s, fabrica):
+    org = fabrica.atleta("Org")
+    c = _campeonato_de(s, fabrica, org, "futsal", 2)
+    chaves.sortear(s, c.id, org, "eliminatoria")
+    j = _jogos(s, c)[0]
+    chaves.iniciar(s, c.id, j.id, org)
+    with pytest.raises(ErroNegocio, match="não conta os pontos"):
+        chaves.marcar_ponto(s, c.id, j.id, org, "a", 1)
+    c2 = _campeonato_de(s, fabrica, org, "beach_tennis", 2)
+    chaves.configurar_placar(s, c2.id, org, "total", melhor_de=1, pontos_set=2)
+    chaves.sortear(s, c2.id, org, "eliminatoria")
+    j2 = _jogos(s, c2)[0]
+    chaves.iniciar(s, c2.id, j2.id, org)
+    _pontos(s, c2, org, j2, "a", 4)
+    _pontos(s, c2, org, j2, "b", 4)
+    jj = s.get(Jogo, j2.id)
+    assert (jj.placar_a, jj.placar_b) == (1, 1)
+    with pytest.raises(ErroNegocio, match="já foram disputados"):
+        chaves.marcar_ponto(s, c2.id, j2.id, org, "a", 1)
+    chaves.encerrar(s, c2.id, j2.id, org, vencedor_id=jj.equipe_a_id)  # 1×1 num mata-mata: desempate pela organização

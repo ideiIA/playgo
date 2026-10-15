@@ -425,6 +425,7 @@ def regras_placar(c: Campeonato) -> dict:
     return {
         "modo": "sets" if modo_sets(c) else "simples", "estilo": c.placar_modo if (modo_sets(c) or c.placar_modo == "total") else "simples",
         "total_games": (c.pontos_set or 5) if c.placar_modo == "total" else None,
+        "pontos_no_game": c.placar_modo in ("games", "total"),
         "unidade": "games" if c.placar_modo == "games" else "pontos", "melhor_de": melhor_de, "sets_para_vencer": melhor_de // 2 + 1,
         "pontos_set": c.pontos_set or 25, "pontos_tiebreak": c.pontos_tiebreak or 15, "diferenca": c.diferenca_set or 2,
     }
@@ -683,6 +684,13 @@ def marcar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario, lado: s
     _exigir_ao_vivo(j)
     if lado not in ("a", "b") or delta not in (1, -1):
         raise ErroNegocio("Marcação inválida.")
+    if delta > 0 and c.placar_modo in ("games", "total"):
+        j.ponto_a = j.ponto_b = 0  # game lançado à mão: os pontos do game em andamento deixam de valer
+    return _dar_game(s, c, j, por, lado, delta)
+
+
+def _dar_game(s: SessaoORM, c: Campeonato, j: Jogo, por: Usuario, lado: str, delta: int) -> Jogo:
+    """Soma (ou tira) um game do lado: no set em andamento (por sets/games) ou no placar simples."""
     if modo_sets(c):
         return _marcar_sets(s, c, j, por, lado, delta)
     atual = j.placar_a if lado == "a" else j.placar_b
@@ -700,6 +708,76 @@ def marcar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario, lado: s
     auditoria.registrar(s, por.id, "jogo_placar", "jogo", j.id, placar=f"{j.placar_a}x{j.placar_b}")
     s.commit()
     return j
+
+
+PONTOS_DO_GAME = ("0", "15", "30", "40")
+
+
+def texto_do_ponto(n: int) -> str:
+    return PONTOS_DO_GAME[n] if n < len(PONTOS_DO_GAME) else str(n)
+
+
+def _situacao_do_game(s: SessaoORM, c: Campeonato, j: Jogo) -> str:
+    """"normal" (primeiro a 4 pontos; 40-40 é o ponto de ouro), "tiebreak" (6×6: primeiro a 7 com 2 de vantagem)
+    ou "pontos" (set decisivo: os pontos já são a contagem do set)."""
+    if c.placar_modo == "total":
+        return "normal"
+    sets = _sets_do_jogo(s, j)
+    atual = sets[-1] if sets and not sets[-1].encerrado else None
+    numero = atual.numero if atual else len(sets) + 1
+    r = regras_placar(c)
+    if r["melhor_de"] > 1 and numero >= r["melhor_de"]:
+        return "pontos"
+    ga, gb = (atual.pontos_a, atual.pontos_b) if atual else (0, 0)
+    return "tiebreak" if ga == gb == r["pontos_set"] else "normal"
+
+
+def marcar_ponto(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario, lado: str, delta: int) -> Jogo:
+    """Ponto dentro do game, como no beach tennis: 15, 30, 40 e o ponto de ouro (sem vantagem: no 40×40 o próximo ponto decide).
+    Quem fecha o game soma um game ao placar. No 6×6 joga-se o tie-break (7 pontos, 2 de vantagem) e no set decisivo os pontos
+    contam direto. Disponível nas pontuações por games e total fixo de games."""
+    c, j = _travar(s, campeonato_id, jogo_id)
+    _exigir_pontuar(s, c, por)
+    _exigir_ao_vivo(j)
+    if lado not in ("a", "b") or delta not in (1, -1):
+        raise ErroNegocio("Marcação inválida.")
+    if c.placar_modo not in ("games", "total"):
+        raise ErroNegocio("Este campeonato não conta os pontos dentro do game: use a pontuação por games ou total fixo de games.")
+    situacao = _situacao_do_game(s, c, j)
+    if situacao == "pontos":
+        return _dar_game(s, c, j, por, lado, delta)  # set decisivo: cada ponto já é um ponto do set
+    nome = _nome_lado(j, lado)
+    pa, pb = j.ponto_a, j.ponto_b
+    if delta < 0:
+        if (pa if lado == "a" else pb) <= 0:
+            return _dar_game(s, c, j, por, lado, -1)  # game recém-fechado: corrige o game
+        if lado == "a":
+            j.ponto_a -= 1
+        else:
+            j.ponto_b -= 1
+        _evento(s, j, "ponto", por, f"Correção: −1 ponto para {nome}", None)
+        s.commit()
+        return j
+    if modo_total(c) and j.placar_a + j.placar_b >= _total_games(c):
+        raise ErroNegocio(f"Os {_total_games(c)} games do jogo já foram disputados. Encerre o jogo (ou corrija com −1).")
+    if modo_sets(c) and max(j.placar_a, j.placar_b) >= regras_placar(c)["sets_para_vencer"]:
+        raise ErroNegocio("O jogo já está decidido. Encerre-o (ou corrija com −1).")
+    if lado == "a":
+        j.ponto_a += 1
+    else:
+        j.ponto_b += 1
+    pa, pb = j.ponto_a, j.ponto_b
+    minimo = 7 if situacao == "tiebreak" else 4
+    meu, outro = (pa, pb) if lado == "a" else (pb, pa)
+    fechou = meu >= minimo and (meu - outro >= 2 if situacao == "tiebreak" else True)
+    if not fechou:
+        legenda = f"{pa}–{pb}" if situacao == "tiebreak" else f"{texto_do_ponto(pa)}–{texto_do_ponto(pb)}" + (" (ponto de ouro)" if pa == pb == 3 else "")
+        _evento(s, j, "ponto", por, f"Ponto {nome} · {legenda}", None)
+        s.commit()
+        return j
+    j.ponto_a = j.ponto_b = 0
+    _evento(s, j, "ponto", por, f"Ponto {nome} fecha o game ({pa}–{pb}{' no tie-break' if situacao == 'tiebreak' else ''})", None)
+    return _dar_game(s, c, j, por, lado, 1)
 
 
 def definir_placar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario, a: int, b: int) -> Jogo:
@@ -756,6 +834,7 @@ def encerrar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario, vence
     else:
         j.vencedor_id, j.desempate = None, False
     j.status, j.encerrado_em = J_ENCERRADO, agora()
+    j.ponto_a = j.ponto_b = 0
     vencedor = j.equipe_a if j.vencedor_id == j.equipe_a_id else j.equipe_b if j.vencedor_id == j.equipe_b_id else None
     parciais = " (" + ", ".join(f"{x.pontos_a}-{x.pontos_b}" for x in _sets_do_jogo(s, j) if x.encerrado) + ")" if modo_sets(c) else ""
     texto = f"Fim de jogo: {j.placar_a} x {j.placar_b}{parciais}" + (f" — {_nome(vencedor)} vence no desempate" if j.desempate else "")
@@ -904,7 +983,7 @@ def _lado(j: Jogo, lado: str) -> dict | None:
 def jogo_dict(j: Jogo) -> dict:
     return {
         "id": j.id, "rodada": j.rodada, "rodada_nome": j.rodada_nome, "fase": j.fase, "grupo": j.grupo, "posicao": j.posicao, "a": _lado(j, "a"), "b": _lado(j, "b"),
-        "placar_a": j.placar_a, "placar_b": j.placar_b, "status": j.status, "vencedor_id": j.vencedor_id, "desempate": j.desempate, "folga": j.folga,
+        "placar_a": j.placar_a, "placar_b": j.placar_b, "ponto_a": j.ponto_a or 0, "ponto_b": j.ponto_b or 0, "status": j.status, "vencedor_id": j.vencedor_id, "desempate": j.desempate, "folga": j.folga,
         "inicio_previsto": _dt(j.inicio_previsto), "local": j.local, "iniciado_em": _dt(j.iniciado_em),
         "sets": [{"numero": x.numero, "a": x.pontos_a, "b": x.pontos_b, "encerrado": x.encerrado} for x in j.sets],
     }

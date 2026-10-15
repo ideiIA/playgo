@@ -58,6 +58,8 @@ _COLUNAS_NOVAS: tuple[str, ...] = (
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS grupo varchar(2)",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS equipe_a2_id integer REFERENCES equipes(id) ON DELETE SET NULL",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS equipe_b2_id integer REFERENCES equipes(id) ON DELETE SET NULL",
+    "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS ponto_a integer NOT NULL DEFAULT 0",
+    "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS ponto_b integer NOT NULL DEFAULT 0",
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS sorteado_em timestamp",
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS sorteio_semente bigint",
     # Plano "Usuário" (antes "Atleta"): só vê e publica no feed. A linha antiga, se existir, é ajustada uma única vez (só casa com o nome antigo).
