@@ -188,7 +188,8 @@
       const rotuloSinal = { active: '✅ sinal ativo', inactive: 'sem sinal ainda', ready: 'sem sinal ainda', created: 'sem sinal ainda', error: '❌ erro no sinal' };
       let temporizador = null;
       const desenhar = (d) => {
-        cartao.hidden = false;
+        cartao.hidden = !d.estado; // sem transmissão preparada para este jogo: nada de chave nem botões
+        if (!d.estado) return;
         t('yt-titulo').textContent = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : '';
         t('yt-estado').textContent = rotuloEstado[d.estado] || d.estado || '—';
         t('yt-sinal').textContent = d.sinal ? (rotuloSinal[d.sinal.estado] || d.sinal.estado) + (d.sinal.saude && d.sinal.saude !== 'noData' ? ' · qualidade ' + d.sinal.saude : '') : 'sem sinal';
