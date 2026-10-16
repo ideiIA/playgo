@@ -4,7 +4,7 @@
   <a href="/campeonatos/{{ k.id }}" class="{{ 'ativa' if ativa == 'geral' }}">Visão geral</a>
   <a href="/campeonatos/{{ k.id }}/chaves" class="{{ 'ativa' if ativa == 'chaves' }}">🏆 Chaves</a>
   <a href="/campeonatos/{{ k.id }}/ao-vivo" class="{{ 'ativa' if ativa in ('ao_vivo', 'jogo') }}">🔴 Ao vivo</a>
-  {% if k.pode_telao %}<a href="/campeonatos/{{ k.id }}/telao" class="{{ 'ativa' if ativa == 'telao' }}">📺 Telão</a>{% endif %}
+  <a href="/campeonatos/{{ k.id }}/telao" class="{{ 'ativa' if ativa == 'telao' }}">📺 Telão</a>
   {% if k.sou_gestor %}<a href="/campeonatos/{{ k.id }}/sorteio" class="{{ 'ativa' if ativa == 'sorteio' }}">🎲 Sorteio</a>
   <a href="/campeonatos/{{ k.id }}/editar" class="{{ 'ativa' if ativa == 'editar' }}">✏️ Editar</a>{% endif %}
 </nav>

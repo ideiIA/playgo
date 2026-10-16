@@ -55,6 +55,9 @@
     .conexao { position: fixed; right: 12px; top: 8px; font-size: 12px; opacity: .6; } .conexao.erro { color: #ffb4b4; opacity: 1; }
     .erro-tela { height: 100vh; display: grid; place-content: center; text-align: center; padding: 24px; } .erro-tela h1 { font-size: clamp(26px, 4vw, 56px); }
     .dica { position: fixed; left: 12px; top: 8px; font-size: 12px; opacity: .55; }
+    .espec { position: fixed; right: 12px; bottom: 56px; display: flex; gap: 10px; align-items: center; background: rgba(15, 12, 45, .78); border: 1px solid rgba(255,255,255,.25); border-radius: 14px; padding: 8px 12px; font-size: 14px; z-index: 5; max-width: calc(100vw - 24px); }
+    .espec a { color: #fff; font-weight: 800; text-decoration: none; white-space: nowrap; } .espec select { max-width: 52vw; background: #fff; color: #14213d; border: 0; border-radius: 8px; padding: 6px 8px; font: inherit; }
+    body.sem-cursor .espec { opacity: 0; transition: opacity .3s; }
     @media (max-width: 700px) { .placar { grid-template-columns: 1fr; } .x { display: none; } footer { grid-template-columns: 1fr; } }
   </style>
 </head>
@@ -69,9 +72,17 @@
   </div>
   <div class="dots" id="pontos"></div>
   <div class="conexao" id="conexao"></div>
+  {% if espectador %}
+  <div class="espec" id="espec">
+    <a href="{{ voltar }}" title="Voltar ao campeonato">← Campeonato</a>
+    <label>Jogo <select id="sel-jogo"><option value="">Automático (o jogo em destaque)</option></select></label>
+  </div>
+  {% endif %}
   <div class="dica" id="dica">Toque ou aperte F para tela cheia</div>
   <script>
-    const TOKEN = {{ token|tojson }};
+    const FONTE = {{ fonte|tojson }};
+    const ESPECTADOR = {{ 'true' if espectador else 'false' }};
+    let jogoEscolhido = '';
     const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const $ = (id) => document.getElementById(id);
     let D = null, idx = 0, ultimaTroca = 0;
@@ -123,11 +134,20 @@
         `<div><h3>Últimos resultados</h3>${D.ultimos.slice(0, 3).map((j) => linhaMini(j, true)).join('') || '<div class="linha"><span>—</span></div>'}</div>`;
     }
 
+    function preencherOpcoes() {
+      const sel = document.getElementById('sel-jogo');
+      if (!sel || document.activeElement === sel) return;
+      const antes = jogoEscolhido;
+      sel.innerHTML = '<option value="">Automático (o jogo em destaque)</option>' + (D.opcoes || []).map((o) => `<option value="${o.id}" ${String(o.id) === String(antes) ? 'selected' : ''}>${esc(o.rotulo)}</option>`).join('');
+    }
+    document.addEventListener('change', (e) => { if (e.target.id === 'sel-jogo') { jogoEscolhido = e.target.value; idx = 0; atualizar(); } });
+
     async function atualizar() {
       try {
-        const r = await fetch(`/telao/${encodeURIComponent(TOKEN)}/dados`, { cache: 'no-store' });
+        const r = await fetch(FONTE + (ESPECTADOR && jogoEscolhido ? '?jogo=' + encodeURIComponent(jogoEscolhido) : ''), { cache: 'no-store' });
         if (r.status === 404) { $('conexao').textContent = 'Link do telão inválido ou renovado: peça o novo link.'; $('conexao').className = 'conexao erro'; return; }
         D = await r.json();
+        if (ESPECTADOR) preencherOpcoes();
         $('conexao').textContent = ''; $('conexao').className = 'conexao';
         desenhar();
       } catch (e) { $('conexao').textContent = 'Reconectando…'; $('conexao').className = 'conexao erro'; }
@@ -139,7 +159,7 @@
 
     // tela cheia, tela sempre acesa e cursor escondido (TV)
     const cheia = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen && document.documentElement.requestFullscreen());
-    document.addEventListener('click', cheia);
+    document.addEventListener('click', (e) => { if (!e.target.closest('.espec')) cheia(); });
     document.addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'f') cheia(); });
     let luz = null;
     async function acender() { try { if (navigator.wakeLock) luz = await navigator.wakeLock.request('screen'); } catch (e) { /* sem suporte */ } }

@@ -101,3 +101,39 @@ def test_telao_link_secreto_automatico_fixo_e_ponto_do_game(banco):
         # renovar derruba o link antigo
         novo = cli.post(f"/api/v1/campeonatos/{cid}/telao/renovar", headers=org).json()["link"]
         assert novo != p["link"] and anonimo.get(f"/telao/{token}/dados").status_code == 404 and anonimo.get(novo + "/dados").status_code == 200
+
+
+def test_qualquer_usuario_logado_acompanha_o_telao_no_proprio_aparelho_sem_poder_de_organizar(banco):
+    with TestClient(app) as cli:
+        org, org_id = _conta(cli, "Org")
+        _plano(org_id, "organizador")
+        fas = [_conta(cli, f"Cap{i}")[0] for i in range(4)]
+        cid, jogos = _campeonato_com_jogos(cli, org, fas)
+        j1, j2 = jogos[0]["id"], jogos[1]["id"]
+        cli.post(f"/api/v1/campeonatos/{cid}/jogos/{j1}/iniciar", headers=org)
+
+        email = f"{uuid.uuid4().hex[:10]}@teste.local"
+        cli.post("/api/v1/auth/cadastro", json={"nome": "Espectador", "email": email, "senha": "senha-de-teste-1", "usuario": f"u{uuid.uuid4().hex[:12]}", "aceito_termos": True})
+        site = TestClient(app)
+        # sem login não entra
+        assert site.get(f"/campeonatos/{cid}/acompanhar", follow_redirects=False).status_code in (303, 401)
+        assert site.post("/entrar", data={"email": email, "senha": "senha-de-teste-1"}, follow_redirects=False).status_code == 303
+
+        # a página do espectador abre; o painel de controle do telão leva para ela
+        assert "sel-jogo" in site.get(f"/campeonatos/{cid}/acompanhar").text
+        r = site.get(f"/campeonatos/{cid}/telao", follow_redirects=False)
+        assert r.status_code == 303 and r.headers["location"] == f"/campeonatos/{cid}/acompanhar"
+        assert "📺 Telão" in site.get(f"/campeonatos/{cid}/chaves").text
+
+        # dados: segue o jogo ao vivo; a pessoa pode fixar outro só para si, sem mexer no telão da organização
+        d = site.get(f"/campeonatos/{cid}/acompanhar/dados").json()
+        assert [j["id"] for j in d["jogos"]] == [j1] and d["modo"] == "auto" and len(d["opcoes"]) >= 2
+        d = site.get(f"/campeonatos/{cid}/acompanhar/dados", params={"jogo": j2}).json()
+        assert [j["id"] for j in d["jogos"]] == [j2]
+        assert cli.get(f"/api/v1/campeonatos/{cid}/telao", headers=org).json()["escolhido"] is None
+
+        # ver não dá poder de transmitir nem de controlar o telão
+        espectador = {"Authorization": "Bearer " + cli.post("/api/v1/auth/entrar", json={"email": email, "senha": "senha-de-teste-1"}).json()["token"]}
+        assert cli.post(f"/api/v1/campeonatos/{cid}/jogos/{j1}/transmissao", headers=espectador).status_code == 403
+        assert cli.post(f"/api/v1/campeonatos/{cid}/telao/jogo", headers=espectador, json={"jogo_id": j2}).status_code == 403
+        assert cli.post(f"/api/v1/campeonatos/{cid}/telao/renovar", headers=espectador).status_code == 403

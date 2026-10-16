@@ -111,17 +111,34 @@ def renovar_link(s: SessaoORM, campeonato_id: int, por: Usuario) -> dict:
 
 
 def dados(s: SessaoORM, token: str) -> dict:
+    """Telão por link secreto (TV/tablet do local, sem login): segue o que a organização escolheu."""
     c = s.scalar(select(Campeonato).where(Campeonato.telao_token == token)) if token and len(token) >= 16 else None
     if c is None or c.status == C_CANCELADO:
         raise NaoEncontrado("Telão não encontrado. Peça à organização o link atual.")
+    return _montar(s, c)
+
+
+def dados_espectador(s: SessaoORM, c: Campeonato, jogo_id: int | None = None) -> dict:
+    """O mesmo telão para qualquer usuário logado acompanhar no próprio aparelho (com ou sem vídeo): por padrão segue a escolha da
+    organização; a pessoa pode fixar outro jogo só para si. Ver não dá nenhum poder de transmitir."""
+    if c.status == C_CANCELADO:
+        raise NaoEncontrado("Campeonato não encontrado.")
+    return _montar(s, c, jogo_id, com_opcoes=True)
+
+
+def _montar(s: SessaoORM, c: Campeonato, jogo_id: int | None = None, com_opcoes: bool = False) -> dict:
     jogos = [j for j in _todos(s, c) if not j.folga and j.equipe_a_id and j.equipe_b_id]
     ao_vivo = [j for j in jogos if j.status == J_AO_VIVO]
-    escolhido = next((j for j in jogos if j.id == c.telao_jogo_id), None)
+    escolhido = next((j for j in jogos if j.id == (jogo_id or c.telao_jogo_id)), None)
     proximos = sorted((j for j in jogos if j.status == J_AGENDADO), key=lambda j: (j.inicio_previsto is None, j.inicio_previsto, j.rodada, j.posicao))[:4]
     ultimos = [j for j in reversed(jogos) if j.status == J_ENCERRADO][:4]
     return {
         "campeonato": {"nome": c.nome, "capa_url": f"/capa/{c.capa}" if c.capa else None, "modalidade": c.modalidade.nome, "icone": c.modalidade.icone, "status": c.status},
         "modo": "fixo" if escolhido else "auto", "rotacao_s": ROTACAO_S,
+        "opcoes": [
+            {"id": j.id, "status": j.status, "rotulo": f"{'🔴 ' if j.status == J_AO_VIVO else ''}{chaves.jogo_dict(j)['a']['nome']} × {chaves.jogo_dict(j)['b']['nome']} — {j.rodada_nome}"}
+            for j in (ao_vivo + [x for x in jogos if x.status == J_AGENDADO][:12] + [x for x in reversed(jogos) if x.status == J_ENCERRADO][:6])
+        ] if com_opcoes else [],
         "jogos": [_jogo(j, c) for j in ([escolhido] if escolhido else ao_vivo)],
         "proximos": [_jogo(j, c) for j in proximos], "ultimos": [_jogo(j, c) for j in ultimos],
         "atualizado": agora().isoformat(timespec="seconds"),
