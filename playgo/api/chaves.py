@@ -106,6 +106,13 @@ class TelaoJogoIn(BaseModel):
     jogo_id: int | None = None  # None = automático (o jogo ao vivo)
 
 
+@router.get("/{campeonato_id}/acompanhar")
+def acompanhar_telao(campeonato_id: int, resposta: Response, u: AtualApi, s: Sessao, jogo: int | None = None):
+    """O telão para qualquer usuário logado no próprio aparelho (app): placar, vídeo e escolha do jogo. Só leitura."""
+    resposta.headers["Cache-Control"] = "no-store"
+    return telao.dados_espectador(s, campeonatos.obter(s, campeonato_id), jogo)
+
+
 @router.get("/{campeonato_id}/telao")
 def painel_telao(campeonato_id: int, u: AtualApi, s: Sessao):
     return telao.painel(s, campeonatos.obter(s, campeonato_id), u)

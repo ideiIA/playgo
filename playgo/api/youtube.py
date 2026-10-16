@@ -16,8 +16,8 @@ class PrivacidadeIn(BaseModel):
 @router.get("/estado")
 def estado(u: AtualApi, s: Sessao):
     if not u.admin:
-        return {"conectado": youtube.conectado(s)}
-    return youtube.estado(s)
+        return {"conectado": youtube.conectado(s), "declaracao": youtube.DECLARACAO}
+    return youtube.estado(s) | {"declaracao": youtube.DECLARACAO}
 
 
 @router.post("/privacidade")

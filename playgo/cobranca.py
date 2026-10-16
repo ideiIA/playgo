@@ -19,10 +19,14 @@ from sqlalchemy.orm import Session as SessaoORM
 from . import auditoria, notificacoes, planos
 from .config import settings
 from .db import agora
-from .erros import ErroNegocio, NaoEncontrado
+from .erros import SemPermissao, ErroNegocio, NaoEncontrado
 from .models import Assinatura, Pagamento, Usuario
 
 log = logging.getLogger(__name__)
+
+
+class TokenWebhookInvalido(SemPermissao):
+    """O webhook chegou com o token ausente ou diferente do configurado (a API responde 401, não 404, para o erro ser óbvio no Asaas)."""
 PAGO = ("CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH")
 
 
@@ -149,8 +153,12 @@ def _registrar_pagamento(s: SessaoORM, a: Assinatura, p: dict) -> tuple[Pagament
 def processar_webhook(s: SessaoORM, token: str, corpo: dict) -> str:
     """Eventos do Asaas. Sempre responde 'ok' depois de validar o token (erros nossos não devem gerar reenvios em loop)."""
     esperado = settings.asaas_webhook_token
-    if not esperado or not secrets.compare_digest(token or "", esperado):
-        raise NaoEncontrado("Não autorizado.")
+    if not esperado:
+        log.error("Webhook do Asaas recusado: PLAYGO_ASAAS_WEBHOOK_TOKEN não está configurado no servidor.")
+        raise TokenWebhookInvalido("O servidor não tem PLAYGO_ASAAS_WEBHOOK_TOKEN configurado.")
+    if not secrets.compare_digest(token or "", esperado):
+        log.warning("Webhook do Asaas recusado: o token enviado %s (confira o token do webhook no Asaas e PLAYGO_ASAAS_WEBHOOK_TOKEN).", "está vazio" if not token else "é diferente do configurado")
+        raise TokenWebhookInvalido("Token do webhook inválido.")
     if not isinstance(corpo, dict):
         return "ignorado"
     evento = str(corpo.get("event") or "")

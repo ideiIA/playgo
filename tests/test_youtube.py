@@ -115,7 +115,8 @@ def test_conexao_do_canal_so_admin_e_token_guardado(banco, yt):
             s.query(Usuario).filter(Usuario.id == adm_id).update({Usuario.admin: True})
             s.query(ConfigExterna).filter(ConfigExterna.chave == "youtube").delete()
             s.commit()
-        assert cli.get("/api/v1/youtube/estado", headers=comum).json() == {"conectado": False}
+        e = cli.get("/api/v1/youtube/estado", headers=comum).json()
+        assert e["conectado"] is False and set(e) == {"conectado", "declaracao"}  # o comum só vê se há canal e o texto da declaração
         with Session() as s:
             with pytest.raises(Exception):
                 youtube.conectar(s, s.get(Usuario, comum_id), "codigo")

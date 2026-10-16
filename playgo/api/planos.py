@@ -3,6 +3,7 @@
 from datetime import date
 from decimal import Decimal
 
+from fastapi.responses import JSONResponse
 from fastapi import APIRouter, Header, Request
 from pydantic import BaseModel
 
@@ -70,7 +71,10 @@ async def webhook_asaas(request: Request, s: Sessao, asaas_access_token: str = H
         corpo = await request.json()
     except ValueError:  # teste de conexão ou corpo vazio: não é erro nosso nem motivo para o Asaas pausar a fila
         corpo = {}
-    return {"resultado": cobranca.processar_webhook(s, asaas_access_token, corpo)}
+    try:
+        return {"resultado": cobranca.processar_webhook(s, asaas_access_token, corpo)}
+    except cobranca.TokenWebhookInvalido as e:
+        return JSONResponse({"detail": str(e)}, status_code=401)
 
 
 # ---------------------------------------------------------------- administrador

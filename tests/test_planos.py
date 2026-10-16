@@ -358,7 +358,7 @@ def test_webhook_confirma_pagamento_uma_unica_vez(s, fabrica, asaas):
     cobranca.assinar(s, u, "organizador", "52998224725")
     a = planos.assinatura_de(s, u)
     evento = {"event": "PAYMENT_CONFIRMED", "payment": {"id": "pay_confirmado", "subscription": a.asaas_subscription_id, "value": 39.9, "status": "CONFIRMED", "dueDate": agora().date().isoformat(), "paymentDate": agora().date().isoformat()}}
-    with pytest.raises(NaoEncontrado):
+    with pytest.raises(cobranca.TokenWebhookInvalido):
         cobranca.processar_webhook(s, "token-errado", evento)
     assert cobranca.processar_webhook(s, "token-do-webhook", evento) == "ok"
     s.refresh(a)
@@ -448,7 +448,7 @@ def test_api_webhook_e_painel_admin(banco, monkeypatch):
 
     monkeypatch.setattr(settings, "asaas_webhook_token", "tok")
     with TestClient(app) as c:
-        assert c.post("/api/v1/cobranca/asaas", json={"event": "PAYMENT_CONFIRMED"}, headers={"asaas-access-token": "errado"}).status_code == 404
+        assert c.post("/api/v1/cobranca/asaas", json={"event": "PAYMENT_CONFIRMED"}, headers={"asaas-access-token": "errado"}).status_code == 401
         assert c.post("/api/v1/cobranca/asaas", json={"event": "PAYMENT_CONFIRMED"}, headers={"asaas-access-token": "tok"}).json() == {"resultado": "ignorado"}
 
         def cadastrar(nome):
@@ -483,3 +483,21 @@ def test_paginas_de_planos_renderizam(banco):
     assert r.status_code == 200 and "Meu plano" in r.text and "sempre gratuito" not in r.text
     assert 'href="/planos"' in c.get("/mural").text  # item no menu
     assert c.get("/administracao", follow_redirects=False).status_code == 303  # só admin
+
+
+def test_webhook_http_responde_401_com_token_errado_e_200_com_o_certo(banco, monkeypatch):
+    """O Asaas mostra o código HTTP: token errado precisa ser 401 (claro), nunca 404 (parece URL errada)."""
+    from fastapi.testclient import TestClient
+
+    from playgo.web.app import app
+
+    monkeypatch.setattr(settings, "asaas_webhook_token", "token-do-webhook")
+    corpo = {"event": "PAYMENT_CREATED", "payment": {"id": "pay_outro", "externalReference": None, "subscription": None}}
+    with TestClient(app) as cli:
+        r = cli.post("/api/v1/cobranca/asaas", json=corpo, headers={"asaas-access-token": "errado"})
+        assert r.status_code == 401 and "inválido" in r.json()["detail"]
+        assert cli.post("/api/v1/cobranca/asaas", json=corpo).status_code == 401  # sem o cabeçalho
+        r = cli.post("/api/v1/cobranca/asaas", json=corpo, headers={"asaas-access-token": "token-do-webhook"})
+        assert r.status_code == 200 and r.json() == {"resultado": "ignorado"}
+        monkeypatch.setattr(settings, "asaas_webhook_token", "")
+        assert cli.post("/api/v1/cobranca/asaas", json=corpo, headers={"asaas-access-token": ""}).status_code == 401

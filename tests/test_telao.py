@@ -137,3 +137,28 @@ def test_qualquer_usuario_logado_acompanha_o_telao_no_proprio_aparelho_sem_poder
         assert cli.post(f"/api/v1/campeonatos/{cid}/jogos/{j1}/transmissao", headers=espectador).status_code == 403
         assert cli.post(f"/api/v1/campeonatos/{cid}/telao/jogo", headers=espectador, json={"jogo_id": j2}).status_code == 403
         assert cli.post(f"/api/v1/campeonatos/{cid}/telao/renovar", headers=espectador).status_code == 403
+
+
+def test_acompanhar_pela_api_para_qualquer_usuario_logado(banco):
+    """O app (token Bearer) acompanha o telão no próprio aparelho: só leitura, jogo fixado só para quem pediu."""
+    with TestClient(app) as cli:
+        org, org_id = _conta(cli, "Org")
+        _plano(org_id, "organizador")
+        fas = [_conta(cli, f"Cap{i}")[0] for i in range(4)]
+        curioso, _ = _conta(cli, "Curioso")
+        cid, jogos = _campeonato_com_jogos(cli, org, fas)
+
+        assert TestClient(app).get(f"/api/v1/campeonatos/{cid}/acompanhar").status_code == 401
+        r = cli.get(f"/api/v1/campeonatos/{cid}/acompanhar", headers=curioso)
+        assert r.status_code == 200 and r.headers["cache-control"] == "no-store"
+        d = r.json()
+        assert d["modo"] == "auto" and d["jogos"] == [] and d["campeonato"]["nome"] == "Open Telão"
+        assert {o["id"] for o in d["opcoes"]} == {j["id"] for j in jogos}
+
+        j2 = jogos[1]["id"]
+        d = cli.get(f"/api/v1/campeonatos/{cid}/acompanhar?jogo={j2}", headers=curioso).json()
+        assert d["modo"] == "fixo" and [j["id"] for j in d["jogos"]] == [j2]
+
+        # quem só assiste não conduz nem mexe na escolha da organização
+        assert cli.get(f"/api/v1/campeonatos/{cid}/telao", headers=curioso).status_code == 403
+        assert cli.get(f"/api/v1/campeonatos/{cid}/telao", headers=org).json()["escolhido"] is None

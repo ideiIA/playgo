@@ -151,7 +151,7 @@
     </a>`;
   const cardVivo = (j) => `
     <a class="card" style="border:2px solid #ff3d81" href="#/campeonato/${j.campeonato_id}/ao-vivo">
-      <span class="tag rosa">🔴 AO VIVO</span> <span class="tag">${esc(j.icone)} ${esc(j.campeonato)}</span>
+      <span class="tag rosa">🔴 AO VIVO</span> ${j.video ? '<span class="tag rosa">🎥 com vídeo</span> ' : ''}<span class="tag">${esc(j.icone)} ${esc(j.campeonato)}</span>
       <h3 style="margin-top:8px">${esc(j.a)} <b style="color:#ff3d81">${j.placar_a}</b> × <b style="color:#ff3d81">${j.placar_b}</b> ${esc(j.b)}</h3>
       <div class="meta">${esc([j.rodada, j.local].filter(Boolean).join(' · '))}${j.sets_a != null ? ` · sets ${j.sets_a} × ${j.sets_b}` : ''}</div>
     </a>`;
@@ -539,7 +539,7 @@
   // Abas do campeonato: visão geral, chaves, ao vivo e (organização) sorteio
   function abasCamp(k, ativa) {
     const a = (id, href, nome) => `<a href="${href}" class="${ativa === id ? 'ativa' : ''}">${nome}</a>`;
-    return `<nav class="ch-abas">${a('geral', '#/campeonato/' + k.id, 'Visão geral')}${a('chaves', '#/campeonato/' + k.id + '/chaves', '🏆 Chaves')}${a('ao_vivo', '#/campeonato/' + k.id + '/ao-vivo', '🔴 Ao vivo')}${k.sou_gestor ? a('sorteio', '#/campeonato/' + k.id + '/sorteio', '🎲 Sorteio') + a('editar', '#/campeonato/' + k.id + '/editar', '✏️ Editar') : ''}</nav>`;
+    return `<nav class="ch-abas">${a('geral', '#/campeonato/' + k.id, 'Visão geral')}${a('chaves', '#/campeonato/' + k.id + '/chaves', '🏆 Chaves')}${a('ao_vivo', '#/campeonato/' + k.id + '/ao-vivo', '🔴 Ao vivo')}${a('telao', '#/campeonato/' + k.id + '/telao', '📺 Telão')}${k.sou_gestor ? a('sorteio', '#/campeonato/' + k.id + '/sorteio', '🎲 Sorteio') + a('editar', '#/campeonato/' + k.id + '/editar', '✏️ Editar') : ''}</nav>`;
   }
 
   // Sub-páginas do campeonato (chaves, ao vivo, jogo e sorteio): a tela é o chaves.js, igual no site
@@ -548,7 +548,7 @@
     try {
       const k = await api('/campeonatos/' + id);
       if (modo === 'sorteio' && !k.sou_gestor) { location.hash = '#/campeonato/' + id + '/chaves'; return; }
-      montar(`<a href="#/campeonato/${id}" class="suave">← ${esc(k.nome)}</a><h1 style="margin:8px 0 0">🏆 ${esc(k.nome)}</h1>${abasCamp(k, modo === 'jogo' ? 'ao_vivo' : modo)}
+      montar(`<a href="#/campeonato/${id}" class="suave">← ${esc(k.nome)}</a><h1 style="margin:8px 0 0">🏆 ${esc(k.nome)}</h1>${abasCamp(k, modo === 'jogo' ? 'ao_vivo' : modo === 'acompanhar' ? 'telao' : modo)}
         ${modo === 'jogo' ? `<p><a href="#/campeonato/${id}/chaves">← Voltar às chaves</a></p>` : ''}<div id="ch-conteudo"></div>`, () => {
         const el = $('#ch-conteudo');
         const get = (c) => api(c);
@@ -556,6 +556,8 @@
         if (modo === 'chaves') Chaves.montarChaves(el, { get, href, id });
         else if (modo === 'ao-vivo' || modo === 'ao_vivo') Chaves.montarAoVivo(el, { get, post, href, id, toast });
         else if (modo === 'jogo') Chaves.montarJogo(el, { get, post, id, jogo, toast });
+        else if (modo === 'acompanhar' || (modo === 'telao' && !k.pode_telao)) Telao.montarAcompanhar(el, { get, id });
+        else if (modo === 'telao') Telao.montarControle(el, { get, post, id, k, toast, hrefAcompanhar: '#/campeonato/' + id + '/acompanhar' });
         else Chaves.montarSorteio(el, { get, post, apagar: (c) => api(c, { metodo: 'DELETE' }), id, toast, aoSortear: () => { location.hash = '#/campeonato/' + id + '/chaves'; } });
       });
     } catch (e) { erroTela(e); }
@@ -1263,7 +1265,7 @@
       case 'grupo': return vGrupo(arg, arg2);
       case 'novo-grupo': return vNovoGrupo();
       case 'campeonatos': return vCampeonatos();
-      case 'campeonato': return arg2 === 'editar' ? vEditarCampeonato(arg) : ['chaves', 'ao-vivo', 'sorteio', 'jogo'].includes(arg2) ? vCampSub(arg, arg2, arg3) : vCampeonato(arg);
+      case 'campeonato': return arg2 === 'editar' ? vEditarCampeonato(arg) : ['chaves', 'ao-vivo', 'sorteio', 'jogo', 'telao', 'acompanhar'].includes(arg2) ? vCampSub(arg, arg2, arg3) : vCampeonato(arg);
       case 'novo-campeonato': return vNovoCampeonato();
       case 'arena': return vArena(arg);
       case 'local': return vLocal(arg);
