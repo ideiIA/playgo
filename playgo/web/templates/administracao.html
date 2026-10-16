@@ -17,6 +17,10 @@
   <p class="suave" style="margin:0 0 10px">Defina preço e limites. Plano com valor R$ 0 não pode ser assinado. Campos de limite em branco = sem limite.</p>
   <div id="planos-admin" class="pessoas"></div>
 </div>
+<div class="panel" style="margin-bottom:18px" id="painel-youtube">
+  <h2>🎥 YouTube do PlayGo (transmissões ao vivo)</h2>
+  <div id="estado-youtube" class="suave">Carregando…</div>
+</div>
 <div class="panel" style="margin-bottom:18px" id="painel-instagram">
   <h2>📸 Instagram do PlayGo</h2>
   <div id="estado-instagram" class="suave">Carregando…</div>
@@ -90,6 +94,23 @@
     try { await webApi('/admin/usuarios/' + sel.dataset.planoSel + '/plano', { metodo: 'POST', corpo: { plano, ate } }); toast('Plano atualizado.'); } catch (e) { toast(e.message); }
     carregar();
   });
+  async function carregarYoutube() {
+    const el = document.getElementById('estado-youtube');
+    try {
+      const e = await webApi('/youtube/estado');
+      if (e.conectado) {
+        el.innerHTML = `Conectado ao canal <b>${esc(e.canal)}</b>. <a class="btn soft pequeno" href="/youtube/conectar">Reconectar</a> <button class="link-botao" id="bt-yt-desc" style="color:var(--red)">Desconectar</button>
+          <p style="margin:10px 0 0"><label>Privacidade das transmissões <select id="yt-priv" style="border:1px solid var(--border);border-radius:10px;padding:8px">${Object.entries(e.privacidades).map(([k, n]) => `<option value="${k}" ${e.privacidade === k ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></label></p>
+          <p class="suave" style="margin:6px 0 0">Até ${e.max_simultaneas} transmissões preparadas ou no ar ao mesmo tempo. Cada campeonato precisa liberar a transmissão (aba 📺 Telão).</p>`;
+        document.getElementById('yt-priv').onchange = async (ev) => { try { await webApi('/youtube/privacidade', { metodo: 'POST', corpo: { privacidade: ev.target.value } }); toast('Privacidade atualizada.'); } catch (x) { toast(x.message); } };
+        document.getElementById('bt-yt-desc').onclick = async () => { if (!confirm('Desconectar o YouTube? Transmissões em andamento continuam no canal, mas o PlayGo deixa de controlá-las.')) return; try { await webApi('/youtube/desconectar', { metodo: 'POST', corpo: {} }); carregarYoutube(); } catch (x) { toast(x.message); } };
+      } else if (e.app_configurado) {
+        el.innerHTML = `Ainda não conectado. <a class="btn purple" href="/youtube/conectar">Conectar YouTube</a><br><span class="suave">Entre com a conta Google dona do canal PlayGo Sports. A URI de retorno cadastrada no Google Cloud deve ser <code>${esc(e.redirect_uri)}</code>. Veja <code>docs/youtube.md</code>.</span>`;
+      } else {
+        el.innerHTML = 'Falta configurar no servidor: <code>PLAYGO_YOUTUBE_CLIENT_ID</code>, <code>PLAYGO_YOUTUBE_CLIENT_SECRET</code> e <code>PLAYGO_URL_PUBLICA</code>. Veja <code>docs/youtube.md</code>.';
+      }
+    } catch (x) { el.textContent = x.message; }
+  }
   async function carregarInstagram() {
     const el = document.getElementById('estado-instagram');
     try {
@@ -104,6 +125,6 @@
       }
     } catch (x) { el.textContent = x.message; }
   }
-  window.addEventListener('load', () => { carregar(); carregarPlanos(); carregarInstagram(); });
+  window.addEventListener('load', () => { carregar(); carregarPlanos(); carregarInstagram(); carregarYoutube(); });
 </script>
 {% endblock %}

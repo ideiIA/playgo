@@ -44,6 +44,7 @@ O compose define sozinho: `PLAYGO_DATABASE_URL`, `PLAYGO_URL_PUBLICA`, `PLAYGO_C
 | `PLAYGO_ASAAS_API_KEY`, `PLAYGO_ASAAS_AMBIENTE` (`sandbox`/`producao`), `PLAYGO_ASAAS_WEBHOOK_TOKEN` | cobrança dos planos. Webhook: `https://DOMINIO/api/v1/cobranca/asaas` |
 | `PLAYGO_TESTE_DIAS` (30), `PLAYGO_TOLERANCIA_DIAS` (7) | período de teste e de tolerância dos planos |
 | `PLAYGO_INSTAGRAM_APP_ID`, `PLAYGO_INSTAGRAM_APP_SECRET`, `PLAYGO_INSTAGRAM_VERSAO` (`v21.0`) | Instagram do PlayGo. Retorno: `https://DOMINIO/instagram/retorno`. Ver [instagram.md](instagram.md) |
+| `PLAYGO_YOUTUBE_CLIENT_ID`, `PLAYGO_YOUTUBE_CLIENT_SECRET`, `PLAYGO_YOUTUBE_MAX_SIMULTANEAS` (4) | transmissão ao vivo dos jogos no YouTube oficial. Retorno: `https://DOMINIO/youtube/retorno`. Ver [youtube.md](youtube.md) |
 | `PLAYGO_ANTHROPIC_API_KEY` **ou** `PLAYGO_GEMINI_API_KEY`, `PLAYGO_IA_PROVEDOR`, `PLAYGO_MODELO_MODERACAO` | moderação por IA. Sem chave, foto/vídeo vão para a análise da equipe |
 | `PLAYGO_MODERACAO_MIDIA_SEM_IA` (`revisar`/`liberar`) | o que fazer com mídia quando nenhuma IA analisa. **Mantenha `revisar`** |
 

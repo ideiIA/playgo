@@ -8,6 +8,7 @@
   <div>
     <span class="tag {{ k.modalidade.cor }}">{{ k.modalidade.icone }} {{ k.modalidade.nome|upper }}</span>
     <span class="tag {{ 'verde' if k.inscricoes_abertas else 'cinza' }}">{{ k.situacao|upper }}</span>
+    {% if k.transmissao_permitida %}<span class="tag rosa" title="Os jogos podem ser filmados e transmitidos no YouTube do PlayGo">🎥 PODE TER TRANSMISSÃO</span>{% endif %}
     <h1>🏆 {{ k.nome }}</h1>
     <div class="meta">Organizado por <b>{{ k.organizador.arroba }}</b>{% if k.categoria %} • {{ k.categoria }}{% endif %}</div>
   </div>

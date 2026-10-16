@@ -7,7 +7,7 @@ from datetime import timedelta
 
 from sqlalchemy import select
 
-from . import atividades, instagram, match, notificacoes, planos
+from . import atividades, instagram, match, notificacoes, planos, youtube
 from . import urgencia
 from .config import settings
 from .db import Session, agora
@@ -56,6 +56,7 @@ def ciclo() -> dict:
             "urgentes": reforcar_urgentes(s),
             "planos": planos.avisar_vencimentos(s),
             "instagram": instagram.publicar_aprovadas(s),
+            "youtube": youtube.manutencao(s),
         }
     return resultado
 

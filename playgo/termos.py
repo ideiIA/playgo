@@ -5,7 +5,7 @@ CDC; **precisa de revisão jurídica antes de ir para produção** (ver docs/lgp
 
 from .config import settings
 
-VERSAO = "2026-10-10"
+VERSAO = "2026-10-16"
 
 DECLARACOES = {
     "termos": "Li e aceito os Termos de Uso e a Política de Privacidade, inclusive as regras de publicação e de moderação.",
@@ -32,6 +32,11 @@ def termos_de_uso() -> list[dict]:
             "Só publique fotos e vídeos de outras pessoas com autorização delas. Imagens de crianças e adolescentes exigem autorização de seus responsáveis.",
             "Você mantém seus direitos sobre o que publica e nos autoriza, de forma não exclusiva e gratuita, a exibi-lo no PlayGo conforme o alcance que você escolheu (mural da atividade, do campeonato, da comunidade ou feed geral).",
             "Toda publicação mostra o local marcado. Ao publicar, você concorda com a exibição desse local.",
+        ]},
+        {"titulo": "4-A. Imagem e transmissões ao vivo", "paragrafos": [
+            "Alguns campeonatos e atividades podem ser filmados e transmitidos ao vivo no canal oficial do PlayGo no YouTube, e a gravação pode ficar disponível no canal e no “book” do evento. Campeonatos com essa possibilidade avisam em sua página.",
+            "Ao participar de um evento que informa essa possibilidade, você concorda com o uso da sua imagem e voz nessas transmissões e gravações, sem remuneração, para divulgação do evento e do PlayGo. Para menores de 18 anos, a autorização deve ser dada pelos responsáveis, e a organização do evento responde por colhê-la.",
+            "Se não quiser aparecer, avise a organização antes do jogo. Para pedir a retirada de um vídeo, escreva para " + settings.contato_privacidade + ".",
         ]},
         {"titulo": "5. Moderação, edição e exclusão", "paragrafos": [
             "Antes de aparecer para os outros, textos e mídias passam por uma análise automática, que pode usar inteligência artificial de provedores contratados. Se algo suspeito for detectado, a publicação fica “em análise”, visível só para você, até que um administrador a avalie. Decisões nunca dependem só da máquina: você pode pedir revisão humana pelo contato indicado na Política de Privacidade.",

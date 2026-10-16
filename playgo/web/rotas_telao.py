@@ -3,7 +3,7 @@
 from fastapi import Request
 from fastapi.responses import JSONResponse, RedirectResponse
 
-from .. import campeonatos, detalhes, telao
+from .. import campeonatos, detalhes, telao, youtube
 from ..deps import Atual, Sessao
 from ..erros import NaoEncontrado
 from .app import app, pagina, templates
@@ -34,4 +34,4 @@ def tela_controle_telao(campeonato_id: int, request: Request, s: Sessao, usuario
     if not k["pode_telao"]:
         request.session["erro"] = "Só a organização e os mesários controlam o telão."
         return RedirectResponse(f"/campeonatos/{campeonato_id}/chaves", status_code=303)
-    return pagina(request, s, usuario, "telao_controle.html", "campeonatos", k=k, p=telao.painel(s, c, usuario))
+    return pagina(request, s, usuario, "telao_controle.html", "campeonatos", k=k, p=telao.painel(s, c, usuario), yt=youtube.estado(s), declaracao=youtube.DECLARACAO)

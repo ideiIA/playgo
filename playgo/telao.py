@@ -143,6 +143,6 @@ def ao_vivo_agora(s: SessaoORM, limite: int = 8) -> list[dict]:
         saida.append({
             "jogo_id": j.id, "campeonato_id": c.id, "campeonato": c.nome, "icone": c.modalidade.icone, "rodada": j.rodada_nome, "local": j.local,
             "a": chaves.jogo_dict(j)["a"]["nome"], "b": chaves.jogo_dict(j)["b"]["nome"], "placar_a": g["a"], "placar_b": g["b"],
-            "sets_a": g["sets_a"], "sets_b": g["sets_b"], "link": f"/campeonatos/{c.id}/ao-vivo",
+            "sets_a": g["sets_a"], "sets_b": g["sets_b"], "link": f"/campeonatos/{c.id}/ao-vivo", "video": j.yt_estado == "ao_vivo",
         })
     return saida

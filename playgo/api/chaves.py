@@ -3,10 +3,10 @@ Quem acompanha só lê (GET); sorteio, mesários e condução dos jogos ficam no
 
 from datetime import datetime, time
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
 from pydantic import BaseModel
 
-from .. import campeonatos, chaves, telao
+from .. import campeonatos, chaves, telao, youtube
 from ..deps import AtualApi, Sessao
 
 router = APIRouter(prefix="/api/v1/campeonatos")
@@ -119,6 +119,47 @@ def escolher_jogo_telao(campeonato_id: int, corpo: TelaoJogoIn, u: AtualApi, s: 
 @router.post("/{campeonato_id}/telao/renovar")
 def renovar_telao(campeonato_id: int, u: AtualApi, s: Sessao):
     return telao.renovar_link(s, campeonato_id, u)
+
+
+class LiberarTransmissaoIn(BaseModel):
+    permitir: bool
+    declaro: bool = False
+
+
+def _sem_cache(resposta: Response, dados: dict) -> dict:
+    resposta.headers["Cache-Control"] = "no-store"  # a resposta pode trazer a chave de envio
+    return dados
+
+
+@router.post("/{campeonato_id}/transmissao/liberar")
+def liberar_transmissao(campeonato_id: int, corpo: LiberarTransmissaoIn, u: AtualApi, s: Sessao):
+    c = youtube.liberar_campeonato(s, campeonato_id, u, corpo.permitir, corpo.declaro)
+    return {"transmissao_permitida": c.transmissao_permitida}
+
+
+@router.get("/{campeonato_id}/jogos/{jogo_id}/transmissao")
+def ver_transmissao(campeonato_id: int, jogo_id: int, resposta: Response, u: AtualApi, s: Sessao):
+    return _sem_cache(resposta, youtube.painel(s, campeonato_id, jogo_id, u))
+
+
+@router.post("/{campeonato_id}/jogos/{jogo_id}/transmissao")
+def preparar_transmissao(campeonato_id: int, jogo_id: int, resposta: Response, u: AtualApi, s: Sessao):
+    return _sem_cache(resposta, youtube.preparar(s, campeonato_id, jogo_id, u))
+
+
+@router.post("/{campeonato_id}/jogos/{jogo_id}/transmissao/no-ar")
+def transmissao_no_ar(campeonato_id: int, jogo_id: int, resposta: Response, u: AtualApi, s: Sessao):
+    return _sem_cache(resposta, youtube.entrar_no_ar(s, campeonato_id, jogo_id, u))
+
+
+@router.post("/{campeonato_id}/jogos/{jogo_id}/transmissao/encerrar")
+def transmissao_encerrar(campeonato_id: int, jogo_id: int, resposta: Response, u: AtualApi, s: Sessao):
+    return _sem_cache(resposta, youtube.encerrar(s, campeonato_id, jogo_id, u))
+
+
+@router.post("/{campeonato_id}/jogos/{jogo_id}/transmissao/nova-chave")
+def transmissao_nova_chave(campeonato_id: int, jogo_id: int, resposta: Response, u: AtualApi, s: Sessao):
+    return _sem_cache(resposta, youtube.nova_chave(s, campeonato_id, jogo_id, u))
 
 
 def _devolver(campeonato_id: int, jogo_id: int, u, s):

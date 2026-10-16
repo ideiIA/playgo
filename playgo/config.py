@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     instagram_app_id: str = ""
     instagram_app_secret: str = ""
     instagram_versao: str = "v21.0"
+    youtube_client_id: str = ""  # OAuth do canal oficial do PlayGo (docs/youtube.md)
+    youtube_client_secret: str = ""
+    youtube_max_simultaneas: int = 4  # transmissões preparadas ou no ar ao mesmo tempo (protege a cota da API e a banda do local)
 
     # Planos e cobrança (Asaas). Sem chave, o app funciona e o admin libera planos à mão.
     teste_dias: int = 30

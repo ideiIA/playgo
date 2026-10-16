@@ -39,6 +39,10 @@
     .parciais span { background: rgba(255, 255, 255, .15); border-radius: 14px; padding: 4px 14px; font-weight: 800; font-size: clamp(13px, min(2.2vw, 3.6vh), 36px); }
     .pontos-pontos { display: flex; gap: 8px; justify-content: center; margin-top: 10px; } .pontos-pontos b { width: 14px; height: 14px; border-radius: 50%; background: rgba(255, 255, 255, .3); } .pontos-pontos b.on { background: var(--lima); }
 
+    .com-video { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: clamp(10px, 2vw, 32px); width: 100%; max-width: 1800px; align-items: center; }
+    .moldura { aspect-ratio: 16 / 9; background: #000; border-radius: 18px; overflow: hidden; box-shadow: 0 10px 40px rgba(0, 0, 0, .5); max-height: 62vh; width: 100%; } .moldura iframe { width: 100%; height: 100%; border: 0; }
+    .mini { display: grid; gap: clamp(8px, 1.4vw, 20px); justify-items: center; } .mini-lado { display: grid; justify-items: center; gap: 4px; } .mini-nome { font-size: clamp(16px, min(2.6vw, 5vh), 44px); font-weight: 900; text-align: center; overflow-wrap: anywhere; } .mini-num { font-size: clamp(54px, min(11vw, 20vh), 220px); line-height: .95; font-variant-numeric: tabular-nums; }
+    @media (max-width: 900px) { .com-video { grid-template-columns: 1fr; } }
     .espera h2 { font-size: clamp(24px, 4vw, 64px); margin: 0 0 8px; } .espera p { font-size: clamp(16px, 2.2vw, 34px); opacity: .85; margin: 0; }
     .proximo { margin-top: clamp(10px, 2vh, 40px); background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .22); border-radius: 26px; padding: clamp(14px, 2vw, 32px) clamp(20px, 3vw, 52px); font-size: clamp(18px, min(3.2vw, 6vh), 52px); font-weight: 800; }
     .proximo small { display: block; font-size: .5em; opacity: .75; font-weight: 700; margin-top: 6px; }
@@ -75,7 +79,17 @@
     const quando = (j) => (j.inicio_previsto ? new Date(j.inicio_previsto).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'a definir');
     const linhaMini = (j, fim) => `<div class="linha"><span>${esc(j.a.nome)} × ${esc(j.b.nome)}</span><em>${fim ? esc(j.placar_a) + ' × ' + esc(j.placar_b) : esc(quando(j))}</em></div>`;
 
+    function comVideo(j) {
+      const g = j.grande;
+      const lado = (l, eq) => `<div class="mini-lado"><span class="mini-nome">${esc(eq.nome)}</span><b class="mini-num">${esc(g[l])}</b></div>`;
+      const ponto = j.ponto ? `<div class="ponto"><small>${esc(j.ponto.rotulo)}</small><span>${esc(j.ponto.a)}</span><span style="opacity:.4">–</span><span>${esc(j.ponto.b)}</span></div>` : '';
+      return `<div class="rodada">${esc([j.rodada_nome, j.local, g.rotulo].filter(Boolean).join(' · '))}</div>
+        <div class="com-video"><div class="moldura"><iframe src="https://www.youtube.com/embed/${encodeURIComponent(j.video.id)}?autoplay=1&mute=1&controls=0&rel=0&playsinline=1" allow="autoplay; encrypted-media" title="Transmissão ao vivo"></iframe></div>
+        <div class="mini">${lado('a', j.a)}${lado('b', j.b)}${ponto}${g.sets_a != null ? `<div class="sets-ganhos">Sets ${g.sets_a} × ${g.sets_b}</div>` : ''}</div></div>`;
+    }
+
     function jogoGrande(j) {
+      if (j.video && j.video.estado === 'ao_vivo') return comVideo(j);
       const g = j.grande, vence = (l) => (g[l] > g[l === 'a' ? 'b' : 'a'] ? 'vence' : '');
       const sets = g.sets_a != null ? `<div class="sets-ganhos">Sets ${g.sets_a} × ${g.sets_b}</div>` : '';
       const lado = (l, eq) => `<div class="lado ${vence(l)}"><div class="nome">${esc(eq.nome)}</div><div class="numero">${esc(g[l])}</div>${g.sets_a != null ? `<div class="sets-ganhos">${g['sets_' + l]} set${g['sets_' + l] === 1 ? '' : 's'}</div>` : ''}</div>`;

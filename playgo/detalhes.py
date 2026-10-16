@@ -119,6 +119,7 @@ def campeonato(s: SessaoORM, c: Campeonato, usuario: Usuario | None) -> dict:
             "capa_url": f"/capa/{c.capa}" if c.capa else None,
             "book_publicado": bool(c.book_publicado),
             "pode_telao": pode_telao,
+            "transmissao_permitida": bool(c.transmissao_permitida),
             "descricao": c.descricao,
             "regulamento": c.regulamento,
             "cadastro_elenco": bool(c.cadastro_elenco),

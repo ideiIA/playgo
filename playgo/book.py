@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session as SessaoORM
 from . import campeonatos, chaves, convites, midia, publicacoes, vagas
 from .db import agora
 from .erros import NaoEncontrado
-from .models import CONFIRMADO, P_PUBLICADA, Atividade, Campeonato, Publicacao, Usuario
+from .models import CONFIRMADO, P_PUBLICADA, Atividade, Campeonato, Jogo, Publicacao, Usuario
 
 TOP = 3
 MAX_GALERIA = 12
@@ -116,6 +116,10 @@ def campeonato(s: SessaoORM, c: Campeonato, usuario: Usuario) -> dict:
         "formato": dados.get("formato_nome"),
         "numeros": {"equipes": len(equipes), "jogos": len(jogos), "jogos_encerrados": len(encerrados), "pontos_marcados": pontos},
         "equipes": equipes,
+        "transmissoes": [
+            {"video_id": j.yt_broadcast_id, "titulo": f"{chaves._nome_lado(j, 'a')} × {chaves._nome_lado(j, 'b')}", "rodada": j.rodada_nome}
+            for j in s.scalars(select(Jogo).where(Jogo.campeonato_id == c.id, Jogo.yt_estado == "encerrada", Jogo.yt_broadcast_id.is_not(None)).order_by(Jogo.rodada, Jogo.posicao))
+        ],
         "podio": _podio(c, dados),
         "publicacoes": _publicacoes(s, usuario, "campeonato", c.id),
         "publicado": bool(c.book_publicado),

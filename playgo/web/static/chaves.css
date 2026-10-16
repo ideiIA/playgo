@@ -163,6 +163,8 @@
 .ch-jogo.encerrado { border-color: #cdebd8; }
 .jv-eq.venceu span { color: #b7f34b; }
 
+.av-video{margin:10px 0;text-align:center}.av-video iframe{width:min(640px,100%);aspect-ratio:16/9;border:0;border-radius:14px;background:#000}.av-video small{display:block;color:#667085;margin-top:4px;font-size:12px}
+
 /* Games terminados no ao vivo (beach tennis): ◀ ganhou a esquerda, ▶ a direita */
 .av-games{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line,#e5e7ef);display:flex;flex-direction:column;gap:6px}
 .av-games-linha{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:13px}

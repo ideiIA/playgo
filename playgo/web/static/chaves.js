@@ -161,8 +161,10 @@
     const setInfo = ss ? '<div class="av-setinfo">' + (ss.decidido ? 'Jogo decidido — encerre o jogo' : 'Set ' + ss.numero + ' de ' + rg.melhor_de + ' · até ' + ss.alvo + (ss.numero >= rg.melhor_de && rg.melhor_de > 1 ? ' (decisivo)' : '')) +
       (ss.fechados.length ? ' · <span class="ch-sub">' + ss.fechados.map((x) => x.a + '–' + x.b).join(' · ') + '</span>' : '') + '</div>' : '';
     const gamesHtml = porPonto ? listaGames(j, rg) : '';
+    const videoHtml = j.video && j.video.estado === 'ao_vivo'
+      ? '<div class="av-video"><iframe src="https://www.youtube.com/embed/' + encodeURIComponent(j.video.id) + '?autoplay=1&mute=1&rel=0&playsinline=1" title="Transmissão ao vivo" allow="autoplay; encrypted-media; fullscreen" allowfullscreen loading="lazy"></iframe><small>🎥 Vídeo com ~10 a 30 s de atraso em relação ao placar</small></div>' : '';
     return '<div class="av-quadro"><div class="av-topo"><span class="ch-vivo">● AO VIVO</span><span class="ch-sub">' + esc([j.rodada_nome, j.local].filter(Boolean).join(' · ')) + '</span>' +
-      '<a class="ch-link" href="' + esc(o_href(j)) + '">lance a lance →</a></div>' + setInfo + '<div class="av-times">' + time(j.a, 'a') + '<div class="av-x">×</div>' + time(j.b, 'b') + '</div>' + gamesHtml + '</div>';
+      '<a class="ch-link" href="' + esc(o_href(j)) + '">lance a lance →</a></div>' + videoHtml + setInfo + '<div class="av-times">' + time(j.a, 'a') + '<div class="av-x">×</div>' + time(j.b, 'b') + '</div>' + gamesHtml + '</div>';
   }
 
   // Games já terminados do jogo (beach tennis/tênis): "◀" = ganhou a dupla da esquerda, "▶" = a da direita; o placar é o do game.

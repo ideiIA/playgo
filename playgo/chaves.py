@@ -881,6 +881,10 @@ def encerrar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario, vence
     _fechar_campeonato_se_acabou(s, c)
     _avisar_equipes(s, c, _ids_do_jogo(j), f"🏁 Fim de jogo: {_nome_lado(j, 'a')} {j.placar_a} x {j.placar_b} {_nome_lado(j, 'b')}", c.nome, f"jogo-fim:{j.id}")
     s.commit()
+    if j.yt_estado in ("preparada", "ao_vivo"):  # o jogo acabou: finaliza a transmissão no YouTube (a gravação fica no canal)
+        from . import youtube
+
+        youtube.ao_encerrar_jogo(s, j)
     return j
 
 
@@ -1020,6 +1024,7 @@ def jogo_dict(j: Jogo) -> dict:
         "id": j.id, "rodada": j.rodada, "rodada_nome": j.rodada_nome, "fase": j.fase, "grupo": j.grupo, "posicao": j.posicao, "a": _lado(j, "a"), "b": _lado(j, "b"),
         "placar_a": j.placar_a, "placar_b": j.placar_b, "ponto_a": j.ponto_a or 0, "ponto_b": j.ponto_b or 0, "status": j.status, "vencedor_id": j.vencedor_id, "desempate": j.desempate, "folga": j.folga,
         "inicio_previsto": _dt(j.inicio_previsto), "local": j.local, "iniciado_em": _dt(j.iniciado_em),
+        "video": {"id": j.yt_broadcast_id, "estado": j.yt_estado} if j.yt_broadcast_id and j.yt_estado in ("ao_vivo", "encerrada") else None,
         "sets": [{"numero": x.numero, "a": x.pontos_a, "b": x.pontos_b, "encerrado": x.encerrado} for x in j.sets],
         "games": [{"numero": g.numero, "set": g.set_numero, "lado": g.lado, "a": g.pontos_a, "b": g.pontos_b, "tiebreak": g.tiebreak, "manual": g.manual} for g in j.games],
     }

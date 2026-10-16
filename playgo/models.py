@@ -431,6 +431,9 @@ class Campeonato(Base):
     book_publicado: Mapped[bool] = mapped_column(Boolean, default=False)  # o book fica visível para todos os usuários
     telao_token: Mapped[str | None] = mapped_column(String(40), unique=True)  # link secreto do telão (placar em TV/tablet, sem login)
     telao_jogo_id: Mapped[int | None] = mapped_column(Integer)  # jogo fixado no telão; vazio = automático (o que estiver ao vivo)
+    transmissao_permitida: Mapped[bool] = mapped_column(Boolean, default=False)  # a organização liberou filmar/transmitir no YouTube do PlayGo
+    transmissao_aceite_por_id: Mapped[int | None] = mapped_column(Integer)  # quem declarou a ciência dos participantes
+    transmissao_aceite_em: Mapped[datetime | None] = mapped_column(DateTime)
 
     nome: Mapped[str] = mapped_column(String(150))
     categoria: Mapped[str | None] = mapped_column(String(120))  # "B, C e iniciante", "Masculino"…
@@ -542,6 +545,9 @@ class Jogo(Base):
     equipe_a: Mapped[Equipe | None] = relationship(foreign_keys=[equipe_a_id], lazy="joined")
     equipe_b: Mapped[Equipe | None] = relationship(foreign_keys=[equipe_b_id], lazy="joined")
     # Super 8: cada lado é uma dupla (equipe_a + equipe_a2 contra equipe_b + equipe_b2); nos demais formatos ficam vazios
+    yt_broadcast_id: Mapped[str | None] = mapped_column(String(20))  # transmissão no YouTube (é também o ID do vídeo para incorporar)
+    yt_stream_id: Mapped[str | None] = mapped_column(String(60))  # chave de envio deste jogo (a chave em si nunca fica no banco)
+    yt_estado: Mapped[str | None] = mapped_column(String(12))  # preparada | ao_vivo | encerrada
     ponto_a: Mapped[int] = mapped_column(Integer, default=0)  # pontos do game em andamento (15/30/40…); zeram quando o game termina
     ponto_b: Mapped[int] = mapped_column(Integer, default=0)
     equipe_a2_id: Mapped[int | None] = mapped_column(ForeignKey("equipes.id", ondelete="SET NULL"))

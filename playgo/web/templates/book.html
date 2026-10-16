@@ -126,6 +126,17 @@
     {% else %}<div class="bk-vazio">As conversas mais animadas do evento aparecem aqui.</div>{% endif %}
   </section>
 
+  {% if camp and b.transmissoes %}
+  <section class="bk-sec" style="--cor:#e5484d">
+    <h2>🎥 Transmissões</h2>
+    <div class="bk-posts">{% for t in b.transmissoes %}
+      <a class="bk-post" href="https://www.youtube.com/watch?v={{ t.video_id }}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit">
+        <img src="https://img.youtube.com/vi/{{ t.video_id }}/hqdefault.jpg" alt="Vídeo do jogo {{ t.titulo }}" loading="lazy">
+        <div class="bk-post-corpo"><span class="autor">▶ {{ t.titulo }}</span><span class="suave">{{ t.rodada }} · assistir no YouTube</span></div>
+      </a>{% endfor %}</div>
+  </section>
+  {% endif %}
+
   {% if p.galeria %}
   <section class="bk-sec" style="--cor:#ff8a00">
     <h2>📸 Melhores momentos</h2>
