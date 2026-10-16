@@ -78,13 +78,13 @@ class _EstaticosAtuais(StaticFiles):
 
     async def get_response(self, path, scope):
         resp = await super().get_response(path, scope)
-        if path.endswith((".js", ".css")):
+        if path.endswith((".js", ".css", ".html", ".json")) or path in ("", ".", "/"):
             resp.headers["Cache-Control"] = "no-cache"
         return resp
 
 
 app.mount("/static", _EstaticosAtuais(directory=PASTA / "static"), name="static")
-app.mount("/app", StaticFiles(directory=PASTA.parent / "app", html=True), name="pwa")
+app.mount("/app", _EstaticosAtuais(directory=PASTA.parent / "app", html=True), name="pwa")
 app.include_router(api_v1)
 app.include_router(api_mural)
 app.include_router(api_planos)
