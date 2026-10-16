@@ -47,7 +47,7 @@ def listar(s: SessaoORM, por: Usuario, q: str = "", perfil: str | None = None, l
     saida = []
     for u in s.scalars(consulta):
         sit = planos.situacao(s, u)
-        saida.append(_item(u) | {"plano": sit["plano"], "plano_status": sit["status"], "plano_fim": sit["fim"].isoformat() if sit["fim"] else None})
+        saida.append(_item(u) | {"plano": sit["plano"], "plano_status": sit["status"], "plano_fim": sit["fim"].isoformat() if sit["fim"] else None, "plano_inicio": sit["inicio"].isoformat() if sit.get("inicio") else None})
     return saida
 
 

@@ -40,13 +40,14 @@
     const q = new URLSearchParams({ q: f.q.value, perfil: f.perfil.value }).toString();
     try {
       const r = await webApi('/admin/usuarios?' + q);
+      window._usuarios = r.itens;
       document.getElementById('resumo').innerHTML = `<div class="stat"><b>${r.resumo.administradores}</b><span>Administradores</span></div><div class="stat"><b>${r.resumo.moderadores}</b><span>Moderadores gerais</span></div><div class="stat"><b>${r.resumo.usuarios}</b><span>Usuários ativos</span></div>`;
       document.getElementById('lista').innerHTML = r.itens.map((i) => `<div class="pessoa" style="flex-wrap:wrap"><span class="avatar pequeno">${i.foto_url ? `<img src="${esc(i.foto_url)}" alt="">` : esc(i.iniciais)}</span>
         <div><b>${esc(i.arroba)}</b>${i.id === PLAYGO.eu.id ? ' <span class="tag roxo">você</span>' : ''}<div class="suave">${esc(i.nome)} · ${esc(i.email)}</div></div>
-        <span class="suave">Plano: <b>${esc(i.plano)}</b>${i.plano_fim ? ' até ' + esc(i.plano_fim.split('-').reverse().join('/')) : ''} (${esc(i.plano_status)})</span>
-        <label class="suave" style="display:flex;align-items:center;gap:6px">Alterar plano
+        <span class="suave">Plano: <b>${esc(i.plano)}</b>${i.plano_inicio ? ' desde ' + esc(i.plano_inicio.split('-').reverse().join('/')) : ''}${i.plano_fim ? ' até ' + esc(i.plano_fim.split('-').reverse().join('/')) : ''} (${esc(i.plano_status)})</span>
+        <label class="suave" style="display:flex;align-items:center;gap:6px" title="Plano pago: Pro, Organizador ou Arena, com início e validade">Plano
           <select data-plano-sel="${i.id}" data-atual="${esc(i.plano)}" style="border:1px solid var(--border);border-radius:10px;padding:8px">${Object.entries(PLANOS).map(([k, n]) => `<option value="${k}" ${i.plano === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
-        <span class="acoes"><select data-id="${i.id}" style="border:1px solid var(--border);border-radius:10px;padding:8px">${Object.entries(PERFIS).map(([k, n]) => `<option value="${k}" ${i.perfil === k ? 'selected' : ''}>${n}</option>`).join('')}</select></span></div>`).join('') || '<p class="suave">Ninguém encontrado.</p>';
+        <span class="acoes" title="Perfil de acesso: moderação e administração"><select data-id="${i.id}" style="border:1px solid var(--border);border-radius:10px;padding:8px">${Object.entries(PERFIS).map(([k, n]) => `<option value="${k}" ${i.perfil === k ? 'selected' : ''}>${n}</option>`).join('')}</select></span></div>`).join('') || '<p class="suave">Ninguém encontrado.</p>';
     } catch (e) { document.getElementById('lista').innerHTML = `<p class="vazio">${esc(e.message)}</p>`; }
   }
   document.getElementById('filtros').addEventListener('submit', (ev) => { ev.preventDefault(); carregar(); });
@@ -56,6 +57,97 @@
     if (sel.value === 'admin' && !confirm('Tornar esta pessoa ADMINISTRADORA? Ela poderá gerir usuários e perfis e moderar tudo.')) return carregar();
     try { await webApi('/admin/usuarios/' + sel.dataset.id + '/perfil', { metodo: 'POST', corpo: { perfil: sel.value } }); toast('Perfil atualizado.'); } catch (e) { toast(e.message); }
     carregar();
+  });
+  async function carregarPlanos() {
+    try {
+      const r = await webApi('/admin/planos');
+      document.getElementById('planos-admin').innerHTML = r.map((p) => `<div class="pessoa" style="flex-wrap:wrap;gap:8px" data-plano-cod="${p.codigo}">
+        <b style="min-width:110px">${esc(p.nome)}</b>
+        <label class="suave">R$/mês <input name="valor_mensal" value="${p.valor_mensal}" style="width:90px;border:1px solid var(--border);border-radius:8px;padding:6px"></label>
+        <label class="suave">Máx. participantes <input name="max_participantes" value="${p.max_participantes ?? ''}" placeholder="∞" style="width:70px;border:1px solid var(--border);border-radius:8px;padding:6px"></label>
+        <label class="suave">Atividades abertas <input name="max_atividades_abertas" value="${p.max_atividades_abertas ?? ''}" placeholder="∞" style="width:70px;border:1px solid var(--border);border-radius:8px;padding:6px"></label>
+        <label class="suave"><input type="checkbox" name="pode_atividade" ${p.pode_atividade ? 'checked' : ''}> atividades</label>
+        <label class="suave"><input type="checkbox" name="pode_campeonato" ${p.pode_campeonato ? 'checked' : ''}> campeonatos</label>
+        <label class="suave"><input type="checkbox" name="pode_arena" ${p.pode_arena ? 'checked' : ''}> arenas</label>
+        <button class="btn soft pequeno" data-salvar-plano="${p.codigo}">Salvar</button></div>`).join('');
+    } catch (e) { document.getElementById('planos-admin').innerHTML = `<p class="vazio">${esc(e.message)}</p>`; }
+  }
+  document.addEventListener('click', async (ev) => {
+    const salvar = ev.target.closest('[data-salvar-plano]');
+    if (salvar) {
+      const linha = salvar.closest('[data-plano-cod]');
+      const v = (n) => linha.querySelector(`[name=${n}]`);
+      const num = (x) => (x.value.trim() === '' ? 0 : Number(x.value.replace(',', '.')));
+      try { await webApi('/admin/planos/' + salvar.dataset.salvarPlano, { metodo: 'PUT', corpo: { valor_mensal: String(num(v('valor_mensal'))), max_participantes: num(v('max_participantes')), max_atividades_abertas: num(v('max_atividades_abertas')), pode_atividade: v('pode_atividade').checked, pode_campeonato: v('pode_campeonato').checked, pode_arena: v('pode_arena').checked } }); toast('Plano salvo.'); } catch (e) { toast(e.message); }
+    }
+  });
+  // Plano de uma pessoa: escolhe na lista; planos pagos abrem uma janela com início e validade do acesso
+  const dialogo = document.createElement('dialog');
+  dialogo.id = 'dlg-plano';
+  dialogo.style.cssText = 'border:0;border-radius:18px;padding:22px;max-width:420px;width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.35)';
+  dialogo.innerHTML = `<form method="dialog" id="f-plano" style="display:grid;gap:12px">
+    <h3 id="dlg-titulo" style="margin:0">Plano</h3>
+    <p class="suave" id="dlg-pessoa" style="margin:0"></p>
+    <label>Plano<select name="plano" style="width:100%;border:1px solid var(--border);border-radius:10px;padding:10px">${Object.entries(PLANOS).map(([k, n]) => `<option value="${k}">${n}</option>`).join('')}</select></label>
+    <div id="dlg-datas" style="display:grid;gap:12px">
+      <label>Início do acesso <span class="suave">(a partir de quando conta o prazo)</span><input type="date" name="inicio" required style="width:100%;border:1px solid var(--border);border-radius:10px;padding:10px"></label>
+      <label>Válido até<input type="date" name="ate" required style="width:100%;border:1px solid var(--border);border-radius:10px;padding:10px"></label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap" id="dlg-atalhos"><span class="suave" style="align-self:center">Prazo:</span>
+        <button type="button" class="btn soft pequeno" data-dias="30">30 dias</button><button type="button" class="btn soft pequeno" data-dias="90">3 meses</button><button type="button" class="btn soft pequeno" data-dias="180">6 meses</button><button type="button" class="btn soft pequeno" data-dias="365">1 ano</button></div>
+      <p class="suave" style="margin:0" id="dlg-resumo"></p>
+    </div>
+    <p class="suave" id="dlg-gratis" style="margin:0" hidden>A pessoa volta ao plano Usuário e perde o acesso pago atual.</p>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="btn soft" id="dlg-cancelar">Cancelar</button><button class="btn purple" id="dlg-aplicar" value="ok">Aplicar plano</button></div>
+  </form>`;
+  document.body.appendChild(dialogo);
+  const iso = (d) => d.toISOString().slice(0, 10);
+  const somar = (dataIso, dias) => { const d = new Date(dataIso + 'T12:00:00'); d.setDate(d.getDate() + dias); return iso(d); };
+  let alvoPlano = null;
+  function ajustarDialogo() {
+    const f = document.getElementById('f-plano');
+    const pago = f.plano.value !== 'gratuito';
+    document.getElementById('dlg-datas').hidden = !pago;
+    document.getElementById('dlg-gratis').hidden = pago;
+    f.inicio.required = f.ate.required = pago;
+    if (pago && f.inicio.value && f.ate.value) {
+      const dias = Math.round((new Date(f.ate.value) - new Date(f.inicio.value)) / 86400000);
+      document.getElementById('dlg-resumo').textContent = dias < 0 ? '⚠ A validade é anterior ao início.' : `Acesso ${PLANOS[f.plano.value]} por ${dias} dia${dias === 1 ? '' : 's'}` + (f.inicio.value > iso(new Date()) ? ' (começa só na data de início; até lá vale o plano Usuário).' : '.');
+    }
+  }
+  function abrirPlano(i, planoInicial) {
+    alvoPlano = i;
+    const f = document.getElementById('f-plano');
+    document.getElementById('dlg-titulo').textContent = 'Plano de ' + i.arroba;
+    document.getElementById('dlg-pessoa').textContent = `Hoje: ${PLANOS[i.plano] || i.plano}${i.plano_inicio ? ' desde ' + i.plano_inicio.split('-').reverse().join('/') : ''}${i.plano_fim ? ' até ' + i.plano_fim.split('-').reverse().join('/') : ''}`;
+    f.plano.value = planoInicial;
+    f.inicio.value = iso(new Date());
+    f.ate.value = somar(f.inicio.value, 30);
+    ajustarDialogo();
+    dialogo.showModal();
+  }
+  dialogo.addEventListener('input', ajustarDialogo);
+  dialogo.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-dias]');
+    if (b) { const f = document.getElementById('f-plano'); f.ate.value = somar(f.inicio.value || iso(new Date()), Number(b.dataset.dias)); ajustarDialogo(); }
+  });
+  document.getElementById('dlg-cancelar').onclick = () => { dialogo.close(); carregar(); };
+  dialogo.addEventListener('cancel', () => carregar());
+  document.getElementById('f-plano').addEventListener('submit', async (ev) => {
+    const f = ev.target;
+    const plano = f.plano.value;
+    if (plano !== 'gratuito' && f.ate.value < f.inicio.value) { ev.preventDefault(); toast('A validade não pode ser anterior ao início.'); return; }
+    try {
+      await webApi('/admin/usuarios/' + alvoPlano.id + '/plano', { metodo: 'POST', corpo: { plano, inicio: plano === 'gratuito' ? null : f.inicio.value, ate: plano === 'gratuito' ? null : f.ate.value } });
+      toast('Plano atualizado.');
+    } catch (e) { toast(e.message); }
+    carregar();
+  });
+  document.addEventListener('change', (ev) => {
+    const sel = ev.target.closest('select[data-plano-sel]');
+    if (!sel) return;
+    const i = (window._usuarios || []).find((x) => String(x.id) === sel.dataset.planoSel);
+    if (!i) return carregar();
+    abrirPlano(i, sel.value);
   });
   async function carregarPlanos() {
     try {

@@ -961,6 +961,7 @@
       const f = dataBr(p.fim), t = dataBr(p.tolerancia_ate);
       const faixa = p.status === 'administrador' ? ['ok', 'Você é administrador: acesso completo, sem cobrança.']
         : p.status === 'teste' ? ['ok', `🎁 Teste do plano ${NOME_PLANO[p.plano]} até ${f} (${p.dias_restantes} dia${p.dias_restantes !== 1 ? 's' : ''}).`]
+        : p.status === 'agendada' ? ['ok', `📅 Plano ${NOME_PLANO[p.plano_contratado]} liberado de ${dataBr(p.inicio)} até ${f}. Até lá você segue no plano Usuário.`]
         : p.status === 'ativa' ? ['ok', `✅ Plano ${NOME_PLANO[p.plano]} ativo até ${f}.`]
         : p.status === 'cancelada' ? ['ok', `Plano ${NOME_PLANO[p.plano]} cancelado: vale até ${f}, sem renovação.`]
         : p.status === 'tolerancia' ? ['erro', `⚠️ O plano ${NOME_PLANO[p.plano]} venceu em ${f}. Tolerância até ${t}; depois, não dá para criar nem divulgar nada novo (o que já existe continua).`]

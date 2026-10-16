@@ -17,6 +17,7 @@
     const f = fmt(p.fim), t = fmt(p.tolerancia_ate);
     if (p.status === 'administrador') return ['ok', 'Você é administrador: acesso completo, sem cobrança.'];
     if (p.status === 'teste') return ['ok', `🎁 Teste do plano <b>${NOME[p.plano]}</b> até <b>${f}</b> (${p.dias_restantes} dia${p.dias_restantes !== 1 ? 's' : ''}).`];
+    if (p.status === 'agendada') return ['ok', `📅 Plano <b>${NOME[p.plano_contratado]}</b> liberado de <b>${fmt(p.inicio)}</b> até <b>${f}</b>. Até lá você segue no plano Usuário.`];
     if (p.status === 'ativa') return ['ok', `✅ Plano <b>${NOME[p.plano]}</b> ativo até <b>${f}</b>.`];
     if (p.status === 'cancelada') return ['ok', `Plano <b>${NOME[p.plano]}</b> cancelado: segue valendo até <b>${f}</b>, sem renovação.`];
     if (p.status === 'tolerancia') return ['erro', `⚠️ O plano <b>${NOME[p.plano]}</b> venceu em ${f}. Você tem até <b>${t}</b> de tolerância; depois, não dá mais para criar nem divulgar nada novo (o que já existe continua).`];

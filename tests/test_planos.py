@@ -196,6 +196,32 @@ def test_admin_nao_paga_e_concede_plano(s, fabrica):
     assert planos.situacao(s, alvo)["plano"] == "gratuito"
 
 
+def test_admin_concede_plano_com_data_de_inicio_e_o_acesso_so_vale_a_partir_dela(s, fabrica):
+    admin, alvo = _admin(fabrica, s), fabrica.atleta("Agendado")
+    hoje = agora().date()
+    inicio, ate = hoje + timedelta(days=10), hoje + timedelta(days=40)
+
+    # concedido para começar daqui a 10 dias: até lá continua no plano Usuário
+    r = planos.conceder(s, admin, alvo.id, "pro", ate, inicio)
+    assert (r["plano"], r["status"], r["inicio"], r["fim"]) == ("gratuito", "agendada", inicio.isoformat(), ate.isoformat())
+    assert planos.permissoes(s, alvo)["atividade"] is False
+    # no dia do início o plano passa a valer
+    sit = planos._situacao(s, alvo, inicio)
+    assert (sit["plano"], sit["status"]) == ("pro", "ativa")
+    assert planos._situacao(s, alvo, ate)["plano"] == "pro" and planos._situacao(s, alvo, ate + timedelta(days=1))["status"] == "tolerancia"
+    # o item da administração mostra o início
+    from playgo import administracao
+
+    item = next(i for i in administracao.listar(s, admin, "Agendado") if i["id"] == alvo.id)
+    assert item["plano_inicio"] == inicio.isoformat() and item["plano_fim"] == ate.isoformat()
+
+    # sem início informado vale desde hoje; a validade não pode ser anterior ao início
+    r = planos.conceder(s, admin, alvo.id, "organizador", ate)
+    assert (r["plano"], r["status"], r["inicio"]) == ("organizador", "ativa", hoje.isoformat())
+    with pytest.raises(ErroNegocio, match="anterior ao início"):
+        planos.conceder(s, admin, alvo.id, "pro", hoje + timedelta(days=5), hoje + timedelta(days=9))
+
+
 def test_admin_define_precos_e_limites(s, fabrica):
     admin, comum = _admin(fabrica, s), fabrica.atleta("Comum")
     with pytest.raises(SemPermissao):

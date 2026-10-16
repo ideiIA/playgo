@@ -153,7 +153,7 @@ def situacao(s: SessaoORM, u: Usuario, hoje: date | None = None) -> dict:
 def _situacao(s: SessaoORM, u: Usuario, hoje: date | None) -> dict:
     hoje = hoje or agora().date()
     a = assinatura_de(s, u)
-    base = {"plano": "gratuito", "plano_contratado": None, "status": "gratuito", "fim": None, "dias_restantes": None, "tolerancia_ate": None, "teste_disponivel": [c for c in CODIGOS if c != "gratuito"], "assinatura_asaas": False, "cancelada": False}
+    base = {"plano": "gratuito", "plano_contratado": None, "status": "gratuito", "inicio": None, "fim": None, "dias_restantes": None, "tolerancia_ate": None, "teste_disponivel": [c for c in CODIGOS if c != "gratuito"], "assinatura_asaas": False, "cancelada": False}
     if u.admin:
         return base | {"plano": "arena", "status": "administrador", "teste_disponivel": []}
     if a is None:
@@ -166,7 +166,9 @@ def _situacao(s: SessaoORM, u: Usuario, hoje: date | None) -> dict:
     if fim is None:
         return base
     tol = fim + timedelta(days=settings.tolerancia_dias)
-    base |= {"plano_contratado": a.plano, "fim": fim, "dias_restantes": (fim - hoje).days, "tolerancia_ate": tol}
+    base |= {"plano_contratado": a.plano, "inicio": a.vigente_desde, "fim": fim, "dias_restantes": (fim - hoje).days, "tolerancia_ate": tol}
+    if a.vigente_desde and hoje < a.vigente_desde and a.status == "ativa":
+        return base | {"status": "agendada"}  # concedido para começar numa data futura: até lá vale o plano Usuário
     if hoje <= fim:
         return base | {"plano": a.plano, "status": a.status}
     if hoje <= tol:
@@ -248,8 +250,9 @@ def _iniciar_teste(s: SessaoORM, u: Usuario, plano: str) -> bool:
     return True
 
 
-def conceder(s: SessaoORM, admin: Usuario, alvo_id: int, plano: str, ate: date | None) -> dict:
-    """Cortesia ou cobrança fora do app: o administrador libera um plano até uma data (ou volta a pessoa para o gratuito)."""
+def conceder(s: SessaoORM, admin: Usuario, alvo_id: int, plano: str, ate: date | None, inicio: date | None = None) -> dict:
+    """Cortesia ou cobrança fora do app: o administrador libera um plano de `inicio` (hoje, se não informado) até `ate`
+    (ou volta a pessoa para o gratuito). Antes do início a pessoa continua no plano Usuário."""
     if not admin.admin:
         raise SemPermissao("Só administradores concedem planos.")
     alvo = s.get(Usuario, alvo_id)
@@ -264,13 +267,17 @@ def conceder(s: SessaoORM, admin: Usuario, alvo_id: int, plano: str, ate: date |
     else:
         if ate is None or ate < agora().date():
             raise ErroNegocio("Informe uma data de validade no futuro.")  # sem data, só o plano Usuário "volta ao básico"
+        inicio = inicio or agora().date()
+        if ate < inicio:
+            raise ErroNegocio("A validade não pode ser anterior ao início do acesso.")
         if a is None:
             a = Assinatura(usuario_id=alvo.id, plano=plano, status="ativa", origem="manual", testes_usados=[])
             s.add(a)
-        a.plano, a.status, a.origem, a.vigente_ate = plano, "ativa", "manual", ate
-    auditoria.registrar(s, admin.id, "plano_conceder", "usuario", alvo.id, plano=plano, ate=ate)
+        a.plano, a.status, a.origem, a.vigente_ate, a.vigente_desde = plano, "ativa", "manual", ate, inicio
+    auditoria.registrar(s, admin.id, "plano_conceder", "usuario", alvo.id, plano=plano, inicio=inicio, ate=ate)
     if ate is not None:
-        notificacoes.avisar(s, alvo.id, "plano", f"Plano {DEFAULTS[plano].nome} liberado", f"Válido até {ate.strftime('%d/%m/%Y')}.", "/planos", None, f"plano:conceder:{alvo.id}:{plano}:{ate}")
+        quando = f"De {inicio.strftime('%d/%m/%Y')} até {ate.strftime('%d/%m/%Y')}." if inicio > agora().date() else f"Válido até {ate.strftime('%d/%m/%Y')}."
+        notificacoes.avisar(s, alvo.id, "plano", f"Plano {DEFAULTS[plano].nome} liberado", quando, "/planos", None, f"plano:conceder:{alvo.id}:{plano}:{inicio}:{ate}")
     s.commit()
     return resumo(s, alvo)
 

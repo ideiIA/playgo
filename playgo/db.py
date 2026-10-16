@@ -64,6 +64,7 @@ _COLUNAS_NOVAS: tuple[str, ...] = (
     "ALTER TABLE locais ADD COLUMN IF NOT EXISTS categoria_maps varchar(120)",
     "ALTER TABLE locais ADD COLUMN IF NOT EXISTS avaliacao double precision",
     "ALTER TABLE locais ADD COLUMN IF NOT EXISTS avaliacoes integer",
+    "ALTER TABLE assinaturas ADD COLUMN IF NOT EXISTS vigente_desde date",
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS transmissao_permitida boolean NOT NULL DEFAULT false",
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS transmissao_aceite_por_id integer",
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS transmissao_aceite_em timestamp",

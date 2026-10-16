@@ -944,6 +944,7 @@ class Assinatura(Base):
     origem: Mapped[str] = mapped_column(String(10), default="teste")  # teste | asaas | manual
     teste_ate: Mapped[date | None] = mapped_column(Date)
     vigente_ate: Mapped[date | None] = mapped_column(Date)
+    vigente_desde: Mapped[date | None] = mapped_column(Date)  # concessão do administrador: o acesso só vale a partir desta data
     testes_usados: Mapped[list[str]] = mapped_column(ARRAY(String(12)), default=list)
     asaas_customer_id: Mapped[str | None] = mapped_column(String(40))  # o CPF/CNPJ NÃO é guardado aqui
     asaas_subscription_id: Mapped[str | None] = mapped_column(String(40), unique=True)

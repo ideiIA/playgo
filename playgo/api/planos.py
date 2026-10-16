@@ -35,6 +35,7 @@ class RegrasIn(BaseModel):
 class ConcederIn(BaseModel):
     plano: str
     ate: date | None = None
+    inicio: date | None = None  # quando o acesso começa a valer (padrão: hoje)
 
 
 @router.get("/planos")
@@ -90,4 +91,4 @@ def admin_salvar_plano(codigo: str, corpo: RegrasIn, u: AtualApi, s: Sessao):
 
 @router.post("/admin/usuarios/{usuario_id}/plano")
 def admin_conceder_plano(usuario_id: int, corpo: ConcederIn, u: AtualApi, s: Sessao):
-    return planos.conceder(s, u, usuario_id, corpo.plano, corpo.ate)
+    return planos.conceder(s, u, usuario_id, corpo.plano, corpo.ate, corpo.inicio)
