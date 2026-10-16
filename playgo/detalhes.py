@@ -109,12 +109,16 @@ def campeonato(s: SessaoORM, c: Campeonato, usuario: Usuario | None) -> dict:
             "membros": [_pessoa(m.usuario, {"status": m.status}) for m in ativos],
         }
 
+    from . import chaves  # import local: chaves usa este módulo indiretamente
+
+    pode_telao = bool(usuario and chaves.pode_pontuar(s, c, usuario))
     visiveis = [e for e in c.equipes if e.status in ("pendente", "confirmada")]
     contagem = elenco.contagens(s, [e.id for e in visiveis])
     d.update(
         {
             "capa_url": f"/capa/{c.capa}" if c.capa else None,
             "book_publicado": bool(c.book_publicado),
+            "pode_telao": pode_telao,
             "descricao": c.descricao,
             "regulamento": c.regulamento,
             "cadastro_elenco": bool(c.cadastro_elenco),

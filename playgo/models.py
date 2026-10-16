@@ -429,6 +429,8 @@ class Campeonato(Base):
     modalidade_id: Mapped[int] = mapped_column(ForeignKey("modalidades.id"))
     capa: Mapped[str | None] = mapped_column(String(60))  # arte/logo do campeonato (nome do arquivo em capas/)
     book_publicado: Mapped[bool] = mapped_column(Boolean, default=False)  # o book fica visível para todos os usuários
+    telao_token: Mapped[str | None] = mapped_column(String(40), unique=True)  # link secreto do telão (placar em TV/tablet, sem login)
+    telao_jogo_id: Mapped[int | None] = mapped_column(Integer)  # jogo fixado no telão; vazio = automático (o que estiver ao vivo)
 
     nome: Mapped[str] = mapped_column(String(150))
     categoria: Mapped[str | None] = mapped_column(String(120))  # "B, C e iniciante", "Masculino"…

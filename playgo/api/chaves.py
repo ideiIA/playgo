@@ -6,7 +6,7 @@ from datetime import datetime, time
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from .. import campeonatos, chaves
+from .. import campeonatos, chaves, telao
 from ..deps import AtualApi, Sessao
 
 router = APIRouter(prefix="/api/v1/campeonatos")
@@ -100,6 +100,25 @@ def agenda_em_lote(campeonato_id: int, corpo: AgendaLoteIn, u: AtualApi, s: Sess
 @router.get("/{campeonato_id}/jogos/{jogo_id}")
 def ver_jogo(campeonato_id: int, jogo_id: int, u: AtualApi, s: Sessao):
     return chaves.detalhe_jogo(s, campeonatos.obter(s, campeonato_id), jogo_id, u)
+
+
+class TelaoJogoIn(BaseModel):
+    jogo_id: int | None = None  # None = automático (o jogo ao vivo)
+
+
+@router.get("/{campeonato_id}/telao")
+def painel_telao(campeonato_id: int, u: AtualApi, s: Sessao):
+    return telao.painel(s, campeonatos.obter(s, campeonato_id), u)
+
+
+@router.post("/{campeonato_id}/telao/jogo")
+def escolher_jogo_telao(campeonato_id: int, corpo: TelaoJogoIn, u: AtualApi, s: Sessao):
+    return telao.escolher_jogo(s, campeonato_id, u, corpo.jogo_id)
+
+
+@router.post("/{campeonato_id}/telao/renovar")
+def renovar_telao(campeonato_id: int, u: AtualApi, s: Sessao):
+    return telao.renovar_link(s, campeonato_id, u)
 
 
 def _devolver(campeonato_id: int, jogo_id: int, u, s):

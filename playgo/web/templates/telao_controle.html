@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_camp_abas.html" import abas %}
+{% block titulo %}Telão — {{ k.nome }} — PlayGo{% endblock %}
+{% block conteudo %}
+<div class="detalhe-topo"><div><span class="tag {{ k.modalidade.cor }}">{{ k.modalidade.icone }} {{ k.modalidade.nome|upper }}</span><h1>📺 Telão: {{ k.nome }}</h1>
+  <div class="meta">Uma tela só com o placar, para deixar numa TV, telão ou tablet no local do jogo.</div></div></div>
+<link rel="stylesheet" href="/static/chaves.css">
+{{ abas(k, 'telao') }}
+
+<div class="panel" style="margin-bottom:18px">
+  <h2>1 · Abra o telão na TV ou no tablet</h2>
+  <p class="suave">Este link abre <b>sem login</b>: cole-o no navegador da TV/tablet e toque na tela (ou aperte <b>F</b>) para ficar em tela cheia. A tela fica acesa e se atualiza sozinha.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+    <input id="link-telao" readonly style="flex:1;min-width:260px;border:1px solid var(--border);border-radius:10px;padding:10px" value="">
+    <button class="btn purple" id="bt-copiar" type="button">🔗 Copiar link</button>
+    <a class="btn soft" id="bt-abrir" target="_blank" rel="noopener" href="{{ p.link }}">📺 Abrir telão</a>
+    <button class="btn perigo pequeno" id="bt-renovar" type="button">Gerar novo link</button>
+  </div>
+  <p class="suave" style="margin-top:8px">Qualquer pessoa com o link vê o placar. Se o link vazar ou você terminar o evento, use <b>Gerar novo link</b>: o antigo para de funcionar.</p>
+</div>
+
+<div class="panel">
+  <h2>2 · Escolha o que aparece</h2>
+  <p class="suave">No <b>automático</b> o telão mostra o jogo que estiver ao vivo (e alterna entre eles se houver mais de um). Ou fixe um jogo específico, mesmo antes de começar.</p>
+  <form id="f-jogo">
+    <label class="opcao"><input type="radio" name="jogo" value="" {{ 'checked' if not p.escolhido }}> <b>🤖 Automático</b> — o jogo ao vivo</label>
+    {% for titulo, lista in (('🔴 Ao vivo agora', p.ao_vivo), ('⏭ Próximos jogos', p.proximos), ('🏁 Últimos resultados', p.encerrados)) %}
+      {% if lista %}<h3 style="margin:16px 0 6px;font-size:14px">{{ titulo }}</h3>
+      {% for j in lista %}
+      <label class="opcao"><input type="radio" name="jogo" value="{{ j.id }}" {{ 'checked' if p.escolhido == j.id }}>
+        <span><b>{{ j.a }} × {{ j.b }}</b> <span class="suave">· {{ j.rodada }}{% if j.local %} · {{ j.local }}{% endif %}{% if j.status == 'agendado' and j.inicio_previsto %} · {{ j.inicio_previsto[8:10] }}/{{ j.inicio_previsto[5:7] }} {{ j.inicio_previsto[11:16] }}{% elif j.status != 'agendado' %} · {{ j.placar }}{% endif %}</span></span></label>
+      {% endfor %}{% endif %}
+    {% endfor %}
+    {% if not (p.ao_vivo or p.proximos or p.encerrados) %}<p class="vazio">Ainda não há jogos. Faça o sorteio na aba Sorteio.</p>{% endif %}
+    <p style="margin-top:14px"><button class="btn purple" type="submit">Aplicar no telão</button> <span class="suave" id="msg"></span></p>
+  </form>
+</div>
+<style>.opcao{display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:12px;margin:6px 0;cursor:pointer;background:#fff}.opcao:has(input:checked){border-color:var(--purple);background:#f4f1ff}.opcao input{width:auto}</style>
+<script>
+  const id = {{ k.id }};
+  const link = document.getElementById('link-telao');
+  const montar = (rel) => location.origin + rel;
+  link.value = montar({{ p.link|tojson }});
+  document.getElementById('bt-copiar').onclick = async function () { try { await navigator.clipboard.writeText(link.value); this.textContent = '✅ Link copiado'; } catch (e) { link.select(); } };
+  document.getElementById('bt-renovar').onclick = async () => {
+    if (!confirm('Gerar um novo link? O link atual deixa de funcionar e a TV precisará abrir o novo.')) return;
+    try { const r = await webApi('/campeonatos/' + id + '/telao/renovar', { metodo: 'POST', corpo: {} }); link.value = montar(r.link); document.getElementById('bt-abrir').href = r.link; toast('Novo link gerado.'); } catch (e) { toast(e.message); }
+  };
+  document.getElementById('f-jogo').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const v = new FormData(ev.target).get('jogo');
+    try { await webApi('/campeonatos/' + id + '/telao/jogo', { metodo: 'POST', corpo: { jogo_id: v ? Number(v) : null } }); document.getElementById('msg').textContent = v ? 'Jogo fixado no telão.' : 'Telão no automático.'; } catch (e) { toast(e.message); }
+  };
+</script>
+{% endblock %}

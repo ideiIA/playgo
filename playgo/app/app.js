@@ -149,6 +149,12 @@
       <h3>${esc(a.nome)}</h3>
       <div class="meta">${esc(a.endereco || a.cidade || '')}${a.distancia ? ' • ' + esc(a.distancia) : ''}${a.horarios_disponiveis ? `<br><b style="color:var(--green)">${a.horarios_disponiveis} horário(s) livre(s) hoje</b>` : ''}</div>
     </a>`;
+  const cardVivo = (j) => `
+    <a class="card" style="border:2px solid #ff3d81" href="#/campeonato/${j.campeonato_id}/ao-vivo">
+      <span class="tag rosa">🔴 AO VIVO</span> <span class="tag">${esc(j.icone)} ${esc(j.campeonato)}</span>
+      <h3 style="margin-top:8px">${esc(j.a)} <b style="color:#ff3d81">${j.placar_a}</b> × <b style="color:#ff3d81">${j.placar_b}</b> ${esc(j.b)}</h3>
+      <div class="meta">${esc([j.rodada, j.local].filter(Boolean).join(' · '))}${j.sets_a != null ? ` · sets ${j.sets_a} × ${j.sets_b}` : ''}</div>
+    </a>`;
   const cardLocal = (l) => `
     <a class="card" href="#/local/${l.id}">
       <span class="tag verde">${esc(l.icone)} ${esc(l.categoria_nome)}</span>
@@ -233,6 +239,7 @@
         <div class="hero"><h1>Olá, ${esc(u.nome.split(' ')[0])}! Bora completar o time?</h1><p>Jogos, grupos, campeonatos e arenas com vagas em tempo real.</p></div>
         ${!f.centro.informada ? '<p class="aviso alerta">📍 Não sabemos onde você está — mostrando Campo Grande. <button class="btn suave pequeno" data-acao="localizar">Usar minha localização</button></p>' : ''}
         <div class="livebar"><div><span class="pulse"></span><strong>${f.oportunidades_agora} oportunidade${f.oportunidades_agora !== 1 ? 's' : ''} agora</strong> em até 5 km</div><a class="btn lima pequeno" href="#/explorar?mapa=1">Mapa</a></div>
+        ${(f.ao_vivo || []).length ? secao('🔴 Ao vivo agora') + lista(f.ao_vivo, cardVivo) : ''}
         ${f.urgentes.length ? secao('🔥 Precisam de jogadores agora') + `<div class="carrossel">${f.urgentes.map(cardUrg).join('')}</div>` : ''}
         ${secao('O que você quer praticar?', '<a href="#/explorar">Ver todos</a>')}
         <div class="esportes">${estado.mods.slice(0, 6).map((m) => `<a class="esporte" href="#/explorar?modalidades=${m.codigo}"><span>${esc(m.icone)}</span>${esc(m.nome)}</a>`).join('')}</div>

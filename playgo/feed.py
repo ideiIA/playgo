@@ -3,7 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session as SessaoORM
 
-from . import descoberta, match
+from . import descoberta, match, telao
 from . import serializadores as ser
 from .db import agora
 from .descoberta import Filtros
@@ -57,6 +57,7 @@ def montar(s: SessaoORM, usuario: Usuario, lat: float | None = None, lng: float 
     return {
         "centro": {"latitude": la, "longitude": ln, "informada": informada},
         "oportunidades_agora": len(ate_5km),
+        "ao_vivo": telao.ao_vivo_agora(s),
         "urgentes": urgentes,
         "perto": perto,
         "campeonatos": descoberta.buscar_campeonatos(s, la, ln, Filtros(raio_km=raio * 2, com_vagas=True), limite=6),

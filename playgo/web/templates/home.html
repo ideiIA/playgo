@@ -16,6 +16,21 @@
 </p>
 {% endif %}
 
+{% if feed.ao_vivo %}
+<div class="section-title"><h2><span class="pulse"></span> Ao vivo agora</h2><a href="/campeonatos">Ver campeonatos</a></div>
+<div class="grid">
+  {% for j in feed.ao_vivo %}
+  <div class="card" style="border:2px solid #ff3d81">
+    <a class="cobre" href="{{ j.link }}" aria-label="Acompanhar {{ j.a }} contra {{ j.b }}"></a>
+    <span class="tag rosa">🔴 AO VIVO</span> <span class="tag cinza">{{ j.icone }} {{ j.campeonato }}</span>
+    <h3 style="margin-top:8px">{{ j.a }} <b style="color:#ff3d81">{{ j.placar_a }}</b> × <b style="color:#ff3d81">{{ j.placar_b }}</b> {{ j.b }}</h3>
+    <div class="meta">{{ j.rodada }}{% if j.local %} · {{ j.local }}{% endif %}{% if j.sets_a is not none %} · sets {{ j.sets_a }} × {{ j.sets_b }}{% endif %}</div>
+    <p style="margin:10px 0 0"><span class="btn purple pequeno">Acompanhar agora →</span></p>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
 <div class="livebar">
   <div><span class="pulse"></span><strong>{{ feed.oportunidades_agora }} oportunidade{{ 's' if feed.oportunidades_agora != 1 }} agora</strong> em até 5 km de você</div>
   <a class="btn lime" href="/explorar?raio=5&quando=hoje">Abrir mapa ao vivo</a>

@@ -861,4 +861,4 @@ def marcar_lidas(s: Sessao, usuario: Atual):
 
 
 # Rotas do mural, comunidades, termos e privacidade vivem em outro módulo (importado aqui no fim para evitar ciclo).
-from . import rotas_chaves, rotas_google, rotas_instagram, rotas_mural  # noqa: E402,F401
+from . import rotas_chaves, rotas_google, rotas_instagram, rotas_mural, rotas_telao  # noqa: E402,F401

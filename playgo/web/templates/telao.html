@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0f0c2d">
+  <title>Telão — PlayGo</title>
+  <link rel="icon" href="/static/marca/favicon.svg" type="image/svg+xml">
+  <style>
+    :root { --lima: #b7f34b; --rosa: #ff3d81; --roxo: #6c4cff; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; color: #fff; overflow: hidden;
+      background: radial-gradient(1200px 700px at 15% -10%, #4b2fd6 0%, transparent 60%), radial-gradient(1000px 700px at 100% 110%, #c2185b 0%, transparent 55%), #0f0c2d; }
+    body.sem-cursor { cursor: none; }
+    .tela { height: 100vh; display: grid; grid-template-rows: auto 1fr auto; padding: clamp(14px, 2.4vw, 40px); gap: clamp(8px, 1.6vw, 24px); }
+    header { display: flex; align-items: center; gap: 16px; }
+    header .logo { height: clamp(34px, 5vw, 68px); aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; background: rgba(255, 255, 255, .12); }
+    header h1 { margin: 0; font-size: clamp(18px, 2.6vw, 40px); letter-spacing: -.5px; line-height: 1.1; }
+    header small { display: block; opacity: .75; font-size: clamp(12px, 1.3vw, 20px); font-weight: 600; margin-top: 2px; }
+    .vivo { margin-left: auto; display: flex; align-items: center; gap: 10px; background: rgba(255, 61, 129, .22); border: 2px solid var(--rosa); padding: 8px 18px; border-radius: 999px; font-weight: 900; letter-spacing: 1px; font-size: clamp(14px, 1.8vw, 28px); }
+    .vivo i { width: .7em; height: .7em; border-radius: 50%; background: var(--rosa); animation: pulsa 1.2s infinite; }
+    .vivo.parado { background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .35); } .vivo.parado i { background: #9aa0b8; animation: none; }
+    @keyframes pulsa { 0% { box-shadow: 0 0 0 0 rgba(255, 61, 129, .8); } 100% { box-shadow: 0 0 0 16px rgba(255, 61, 129, 0); } }
+
+    main { display: grid; align-content: center; justify-items: center; text-align: center; min-height: 0; overflow: hidden; }
+    .rodada { font-size: clamp(12px, min(2vw, 3.4vh), 32px); font-weight: 700; opacity: .85; margin-bottom: clamp(6px, 1.4vw, 22px); }
+    .placar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: clamp(10px, 3vw, 60px); width: 100%; max-width: 1800px; }
+    .lado { display: grid; justify-items: center; gap: clamp(6px, 1.2vw, 18px); min-width: 0; }
+    .nome { font-size: clamp(18px, min(4.4vw, 7.5vh), 78px); font-weight: 900; line-height: 1.05; letter-spacing: -1px; overflow-wrap: anywhere; }
+    .numero { font-size: clamp(60px, min(21vw, 33vh), 380px); font-weight: 900; line-height: .9; letter-spacing: -.04em; font-variant-numeric: tabular-nums; text-shadow: 0 10px 40px rgba(0, 0, 0, .45); }
+    .lado.vence .numero { color: var(--lima); }
+    .x { font-size: clamp(24px, min(5vw, 9vh), 90px); opacity: .55; font-weight: 800; }
+    .sets-ganhos { font-size: clamp(13px, min(2.4vw, 4vh), 40px); font-weight: 800; background: rgba(255, 255, 255, .14); border-radius: 999px; padding: 4px 18px; }
+    .ponto { margin-top: clamp(6px, 1.4vw, 24px); background: #fff; color: #14213d; border-radius: 22px; padding: clamp(6px, 1vw, 16px) clamp(18px, 3vw, 50px); font-weight: 900; font-size: clamp(18px, min(4vw, 7vh), 70px); display: inline-flex; gap: clamp(12px, 2.2vw, 40px); align-items: center; }
+    .ponto small { font-size: .38em; text-transform: uppercase; letter-spacing: 2px; color: #6c4cff; }
+    .parciais { margin-top: clamp(8px, 1.4vw, 22px); display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+    .parciais span { background: rgba(255, 255, 255, .15); border-radius: 14px; padding: 4px 14px; font-weight: 800; font-size: clamp(13px, min(2.2vw, 3.6vh), 36px); }
+    .pontos-pontos { display: flex; gap: 8px; justify-content: center; margin-top: 10px; } .pontos-pontos b { width: 14px; height: 14px; border-radius: 50%; background: rgba(255, 255, 255, .3); } .pontos-pontos b.on { background: var(--lima); }
+
+    .espera h2 { font-size: clamp(24px, 4vw, 64px); margin: 0 0 8px; } .espera p { font-size: clamp(16px, 2.2vw, 34px); opacity: .85; margin: 0; }
+    .proximo { margin-top: clamp(10px, 2vh, 40px); background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .22); border-radius: 26px; padding: clamp(14px, 2vw, 32px) clamp(20px, 3vw, 52px); font-size: clamp(18px, min(3.2vw, 6vh), 52px); font-weight: 800; }
+    .proximo small { display: block; font-size: .5em; opacity: .75; font-weight: 700; margin-top: 6px; }
+
+    footer { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(8px, 2vw, 32px); font-size: clamp(11px, min(1.5vw, 2.4vh), 24px); max-height: 26vh; overflow: hidden; }
+    footer h3 { margin: 0 0 6px; font-size: .8em; text-transform: uppercase; letter-spacing: 1.5px; opacity: .65; }
+    footer .linha { display: flex; gap: 12px; justify-content: space-between; background: rgba(255, 255, 255, .08); border-radius: 12px; padding: 6px 14px; margin-bottom: 6px; font-weight: 700; }
+    footer .linha em { font-style: normal; opacity: .8; white-space: nowrap; }
+    .dots { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; gap: 8px; } .dots b { width: 12px; height: 12px; border-radius: 50%; background: rgba(255, 255, 255, .3); } .dots b.on { background: #fff; }
+    .conexao { position: fixed; right: 12px; top: 8px; font-size: 12px; opacity: .6; } .conexao.erro { color: #ffb4b4; opacity: 1; }
+    .erro-tela { height: 100vh; display: grid; place-content: center; text-align: center; padding: 24px; } .erro-tela h1 { font-size: clamp(26px, 4vw, 56px); }
+    .dica { position: fixed; left: 12px; top: 8px; font-size: 12px; opacity: .55; }
+    @media (max-width: 700px) { .placar { grid-template-columns: 1fr; } .x { display: none; } footer { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+{% if erro %}
+  <div class="erro-tela"><div><h1>📺 {{ erro }}</h1><p>Abra o telão pelo link da tela “📺 Telão” do campeonato.</p></div></div>
+{% else %}
+  <div class="tela" id="tela" aria-live="polite">
+    <header><img class="logo" id="logo" alt="" hidden><div><h1 id="titulo">Carregando…</h1><small id="sub"></small></div><div class="vivo parado" id="vivo"><i></i><span id="vivo-txt">AGUARDANDO</span></div></header>
+    <main id="principal"></main>
+    <footer id="rodape"></footer>
+  </div>
+  <div class="dots" id="pontos"></div>
+  <div class="conexao" id="conexao"></div>
+  <div class="dica" id="dica">Toque ou aperte F para tela cheia</div>
+  <script>
+    const TOKEN = {{ token|tojson }};
+    const esc = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const $ = (id) => document.getElementById(id);
+    let D = null, idx = 0, ultimaTroca = 0;
+
+    const quando = (j) => (j.inicio_previsto ? new Date(j.inicio_previsto).toLocaleString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : 'a definir');
+    const linhaMini = (j, fim) => `<div class="linha"><span>${esc(j.a.nome)} × ${esc(j.b.nome)}</span><em>${fim ? esc(j.placar_a) + ' × ' + esc(j.placar_b) : esc(quando(j))}</em></div>`;
+
+    function jogoGrande(j) {
+      const g = j.grande, vence = (l) => (g[l] > g[l === 'a' ? 'b' : 'a'] ? 'vence' : '');
+      const sets = g.sets_a != null ? `<div class="sets-ganhos">Sets ${g.sets_a} × ${g.sets_b}</div>` : '';
+      const lado = (l, eq) => `<div class="lado ${vence(l)}"><div class="nome">${esc(eq.nome)}</div><div class="numero">${esc(g[l])}</div>${g.sets_a != null ? `<div class="sets-ganhos">${g['sets_' + l]} set${g['sets_' + l] === 1 ? '' : 's'}</div>` : ''}</div>`;
+      const fechados = (j.sets || []).filter((x) => x.encerrado).map((x) => `${x.a}–${x.b}`).join(' · ');
+      const ponto = j.ponto ? `<div class="ponto"><small>${esc(j.ponto.rotulo)}</small><span>${esc(j.ponto.a)}</span><span style="opacity:.4">–</span><span>${esc(j.ponto.b)}</span></div>` : '';
+      return `<div class="rodada">${esc([j.rodada_nome, j.local, g.rotulo, fechados ? 'Sets anteriores ' + fechados : ''].filter(Boolean).join(' · '))}</div>
+        <div class="placar">${lado('a', j.a)}<div class="x">×</div>${lado('b', j.b)}</div>
+        ${ponto}`;
+    }
+
+    function espera() {
+      const p = D.proximos[0];
+      return `<div class="espera"><h2>${D.ultimos.length || D.proximos.length ? 'Intervalo entre os jogos' : 'Em breve, o placar ao vivo'}</h2><p>${esc(D.campeonato.nome)}</p></div>` +
+        (p ? `<div class="proximo">Próximo jogo<br>${esc(p.a.nome)} × ${esc(p.b.nome)}<small>${esc([p.rodada_nome, p.local, quando(p)].filter(Boolean).join(' · '))}</small></div>` : '');
+    }
+
+    function desenhar() {
+      if (!D) return;
+      const c = D.campeonato, jogos = D.jogos;
+      $('titulo').textContent = c.nome;
+      $('sub').textContent = c.icone + ' ' + c.modalidade;
+      if (c.capa_url) { $('logo').src = c.capa_url; $('logo').hidden = false; }
+      const aoVivo = jogos.some((j) => j.status === 'ao_vivo');
+      $('vivo').classList.toggle('parado', !aoVivo);
+      $('vivo-txt').textContent = aoVivo ? 'AO VIVO' : (jogos.length ? 'EM BREVE' : 'AGUARDANDO');
+      if (idx >= jogos.length) idx = 0;
+      $('principal').innerHTML = jogos.length ? jogoGrande(jogos[idx]) : espera();
+      $('pontos').innerHTML = jogos.length > 1 ? jogos.map((_, i) => `<b class="${i === idx ? 'on' : ''}"></b>`).join('') : '';
+      $('rodape').innerHTML =
+        `<div><h3>Próximos jogos</h3>${D.proximos.slice(0, 3).map((j) => linhaMini(j, false)).join('') || '<div class="linha"><span>—</span></div>'}</div>` +
+        `<div><h3>Últimos resultados</h3>${D.ultimos.slice(0, 3).map((j) => linhaMini(j, true)).join('') || '<div class="linha"><span>—</span></div>'}</div>`;
+    }
+
+    async function atualizar() {
+      try {
+        const r = await fetch(`/telao/${encodeURIComponent(TOKEN)}/dados`, { cache: 'no-store' });
+        if (r.status === 404) { $('conexao').textContent = 'Link do telão inválido ou renovado: peça o novo link.'; $('conexao').className = 'conexao erro'; return; }
+        D = await r.json();
+        $('conexao').textContent = ''; $('conexao').className = 'conexao';
+        desenhar();
+      } catch (e) { $('conexao').textContent = 'Reconectando…'; $('conexao').className = 'conexao erro'; }
+    }
+    atualizar();
+    setInterval(atualizar, 3000);
+    // vários jogos ao vivo no modo automático: alterna a cada poucos segundos
+    setInterval(() => { if (D && D.modo === 'auto' && D.jogos.length > 1 && Date.now() - ultimaTroca >= D.rotacao_s * 1000) { idx = (idx + 1) % D.jogos.length; ultimaTroca = Date.now(); desenhar(); } }, 1000);
+
+    // tela cheia, tela sempre acesa e cursor escondido (TV)
+    const cheia = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen && document.documentElement.requestFullscreen());
+    document.addEventListener('click', cheia);
+    document.addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'f') cheia(); });
+    let luz = null;
+    async function acender() { try { if (navigator.wakeLock) luz = await navigator.wakeLock.request('screen'); } catch (e) { /* sem suporte */ } }
+    acender(); document.addEventListener('visibilitychange', () => { if (!document.hidden) acender(); });
+    let t; const mexeu = () => { document.body.classList.remove('sem-cursor'); $('dica').hidden = false; clearTimeout(t); t = setTimeout(() => { document.body.classList.add('sem-cursor'); $('dica').hidden = true; }, 3000); };
+    document.addEventListener('mousemove', mexeu); mexeu();
+  </script>
+{% endif %}
+</body>
+</html>
