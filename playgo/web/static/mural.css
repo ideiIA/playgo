@@ -1,5 +1,6 @@
 /* Mural (publicações e comentários) — compartilhado pelo site e pelo app. Usa as variáveis de cor de cada lado. */
-.mu { --mu-roxo: var(--purple, #6c4cff); --mu-rosa: var(--pink, #ff3d81); --mu-borda: var(--border, #e9eaf0); --mu-suave: var(--muted, #667085); display: grid; gap: 14px; }
+.mu, .mu-fundo { --mu-roxo: var(--purple, #6c4cff); --mu-rosa: var(--pink, #ff3d81); --mu-borda: var(--border, #e9eaf0); --mu-suave: var(--muted, #667085); }
+.mu { display: grid; gap: 14px; }
 .mu-titulo { font-size: 20px; margin: 0; }
 .mu-compor { background: #fff; border: 1px solid var(--mu-borda); border-radius: 18px; padding: 14px; display: grid; gap: 10px; }
 .mu-compor textarea { border: 1px solid var(--mu-borda); border-radius: 12px; padding: 12px; font: inherit; resize: vertical; width: 100%; background: #fafbfc; min-height: 76px; }
