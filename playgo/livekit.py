@@ -87,6 +87,18 @@ def iniciar_saida(jogo_id: int, rtmp_url: str) -> str:
     return str(egress_id)
 
 
+def estado_saida(egress_id: str) -> dict | None:
+    """Estado da saída no LiveKit (ACTIVE, ENDING, COMPLETE, FAILED…) e o motivo se falhou; None se não deu para consultar."""
+    try:
+        itens = _chamar("ListEgress", {"egress_id": egress_id}).get("items") or []
+    except ErroNegocio:
+        return None
+    if not itens:
+        return {"estado": "NAO_ENCONTRADA", "erro": None}
+    i = itens[0]
+    return {"estado": str(i.get("status") or "").replace("EGRESS_", ""), "erro": (i.get("error") or None)}
+
+
 def parar_saida(egress_id: str) -> None:
     try:
         _chamar("StopEgress", {"egress_id": egress_id})

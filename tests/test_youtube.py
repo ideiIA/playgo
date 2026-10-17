@@ -254,8 +254,10 @@ def test_camera_do_navegador_pelo_livekit(banco, yt, monkeypatch):
 
     def falso_livekit(req: httpx.Request) -> httpx.Response:
         corpo = json.loads(req.content)
-        chamadas.append((req.url.path.rsplit("/", 1)[-1], corpo))
         assert req.headers["authorization"].startswith("Bearer ")
+        if req.url.path.endswith("ListEgress"):
+            return httpx.Response(200, json={"items": [{"egress_id": corpo["egress_id"], "status": "EGRESS_ACTIVE"}]})
+        chamadas.append((req.url.path.rsplit("/", 1)[-1], corpo))
         if req.url.path.endswith("StartRoomCompositeEgress"):
             return httpx.Response(200, json={"egress_id": "EG_123"})
         return httpx.Response(200, json={})
@@ -284,7 +286,7 @@ def test_camera_do_navegador_pelo_livekit(banco, yt, monkeypatch):
 
         assert "Prepare a transmissão" in cli.post(url("/camera"), headers=org).json()["detail"]  # antes de preparar
         d = cli.post(url(), headers=org).json()
-        assert d["camera"] == {"disponivel": True, "ativa": False}
+        assert d["camera"] == {"disponivel": True, "ativa": False, "saida": None}
 
         # token: só de quem conduz, só publica, assinado com o segredo, sem cache
         assert cli.post(url("/camera"), headers=curioso).status_code == 403
@@ -301,7 +303,7 @@ def test_camera_do_navegador_pelo_livekit(banco, yt, monkeypatch):
         # liga a saída para a chave RTMP do jogo; o id guardado não é segredo, a chave não fica no banco
         assert cli.post(url("/camera/iniciar"), headers=curioso).status_code == 403
         d = cli.post(url("/camera/iniciar"), headers=org).json()
-        assert d["camera"]["ativa"] is True
+        assert d["camera"]["ativa"] is True and d["camera"]["saida"] == {"estado": "ACTIVE", "erro": None}
         nome, enviado = chamadas[-1]
         assert nome == "StartRoomCompositeEgress" and enviado["room_name"] == t["sala"]
         assert enviado["stream_outputs"][0]["urls"] == ["rtmp://a.rtmp.youtube.com/live2/chave-atual"]

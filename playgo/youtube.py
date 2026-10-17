@@ -330,7 +330,7 @@ def preparar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> di
 def painel(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> dict:
     """Estado da transmissão + endereço e chave de envio. Só chega a quem conduz o campeonato."""
     c, j = _contexto(s, campeonato_id, jogo_id, por)
-    base = {"jogo_id": j.id, "estado": j.yt_estado, "camera": {"disponivel": livekit.configurado(), "ativa": bool(j.lk_egress_id)}, "video_id": j.yt_broadcast_id if j.yt_estado in ("ao_vivo", "encerrada") else None, "assistir": f"https://www.youtube.com/watch?v={j.yt_broadcast_id}" if j.yt_broadcast_id else None}
+    base = {"jogo_id": j.id, "estado": j.yt_estado, "camera": {"disponivel": livekit.configurado(), "ativa": bool(j.lk_egress_id), "saida": livekit.estado_saida(j.lk_egress_id) if j.lk_egress_id else None}, "video_id": j.yt_broadcast_id if j.yt_estado in ("ao_vivo", "encerrada") else None, "assistir": f"https://www.youtube.com/watch?v={j.yt_broadcast_id}" if j.yt_broadcast_id else None}
     if not j.yt_broadcast_id or j.yt_estado not in ATIVAS:
         return base | {"envio": None, "sinal": None, "ciclo": None}
     b = _api(s, "GET", "liveBroadcasts", {"part": "status", "id": j.yt_broadcast_id}).get("items") or []

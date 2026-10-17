@@ -93,6 +93,13 @@
         const cam = d.camera || {};
         raiz.hidden = !(cam.disponivel && ['preparada', 'ao_vivo'].includes(d.estado));
         if (raiz.hidden) return;
+        const sd = cam.saida;
+        if (sd && ['FAILED', 'ABORTED', 'LIMIT_REACHED', 'COMPLETE', 'NAO_ENCONTRADA'].includes(sd.estado)) {
+          status('⚠ O LiveKit não está enviando ao YouTube (' + sd.estado.toLowerCase() + (sd.erro ? ': ' + sd.erro : '') + '). Toque em Parar câmera e ligue de novo.');
+          if (sala) botoes(true, false);
+          return;
+        }
+        if (sd && sala) status('✅ LiveKit enviando ao YouTube (' + sd.estado.toLowerCase() + '). Espere o sinal ficar ativo.');
         if (!sala) { botoes(false, !!cam.ativa); if (cam.ativa) status('A câmera já está enviando (outro aparelho ou outra aba). Use Parar para encerrar.'); }
       },
     };
