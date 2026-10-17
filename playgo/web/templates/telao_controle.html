@@ -116,7 +116,7 @@
     const rotuloEstado = { preparada: 'Preparada: aguardando o envio', ao_vivo: '🔴 No ar', encerrada: 'Encerrada', erro: 'Com problema' };
     const rotuloSinal = { active: '✅ sinal ativo', inactive: 'sem sinal ainda', ready: 'sem sinal ainda', created: 'sem sinal ainda', error: '❌ erro no sinal' };
     let temporizador = null;
-    const cam = window.PlayGoCamera ? PlayGoCamera.montar(document.getElementById('yt-camera'), { postar: (c, b) => webApi(c, { metodo: 'POST', corpo: b }), base, aviso: toast, depois: () => atualizar(), cls: { primario: 'btn purple', suave: 'btn soft', perigo: 'btn perigo' } }) : null;
+    const cam = window.PlayGoCamera ? PlayGoCamera.montar(document.getElementById('yt-camera'), { postar: (c, b) => webApi(c, { metodo: 'POST', corpo: b }), base, aviso: (m) => toast(m), depois: () => atualizar(), cls: { primario: 'btn purple', suave: 'btn soft', perigo: 'btn perigo' } }) : null;
     function desenhar(d) {
       cartao.hidden = !d.estado; // sem transmissão preparada para este jogo: nada de chave nem botões
       if (!d.estado) return;
