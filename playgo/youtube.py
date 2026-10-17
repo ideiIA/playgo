@@ -294,17 +294,22 @@ def preparar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> di
         raise ErroNegocio(f"Já há {settings.youtube_max_simultaneas} transmissões preparadas ou no ar. Encerre uma antes de preparar outra.")
     inicio = (j.inicio_previsto or agora()) if j.status == J_AGENDADO else agora()
     inicio = max(inicio, agora() + timedelta(minutes=1))
-    b = _api(s, "POST", "liveBroadcasts", {"part": "snippet,status,contentDetails"}, {
+    corpo = {
         "snippet": {
             "title": _titulo(c, j), "scheduledStartTime": _iso_utc(inicio),
             "description": f"{c.nome} — transmissão oficial pelo PlayGo.\nAcompanhe o placar em {settings.url_publica.rstrip('/') if settings.url_publica else ''}/campeonatos/{c.id}/ao-vivo",
         },
         "status": {"privacyStatus": privacidade_padrao(s), "selfDeclaredMadeForKids": False},
-        "contentDetails": {
-            "enableAutoStart": False, "enableAutoStop": False, "enableDvr": True, "enableEmbed": True, "recordFromStart": True, "latencyPreference": "low",
-            "monitorStream": {"enableMonitorStream": False},
-        },
-    })
+        "contentDetails": {"enableAutoStart": False, "enableAutoStop": False, "enableDvr": True, "enableEmbed": True, "recordFromStart": True},
+    }
+    try:
+        b = _api(s, "POST", "liveBroadcasts", {"part": "snippet,status,contentDetails"}, corpo)
+    except ErroNegocio as e:
+        if "embed" not in str(e).lower():
+            raise
+        # O YouTube recusou a configuração de incorporação: tenta de novo deixando valer o padrão do canal.
+        corpo["contentDetails"].pop("enableEmbed")
+        b = _api(s, "POST", "liveBroadcasts", {"part": "snippet,status,contentDetails"}, corpo)
     j.yt_broadcast_id, j.yt_estado = b["id"], "preparada"
     s.flush()
     try:
