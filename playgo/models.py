@@ -548,6 +548,7 @@ class Jogo(Base):
     yt_broadcast_id: Mapped[str | None] = mapped_column(String(20))  # transmissão no YouTube (é também o ID do vídeo para incorporar)
     yt_stream_id: Mapped[str | None] = mapped_column(String(60))  # chave de envio deste jogo (a chave em si nunca fica no banco)
     yt_estado: Mapped[str | None] = mapped_column(String(12))  # preparada | ao_vivo | encerrada
+    lk_egress_id: Mapped[str | None] = mapped_column(String(60))  # saída LiveKit→YouTube em andamento (câmera pelo navegador)
     ponto_a: Mapped[int] = mapped_column(Integer, default=0)  # pontos do game em andamento (15/30/40…); zeram quando o game termina
     ponto_b: Mapped[int] = mapped_column(Integer, default=0)
     equipe_a2_id: Mapped[int | None] = mapped_column(ForeignKey("equipes.id", ondelete="SET NULL"))

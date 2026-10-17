@@ -154,6 +154,21 @@ def preparar_transmissao(campeonato_id: int, jogo_id: int, resposta: Response, u
     return _sem_cache(resposta, youtube.preparar(s, campeonato_id, jogo_id, u))
 
 
+@router.post("/{campeonato_id}/jogos/{jogo_id}/transmissao/camera")
+def transmissao_camera(campeonato_id: int, jogo_id: int, resposta: Response, u: AtualApi, s: Sessao):
+    return _sem_cache(resposta, youtube.camera_token(s, campeonato_id, jogo_id, u))
+
+
+@router.post("/{campeonato_id}/jogos/{jogo_id}/transmissao/camera/iniciar")
+def transmissao_camera_iniciar(campeonato_id: int, jogo_id: int, resposta: Response, u: AtualApi, s: Sessao):
+    return _sem_cache(resposta, youtube.camera_iniciar(s, campeonato_id, jogo_id, u))
+
+
+@router.post("/{campeonato_id}/jogos/{jogo_id}/transmissao/camera/parar")
+def transmissao_camera_parar(campeonato_id: int, jogo_id: int, resposta: Response, u: AtualApi, s: Sessao):
+    return _sem_cache(resposta, youtube.camera_parar(s, campeonato_id, jogo_id, u))
+
+
 @router.post("/{campeonato_id}/jogos/{jogo_id}/transmissao/no-ar")
 def transmissao_no_ar(campeonato_id: int, jogo_id: int, resposta: Response, u: AtualApi, s: Sessao):
     return _sem_cache(resposta, youtube.entrar_no_ar(s, campeonato_id, jogo_id, u))

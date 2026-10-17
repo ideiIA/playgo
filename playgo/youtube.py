@@ -21,7 +21,7 @@ import httpx
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session as SessaoORM
 
-from . import auditoria, campeonatos, chaves
+from . import auditoria, campeonatos, chaves, livekit
 from .config import settings
 from .db import agora
 from .erros import ErroNegocio, NaoEncontrado, SemPermissao
@@ -330,7 +330,7 @@ def preparar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> di
 def painel(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> dict:
     """Estado da transmissão + endereço e chave de envio. Só chega a quem conduz o campeonato."""
     c, j = _contexto(s, campeonato_id, jogo_id, por)
-    base = {"jogo_id": j.id, "estado": j.yt_estado, "video_id": j.yt_broadcast_id if j.yt_estado in ("ao_vivo", "encerrada") else None, "assistir": f"https://www.youtube.com/watch?v={j.yt_broadcast_id}" if j.yt_broadcast_id else None}
+    base = {"jogo_id": j.id, "estado": j.yt_estado, "camera": {"disponivel": livekit.configurado(), "ativa": bool(j.lk_egress_id)}, "video_id": j.yt_broadcast_id if j.yt_estado in ("ao_vivo", "encerrada") else None, "assistir": f"https://www.youtube.com/watch?v={j.yt_broadcast_id}" if j.yt_broadcast_id else None}
     if not j.yt_broadcast_id or j.yt_estado not in ATIVAS:
         return base | {"envio": None, "sinal": None, "ciclo": None}
     b = _api(s, "GET", "liveBroadcasts", {"part": "status", "id": j.yt_broadcast_id}).get("items") or []
@@ -365,8 +365,55 @@ def entrar_no_ar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -
     return painel(s, campeonato_id, jogo_id, por)
 
 
+def _parar_camera(j: Jogo) -> None:
+    """Desliga a saída LiveKit→YouTube, se houver. Falha do LiveKit não impede o resto (a sala vazia encerra a saída sozinha)."""
+    if not j.lk_egress_id:
+        return
+    try:
+        livekit.parar_saida(j.lk_egress_id)
+    except ErroNegocio as e:
+        log.warning("LiveKit: não parou a saída do jogo %s: %s", j.id, e)
+    j.lk_egress_id = None
+
+
+def camera_token(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> dict:
+    """Token para o navegador de quem conduz publicar a câmera na sala do jogo (a transmissão do jogo precisa estar preparada)."""
+    c, j = _contexto(s, campeonato_id, jogo_id, por)
+    if j.yt_estado not in ATIVAS:
+        raise ErroNegocio("Prepare a transmissão deste jogo primeiro.")
+    return livekit.token_camera(j.id, por.id)
+
+
+def camera_iniciar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> dict:
+    """A câmera já está na sala: liga a saída da sala para a chave RTMP deste jogo no YouTube."""
+    c, j = _contexto(s, campeonato_id, jogo_id, por)
+    if j.yt_estado not in ATIVAS:
+        raise ErroNegocio("Prepare a transmissão deste jogo primeiro.")
+    if not livekit.configurado():
+        raise ErroNegocio("A câmera pelo navegador ainda não foi configurada neste servidor.")
+    if j.lk_egress_id:
+        return painel(s, campeonato_id, jogo_id, por)
+    ls = _api(s, "GET", "liveStreams", {"part": "cdn", "id": j.yt_stream_id}).get("items") or []
+    envio = _entrega(ls[0]) if ls else {}
+    if not (envio.get("endereco") and envio.get("chave")):
+        raise ErroNegocio("O YouTube não devolveu a chave deste jogo. Use Nova chave e tente de novo.")
+    j.lk_egress_id = livekit.iniciar_saida(j.id, f"{envio['endereco'].rstrip('/')}/{envio['chave']}")  # a chave só viaja ao LiveKit; não é gravada
+    auditoria.registrar(s, por.id, "transmissao_camera_iniciar", "jogo", j.id)
+    s.commit()
+    return painel(s, campeonato_id, jogo_id, por)
+
+
+def camera_parar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> dict:
+    c, j = _contexto(s, campeonato_id, jogo_id, por)
+    _parar_camera(j)
+    auditoria.registrar(s, por.id, "transmissao_camera_parar", "jogo", j.id)
+    s.commit()
+    return painel(s, campeonato_id, jogo_id, por)
+
+
 def _finalizar(s: SessaoORM, j: Jogo) -> None:
     """Encerra a transmissão no YouTube (a gravação fica no canal) e apaga a chave de envio do jogo."""
+    _parar_camera(j)
     if j.yt_estado == "ao_vivo":
         try:
             _api(s, "POST", "liveBroadcasts/transition", {"broadcastStatus": "complete", "id": j.yt_broadcast_id, "part": "status"})
@@ -402,6 +449,7 @@ def nova_chave(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> 
     if j.yt_estado != "preparada":
         raise ErroNegocio("Só dá para trocar a chave antes de entrar no ar." if j.yt_estado == "ao_vivo" else "Prepare a transmissão primeiro.")
     antiga = j.yt_stream_id
+    _parar_camera(j)  # a saída da câmera apontava para a chave antiga; a pessoa liga de novo
     _criar_chave(s, j, _titulo(c, j))
     if antiga:
         try:

@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     instagram_versao: str = "v21.0"
     youtube_client_id: str = ""  # OAuth do canal oficial do PlayGo (docs/youtube.md)
     youtube_client_secret: str = ""
+    livekit_url: str = ""  # câmera pelo navegador (LiveKit Cloud): wss://<projeto>.livekit.cloud — docs/youtube.md
+    livekit_api_key: str = ""
+    livekit_api_secret: str = ""
     youtube_max_simultaneas: int = 4  # transmissões preparadas ou no ar ao mesmo tempo (protege a cota da API e a banda do local)
 
     # Planos e cobrança (Asaas). Sem chave, o app funciona e o admin libera planos à mão.

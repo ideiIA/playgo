@@ -57,3 +57,17 @@ atraso em relação ao placar; evite música protegida por direitos autorais.
   `liveStreamingNotEnabled` (o PlayGo mostra uma mensagem em português).
 - A API não desliga o chat do YouTube: ajuste o canal em YouTube Studio se quiser comentários desativados.
 - Quem tem o link de uma transmissão **não listada** consegue assistir; o PlayGo só mostra o vídeo a quem entra no Ao vivo/telão.
+
+## Câmera pelo navegador (LiveKit Cloud)
+
+Opcional. Em vez de instalar Larix/OBS, quem conduz o campeonato abre a câmera no próprio navegador (celular ou computador): o vídeo vai
+ao LiveKit Cloud (WebRTC) e o *Egress* do LiveKit o repassa por RTMP à chave do jogo no YouTube. O servidor do PlayGo continua sem
+receber vídeo: só emite o token curto da sala (3 h, só publica) e liga/desliga a saída. A chave RTMP vai ao LiveKit no pedido e nunca é
+gravada nem logada; o banco guarda apenas o id da saída (`Jogo.lk_egress_id`).
+
+1. Em cloud.livekit.io crie o projeto e copie **URL** (`wss://…livekit.cloud`), **API Key** e **API Secret** (Settings → Keys).
+2. No `.env` do servidor: `PLAYGO_LIVEKIT_URL`, `PLAYGO_LIVEKIT_API_KEY`, `PLAYGO_LIVEKIT_API_SECRET`. Depois `docker compose --env-file .env up -d --build`.
+3. Aba 📺 Telão → 3 · Transmissão → **Preparar** o jogo → **📷 Ligar câmera** → quando o sinal ficar ativo, **▶ Entrar no ar**.
+
+A saída é desligada por **Parar câmera**, **Encerrar transmissão**, **Nova chave** e ao encerrar o jogo. Sem as variáveis o bloco da câmera some
+e o caminho do Larix/OBS segue valendo. A tela do aparelho precisa ficar aberta e acesa durante o jogo (o app pede para a tela não apagar).

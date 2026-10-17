@@ -71,6 +71,7 @@ _COLUNAS_NOVAS: tuple[str, ...] = (
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS yt_broadcast_id varchar(20)",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS yt_stream_id varchar(60)",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS yt_estado varchar(12)",
+    "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS lk_egress_id varchar(60)",
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS telao_token varchar(40)",
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS telao_jogo_id integer",
     "CREATE UNIQUE INDEX IF NOT EXISTS ix_campeonatos_telao_token ON campeonatos (telao_token)",

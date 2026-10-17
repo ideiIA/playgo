@@ -78,10 +78,12 @@
       <p class="aviso" style="background:#fff6e8;border:1px solid #ffd9a1;color:#7a4300;margin-top:12px">⚠ A <b>chave é um segredo</b>: não compartilhe nem tire print. Se vazar, use <b>Nova chave</b>. Use fones/ambiente sem música protegida por direitos autorais e avise quem estiver em quadra que está sendo filmado.
         O vídeo chega ao público com ~10 a 30 segundos de atraso em relação ao placar. Para 720p, o envio usa ~3 a 5 Mbps (≈1,5 a 2 GB por hora).</p>
       <div id="yt-previa" style="margin-top:12px" hidden></div>
+      <div id="yt-camera"></div>
     </div>
   {% endif %}
 </div>
 <style>.opcao{display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid var(--border);border-radius:12px;margin:6px 0;cursor:pointer;background:#fff}.opcao:has(input:checked){border-color:var(--purple);background:#f4f1ff}.opcao input{width:auto}</style>
+<script src="/static/camera.js"></script>
 <script>
   const id = {{ k.id }};
   const link = document.getElementById('link-telao');
@@ -114,9 +116,11 @@
     const rotuloEstado = { preparada: 'Preparada: aguardando o envio', ao_vivo: '🔴 No ar', encerrada: 'Encerrada', erro: 'Com problema' };
     const rotuloSinal = { active: '✅ sinal ativo', inactive: 'sem sinal ainda', ready: 'sem sinal ainda', created: 'sem sinal ainda', error: '❌ erro no sinal' };
     let temporizador = null;
+    const cam = window.PlayGoCamera ? PlayGoCamera.montar(document.getElementById('yt-camera'), { postar: (c, b) => webApi(c, { metodo: 'POST', corpo: b }), base, aviso: toast, depois: () => atualizar(), cls: { primario: 'btn purple', suave: 'btn soft', perigo: 'btn perigo' } }) : null;
     function desenhar(d) {
       cartao.hidden = !d.estado; // sem transmissão preparada para este jogo: nada de chave nem botões
       if (!d.estado) return;
+      if (cam) cam.mostrar(d);
       document.getElementById('yt-titulo').textContent = sel.options[sel.selectedIndex].textContent;
       document.getElementById('yt-estado').textContent = rotuloEstado[d.estado] || d.estado || '—';
       document.getElementById('yt-sinal').textContent = d.sinal ? (rotuloSinal[d.sinal.estado] || d.sinal.estado) + (d.sinal.saude && d.sinal.saude !== 'noData' ? ' · qualidade ' + d.sinal.saude : '') : 'sem sinal';

@@ -240,3 +240,80 @@ def test_tela_de_controle_mostra_a_secao_de_transmissao_conforme_o_estado(banco,
         cli.post(f"/api/v1/campeonatos/{cid}/transmissao/liberar", headers=org, json={"permitir": True, "declaro": True})
         pagina = site.get(f"/campeonatos/{cid}/telao").text
         assert "Preparar transmissão deste jogo" in pagina and "Bloquear transmissões" in pagina and "PODE TER TRANSMISSÃO" in site.get(f"/campeonatos/{cid}").text
+
+
+def test_camera_do_navegador_pelo_livekit(banco, yt, monkeypatch):
+    import base64
+    import hashlib
+    import hmac
+    import json
+
+    from playgo import livekit
+
+    chamadas = []
+
+    def falso_livekit(req: httpx.Request) -> httpx.Response:
+        corpo = json.loads(req.content)
+        chamadas.append((req.url.path.rsplit("/", 1)[-1], corpo))
+        assert req.headers["authorization"].startswith("Bearer ")
+        if req.url.path.endswith("StartRoomCompositeEgress"):
+            return httpx.Response(200, json={"egress_id": "EG_123"})
+        return httpx.Response(200, json={})
+
+    monkeypatch.setattr(livekit, "_http", lambda: httpx.Client(transport=httpx.MockTransport(falso_livekit)))
+    monkeypatch.setattr(settings, "livekit_url", "wss://teste.livekit.cloud")
+    monkeypatch.setattr(settings, "livekit_api_key", "APIchave")
+    monkeypatch.setattr(settings, "livekit_api_secret", "segredo-do-livekit-de-teste-12345")
+    with TestClient(app) as cli:
+        adm, adm_id = _conta(cli, "Adm")
+        org, org_id = _conta(cli, "Org")
+        curioso, _ = _conta(cli, "Curioso")
+        _plano(org_id, "organizador")
+        fas = [_conta(cli, f"Cap{i}")[0] for i in range(4)]
+        with Session() as s:
+            s.query(Usuario).filter(Usuario.id == adm_id).update({Usuario.admin: True})
+            s.query(ConfigExterna).filter(ConfigExterna.chave == "youtube").delete()
+            s.commit()
+            youtube.conectar(s, s.get(Usuario, adm_id), "codigo")
+        cid, jogos = _campeonato(cli, org, fas)
+        j1 = jogos[0]["id"]
+        cli.post(f"/api/v1/campeonatos/{cid}/transmissao/liberar", headers=org, json={"permitir": True, "declaro": True})
+
+        def url(suf=""):
+            return f"/api/v1/campeonatos/{cid}/jogos/{j1}/transmissao{suf}"
+
+        assert "Prepare a transmissão" in cli.post(url("/camera"), headers=org).json()["detail"]  # antes de preparar
+        d = cli.post(url(), headers=org).json()
+        assert d["camera"] == {"disponivel": True, "ativa": False}
+
+        # token: só de quem conduz, só publica, assinado com o segredo, sem cache
+        assert cli.post(url("/camera"), headers=curioso).status_code == 403
+        r = cli.post(url("/camera"), headers=org)
+        assert r.status_code == 200 and r.headers["cache-control"] == "no-store"
+        t = r.json()
+        assert t["url"] == "wss://teste.livekit.cloud" and t["sala"] == f"playgo-jogo-{j1}"
+        cab, corpo, ass = t["token"].split(".")
+        esperado = base64.urlsafe_b64encode(hmac.new(b"segredo-do-livekit-de-teste-12345", f"{cab}.{corpo}".encode(), hashlib.sha256).digest()).rstrip(b"=").decode()
+        assert ass == esperado
+        grants = json.loads(base64.urlsafe_b64decode(corpo + "=" * (-len(corpo) % 4)))
+        assert grants["iss"] == "APIchave" and grants["video"]["room"] == t["sala"] and grants["video"]["canPublish"] is True and grants["video"]["canSubscribe"] is False
+
+        # liga a saída para a chave RTMP do jogo; o id guardado não é segredo, a chave não fica no banco
+        assert cli.post(url("/camera/iniciar"), headers=curioso).status_code == 403
+        d = cli.post(url("/camera/iniciar"), headers=org).json()
+        assert d["camera"]["ativa"] is True
+        nome, enviado = chamadas[-1]
+        assert nome == "StartRoomCompositeEgress" and enviado["room_name"] == t["sala"]
+        assert enviado["stream_outputs"][0]["urls"] == ["rtmp://a.rtmp.youtube.com/live2/chave-atual"]
+        with Session() as s:
+            assert s.get(Jogo, j1).lk_egress_id == "EG_123"
+        n = len(chamadas)
+        assert cli.post(url("/camera/iniciar"), headers=org).json()["camera"]["ativa"] is True and len(chamadas) == n  # idempotente
+
+        # parar desliga a saída; encerrar a transmissão também
+        assert cli.post(url("/camera/parar"), headers=org).json()["camera"]["ativa"] is False and chamadas[-1][0] == "StopEgress"
+        cli.post(url("/camera/iniciar"), headers=org)
+        cli.post(url("/encerrar"), headers=org)
+        assert chamadas[-1] == ("StopEgress", {"egress_id": "EG_123"})
+        with Session() as s:
+            assert s.get(Jogo, j1).lk_egress_id is None

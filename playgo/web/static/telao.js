@@ -135,7 +135,7 @@
           '<div class="tl-botoes"><button class="btn roxo" type="button" data-t="no-ar">▶ Entrar no ar</button><button class="btn perigo" type="button" data-t="encerrar">⏹ Encerrar transmissão</button><button class="btn suave pequeno" type="button" data-t="nova-chave">🔑 Nova chave</button>' +
           '<a class="btn suave pequeno" data-t="yt-assistir" target="_blank" rel="noopener" href="#" hidden>Ver no YouTube</a></div>' +
           '<p class="aviso alerta" style="margin-top:12px">⚠ A <b>chave é um segredo</b>: não compartilhe nem tire print. Se vazar, use <b>Nova chave</b>. Use ambiente sem música protegida por direitos autorais e avise quem estiver em quadra que está sendo filmado. O vídeo chega ao público com ~10 a 30 segundos de atraso em relação ao placar. Para 720p, o envio usa ~3 a 5 Mbps (≈1,5 a 2 GB por hora).</p>' +
-          '<div data-t="yt-previa" hidden></div></div>';
+          '<div data-t="yt-previa" hidden></div><div data-t="camera"></div></div>';
     }
 
     el.innerHTML =
@@ -187,9 +187,11 @@
       const rotuloEstado = { preparada: 'Preparada: aguardando o envio', ao_vivo: '🔴 No ar', encerrada: 'Encerrada', erro: 'Com problema' };
       const rotuloSinal = { active: '✅ sinal ativo', inactive: 'sem sinal ainda', ready: 'sem sinal ainda', created: 'sem sinal ainda', error: '❌ erro no sinal' };
       let temporizador = null;
+      const cam = window.PlayGoCamera ? PlayGoCamera.montar(t('camera'), { postar: post, base, aviso: avisar, depois: () => atualizar(), cls: { primario: 'btn roxo', suave: 'btn suave', perigo: 'btn perigo' } }) : null;
       const desenhar = (d) => {
         cartao.hidden = !d.estado; // sem transmissão preparada para este jogo: nada de chave nem botões
         if (!d.estado) return;
+        if (cam) cam.mostrar(d);
         t('yt-titulo').textContent = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : '';
         t('yt-estado').textContent = rotuloEstado[d.estado] || d.estado || '—';
         t('yt-sinal').textContent = d.sinal ? (rotuloSinal[d.sinal.estado] || d.sinal.estado) + (d.sinal.saude && d.sinal.saude !== 'noData' ? ' · qualidade ' + d.sinal.saude : '') : 'sem sinal';
