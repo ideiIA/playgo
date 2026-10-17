@@ -152,43 +152,6 @@
     if (!i) return carregar();
     abrirPlano(i, sel.value);
   });
-  async function carregarPlanos() {
-    try {
-      const r = await webApi('/admin/planos');
-      document.getElementById('planos-admin').innerHTML = r.map((p) => `<div class="pessoa" style="flex-wrap:wrap;gap:8px" data-plano-cod="${p.codigo}">
-        <b style="min-width:110px">${esc(p.nome)}</b>
-        <label class="suave">R$/mês <input name="valor_mensal" value="${p.valor_mensal}" style="width:90px;border:1px solid var(--border);border-radius:8px;padding:6px"></label>
-        <label class="suave">Máx. participantes <input name="max_participantes" value="${p.max_participantes ?? ''}" placeholder="∞" style="width:70px;border:1px solid var(--border);border-radius:8px;padding:6px"></label>
-        <label class="suave">Atividades abertas <input name="max_atividades_abertas" value="${p.max_atividades_abertas ?? ''}" placeholder="∞" style="width:70px;border:1px solid var(--border);border-radius:8px;padding:6px"></label>
-        <label class="suave"><input type="checkbox" name="pode_atividade" ${p.pode_atividade ? 'checked' : ''}> atividades</label>
-        <label class="suave"><input type="checkbox" name="pode_campeonato" ${p.pode_campeonato ? 'checked' : ''}> campeonatos</label>
-        <label class="suave"><input type="checkbox" name="pode_arena" ${p.pode_arena ? 'checked' : ''}> arenas</label>
-        <button class="btn soft pequeno" data-salvar-plano="${p.codigo}">Salvar</button></div>`).join('');
-    } catch (e) { document.getElementById('planos-admin').innerHTML = `<p class="vazio">${esc(e.message)}</p>`; }
-  }
-  document.addEventListener('click', async (ev) => {
-    const salvar = ev.target.closest('[data-salvar-plano]');
-    if (salvar) {
-      const linha = salvar.closest('[data-plano-cod]');
-      const v = (n) => linha.querySelector(`[name=${n}]`);
-      const num = (x) => (x.value.trim() === '' ? 0 : Number(x.value.replace(',', '.')));
-      try { await webApi('/admin/planos/' + salvar.dataset.salvarPlano, { metodo: 'PUT', corpo: { valor_mensal: String(num(v('valor_mensal'))), max_participantes: num(v('max_participantes')), max_atividades_abertas: num(v('max_atividades_abertas')), pode_atividade: v('pode_atividade').checked, pode_campeonato: v('pode_campeonato').checked, pode_arena: v('pode_arena').checked } }); toast('Plano salvo.'); } catch (e) { toast(e.message); }
-    }
-  });
-  // Alterar plano de uma pessoa: escolhe na lista; planos pagos pedem a data de validade (cortesia ou cobrança fora do app)
-  document.addEventListener('change', async (ev) => {
-    const sel = ev.target.closest('select[data-plano-sel]');
-    if (!sel) return;
-    const plano = sel.value;
-    let ate = null;
-    if (plano !== 'gratuito') {
-      const sugestao = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
-      ate = prompt(`Plano ${PLANOS[plano]} válido até (AAAA-MM-DD):`, sugestao);
-      if (!ate) return carregar();
-    } else if (!confirm('Voltar esta pessoa para o plano Usuário? O acesso pago atual termina.')) return carregar();
-    try { await webApi('/admin/usuarios/' + sel.dataset.planoSel + '/plano', { metodo: 'POST', corpo: { plano, ate } }); toast('Plano atualizado.'); } catch (e) { toast(e.message); }
-    carregar();
-  });
   async function carregarYoutube() {
     const el = document.getElementById('estado-youtube');
     try {
