@@ -19,6 +19,7 @@ from . import auditoria, campeonatos, notificacoes
 from .db import agora
 from .erros import ErroNegocio, NaoEncontrado, SemPermissao
 from .models import (
+    ConfigExterna,
     C_ANDAMENTO,
     C_CANCELADO,
     C_ENCERRADO,
@@ -1019,6 +1020,15 @@ def _lado(j: Jogo, lado: str) -> dict | None:
     return {"id": e.id, "nome": f"{e.nome} + {p.nome}", "parceiro_id": p.id, "dupla": [e.nome, p.nome]}
 
 
+def canal_youtube(s: SessaoORM, jogos: list[Jogo]) -> dict | None:
+    """Link do canal do PlayGo no YouTube (abre a transmissão que estiver no ar) e se algum jogo deste campeonato está no ar agora."""
+    cfg = s.get(ConfigExterna, "youtube")
+    canal = ((cfg.meta or {}).get("canal_id") if cfg is not None and cfg.valor else None)
+    if not canal:
+        return None
+    return {"url": f"https://www.youtube.com/channel/{canal}/live", "ao_vivo": any(j.yt_estado == "ao_vivo" for j in jogos)}
+
+
 def jogo_dict(j: Jogo) -> dict:
     return {
         "id": j.id, "rodada": j.rodada, "rodada_nome": j.rodada_nome, "fase": j.fase, "grupo": j.grupo, "posicao": j.posicao, "a": _lado(j, "a"), "b": _lado(j, "b"),
@@ -1166,7 +1176,7 @@ def chaveamento(s: SessaoORM, c: Campeonato, u: Usuario) -> dict:
     return {
         "campeonato": {"id": c.id, "nome": c.nome, "status": c.status, "modalidade": c.modalidade.nome, "icone": c.modalidade.icone},
         "formato": c.formato, "formato_nome": FORMATOS.get(c.formato or ""), "sorteado_em": _dt(c.sorteado_em), "semente": str(c.sorteio_semente) if c.sorteio_semente else None,  # texto: passa de 2^53 e o JavaScript perderia dígitos
-        "rodadas": rodadas, "ao_vivo": [jogo_dict(j) for j in jogos if j.status == J_AO_VIVO],
+        "rodadas": rodadas, "ao_vivo": [jogo_dict(j) for j in jogos if j.status == J_AO_VIVO], "canal": canal_youtube(s, jogos),
         "classificacao": classificacao(chave, confirmadas, c) if c.formato == "pontos_corridos" else [],
         "ranking_super8": _ranking_super8(s, c, chave) if c.formato == "super8" and chave else [],
         "campeao": campeao,

@@ -171,3 +171,8 @@
 .av-game{background:#f1f2fb;border-radius:999px;padding:3px 10px;font-weight:700;white-space:nowrap}
 .av-game.a{background:#ece8ff;color:#4b2fd6}
 .av-game.b{background:#ffe9f1;color:#c2185b}
+
+/* Link do canal do YouTube: colorido e clicável só com transmissão no ar; cinza sem transmissão */
+.yt-canal { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 12px; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 14px; text-decoration: none; }
+.yt-canal.on { background: #e5484d; color: #fff; box-shadow: 0 4px 14px rgba(229, 72, 77, .35); }
+.yt-canal.off { background: #e4e6ee; color: #8b90a3; cursor: default; pointer-events: none; }

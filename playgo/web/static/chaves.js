@@ -186,6 +186,13 @@
     return '<div class="av-games">' + chaves.map((k) => '<div class="av-games-linha">' + (rg.modo === 'sets' && Number(k) ? '<b>Set ' + k + '</b> ' : '') + porSet[k].map(chip).join(' ') + '</div>').join('') + '</div>';
   }
 
+  function botaoCanal(c) {
+    if (!c || !c.url) return '';
+    return c.ao_vivo
+      ? '<a class="yt-canal on" href="' + esc(c.url) + '" target="_blank" rel="noopener">▶ Assistir no YouTube do PlayGo · 🔴 no ar</a>'
+      : '<span class="yt-canal off" title="Nenhuma transmissão no ar agora">▶ YouTube do PlayGo · sem transmissão agora</span>';
+  }
+
   function montarAoVivo(el, o) {
     const { get, post, href, id, toast } = o;
     o_href = href;
@@ -198,6 +205,7 @@
       const fim = todos.filter((j) => j.status === 'encerrado' && !j.folga).reverse().slice(0, 8);
       el.innerHTML = (d.pode_pontuar ? '<p class="ch-aviso">Você conduz este campeonato: inicie jogos, lance o placar e encerre direto daqui.</p>' : '') +
         (d.campeao ? '<div class="ch-campeao">🏆 Campeão: <b>' + esc(d.campeao.nome) + '</b></div>' : '') +
+        botaoCanal(d.canal) +
         blocoVivo(d.ao_vivo, d) + bloco('Próximos jogos', prox.slice(0, d.pode_pontuar ? 16 : 8), 'Sem jogos agendados.', d) + bloco('Últimos resultados', fim, 'Ainda não há resultados.', d);
     };
     // não troca a tela enquanto alguém digita um placar

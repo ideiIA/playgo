@@ -193,6 +193,7 @@ def test_ciclo_da_transmissao_de_um_jogo_com_todas_as_regras(banco, yt):
         token = cli.get(f"/api/v1/campeonatos/{cid}/telao", headers=org).json()["link"].split("/")[-1]
         telao = TestClient(app).get(f"/telao/{token}/dados").json()
         assert telao["jogos"][0]["video"] == {"id": "video1", "estado": "ao_vivo"}
+        assert telao["canal"] == {"url": "https://www.youtube.com/channel/UCcanal/live", "ao_vivo": True}  # o botão do canal fica colorido só com transmissão no ar
         assert any(x["video"] is True for x in cli.get("/api/v1/feed", headers=curioso).json()["ao_vivo"])
 
         # 6) limite de transmissões simultâneas

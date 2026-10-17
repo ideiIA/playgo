@@ -19,6 +19,9 @@
     header .logo { height: clamp(34px, 5vw, 68px); aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; background: rgba(255, 255, 255, .12); }
     header h1 { margin: 0; font-size: clamp(18px, 2.6vw, 40px); letter-spacing: -.5px; line-height: 1.1; }
     header small { display: block; opacity: .75; font-size: clamp(12px, 1.3vw, 20px); font-weight: 600; margin-top: 2px; }
+    .yt-chip { margin-left: auto; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: clamp(13px, 1.5vw, 24px); text-decoration: none; white-space: nowrap; color: #fff; background: #e5484d; }
+    .yt-chip.off { background: rgba(255, 255, 255, .12); color: #9aa0b8; pointer-events: none; }
+    .yt-chip + .vivo { margin-left: 12px; } .yt-chip[hidden] + .vivo { margin-left: auto; }
     .vivo { margin-left: auto; display: flex; align-items: center; gap: 10px; background: rgba(255, 61, 129, .22); border: 2px solid var(--rosa); padding: 8px 18px; border-radius: 999px; font-weight: 900; letter-spacing: 1px; font-size: clamp(14px, 1.8vw, 28px); }
     .vivo i { width: .7em; height: .7em; border-radius: 50%; background: var(--rosa); animation: pulsa 1.2s infinite; }
     .vivo.parado { background: rgba(255, 255, 255, .1); border-color: rgba(255, 255, 255, .35); } .vivo.parado i { background: #9aa0b8; animation: none; }
@@ -66,7 +69,7 @@
   <div class="erro-tela"><div><h1>📺 {{ erro }}</h1><p>Abra o telão pelo link da tela “📺 Telão” do campeonato.</p></div></div>
 {% else %}
   <div class="tela" id="tela" aria-live="polite">
-    <header><img class="logo" id="logo" alt="" hidden><div><h1 id="titulo">Carregando…</h1><small id="sub"></small></div><div class="vivo parado" id="vivo"><i></i><span id="vivo-txt">AGUARDANDO</span></div></header>
+    <header><img class="logo" id="logo" alt="" hidden><div><h1 id="titulo">Carregando…</h1><small id="sub"></small></div><a class="yt-chip off" id="yt-chip" target="_blank" rel="noopener" hidden>▶ YouTube</a><div class="vivo parado" id="vivo"><i></i><span id="vivo-txt">AGUARDANDO</span></div></header>
     <main id="principal"></main>
     <footer id="rodape"></footer>
   </div>
@@ -123,6 +126,9 @@
       $('titulo').textContent = c.nome;
       $('sub').textContent = c.icone + ' ' + c.modalidade;
       if (c.capa_url) { $('logo').src = c.capa_url; $('logo').hidden = false; }
+      const chip = $('yt-chip');
+      chip.hidden = !D.canal;
+      if (D.canal) { chip.classList.toggle('off', !D.canal.ao_vivo); chip.textContent = D.canal.ao_vivo ? '▶ Assistir no YouTube · 🔴 no ar' : '▶ YouTube · sem transmissão'; if (D.canal.ao_vivo) chip.href = D.canal.url; else chip.removeAttribute('href'); }
       const aoVivo = jogos.some((j) => j.status === 'ao_vivo');
       $('vivo').classList.toggle('parado', !aoVivo);
       $('vivo-txt').textContent = aoVivo ? 'AO VIVO' : (jogos.length ? 'EM BREVE' : 'AGUARDANDO');
