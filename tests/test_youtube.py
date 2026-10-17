@@ -347,3 +347,23 @@ def test_entrar_no_ar_passa_pelo_estado_de_teste_quando_o_youtube_exige(banco, y
         cli.post(base, headers=org)
         d = cli.post(base + "/no-ar", headers=org)
         assert d.status_code == 200 and d.json()["estado"] == "ao_vivo" and yt.ciclo == "live"
+
+
+def test_telao_fixado_em_jogo_encerrado_segue_o_jogo_ao_vivo(banco):
+    from playgo import telao
+    from playgo.models import J_AO_VIVO, J_ENCERRADO
+
+    with TestClient(app) as cli:
+        org, org_id = _conta(cli, "Org")
+        _plano(org_id, "organizador")
+        fas = [_conta(cli, f"Cap{i}")[0] for i in range(4)]
+        cid, jogos = _campeonato(cli, org, fas)
+        a, b = jogos[0]["id"], jogos[1]["id"]
+        with Session() as s:
+            s.get(Jogo, a).status, s.get(Jogo, b).status = J_ENCERRADO, J_AO_VIVO
+            from playgo.models import Campeonato
+            c = s.get(Campeonato, cid)
+            c.telao_jogo_id = a
+            s.commit()
+            d = telao.dados_espectador(s, c)
+        assert [j["id"] for j in d["jogos"]] == [b] and d["modo"] == "auto"

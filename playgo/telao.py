@@ -130,6 +130,8 @@ def _montar(s: SessaoORM, c: Campeonato, jogo_id: int | None = None, com_opcoes:
     jogos = [j for j in _todos(s, c) if not j.folga and j.equipe_a_id and j.equipe_b_id]
     ao_vivo = [j for j in jogos if j.status == J_AO_VIVO]
     escolhido = next((j for j in jogos if j.id == (jogo_id or c.telao_jogo_id)), None)
+    if escolhido is not None and escolhido.status == J_ENCERRADO and ao_vivo:
+        escolhido = None  # o jogo fixado já acabou e outro está no ar: o telão segue o jogo ao vivo
     proximos = sorted((j for j in jogos if j.status == J_AGENDADO), key=lambda j: (j.inicio_previsto is None, j.inicio_previsto, j.rodada, j.posicao))[:4]
     ultimos = [j for j in reversed(jogos) if j.status == J_ENCERRADO][:4]
     return {
