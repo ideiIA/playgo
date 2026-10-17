@@ -34,6 +34,7 @@ class FalsoYouTube:
         self.sinal = "inactive"
         self.proximo = 0
         self.erro_stream: str | None = None
+        self.exige_teste = False
 
     def __call__(self, req: httpx.Request) -> httpx.Response:
         caminho = req.url.path
@@ -48,7 +49,10 @@ class FalsoYouTube:
         if caminho.endswith("/liveBroadcasts/bind"):
             return httpx.Response(200, json={"id": req.url.params["id"]})
         if caminho.endswith("/liveBroadcasts/transition"):
-            self.ciclo = {"live": "live", "complete": "complete"}[req.url.params["broadcastStatus"]]
+            alvo = req.url.params["broadcastStatus"]
+            if alvo == "live" and self.exige_teste and self.ciclo != "testing":
+                return httpx.Response(400, json={"error": {"message": "Invalid transition", "errors": [{"reason": "invalidTransition"}]}})
+            self.ciclo = {"live": "live", "complete": "complete", "testing": "testing"}[alvo]
             return httpx.Response(200, json={"id": req.url.params["id"], "status": {"lifeCycleStatus": self.ciclo}})
         if caminho.endswith("/liveBroadcasts"):
             if req.method == "POST":
@@ -319,3 +323,26 @@ def test_camera_do_navegador_pelo_livekit(banco, yt, monkeypatch):
         assert chamadas[-1] == ("StopEgress", {"egress_id": "EG_123"})
         with Session() as s:
             assert s.get(Jogo, j1).lk_egress_id is None
+
+
+def test_entrar_no_ar_passa_pelo_estado_de_teste_quando_o_youtube_exige(banco, yt, monkeypatch):
+    monkeypatch.setattr(youtube, "_pausa", lambda s: None)
+    yt.exige_teste = True
+    yt.sinal = "active"
+    with TestClient(app) as cli:
+        adm, adm_id = _conta(cli, "Adm")
+        org, org_id = _conta(cli, "Org")
+        _plano(org_id, "organizador")
+        fas = [_conta(cli, f"Cap{i}")[0] for i in range(4)]
+        with Session() as s:
+            s.query(Usuario).filter(Usuario.id == adm_id).update({Usuario.admin: True})
+            s.query(ConfigExterna).filter(ConfigExterna.chave == "youtube").delete()
+            s.commit()
+            youtube.conectar(s, s.get(Usuario, adm_id), "codigo")
+        cid, jogos = _campeonato(cli, org, fas)
+        j1 = jogos[0]["id"]
+        cli.post(f"/api/v1/campeonatos/{cid}/transmissao/liberar", headers=org, json={"permitir": True, "declaro": True})
+        base = f"/api/v1/campeonatos/{cid}/jogos/{j1}/transmissao"
+        cli.post(base, headers=org)
+        d = cli.post(base + "/no-ar", headers=org)
+        assert d.status_code == 200 and d.json()["estado"] == "ao_vivo" and yt.ciclo == "live"

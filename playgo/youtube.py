@@ -13,6 +13,7 @@ A chave de envio é um segredo: nunca é gravada no banco (é lida do YouTube a 
 ou auditoria, e "Nova chave" troca a do jogo se vazar."""
 
 import logging
+import time
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
@@ -351,6 +352,30 @@ def painel(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> dict
     return base | {"estado": j.yt_estado, "envio": envio, "sinal": sinal, "ciclo": ciclo, "video_id": j.yt_broadcast_id if j.yt_estado == "ao_vivo" else None}
 
 
+def _pausa(segundos: float) -> None:
+    time.sleep(segundos)  # os testes trocam por uma pausa nula
+
+
+def _ir_ao_vivo(s: SessaoORM, j: Jogo) -> None:
+    """Põe a transmissão no ar. Se o YouTube exigir o estado de teste antes (monitor ligado), passa por ele e espera ficar pronto."""
+    try:
+        _api(s, "POST", "liveBroadcasts/transition", {"broadcastStatus": "live", "id": j.yt_broadcast_id, "part": "status"})
+        return
+    except ErroNegocio as e:
+        if "transition" not in str(e).lower():
+            raise
+    _api(s, "POST", "liveBroadcasts/transition", {"broadcastStatus": "testing", "id": j.yt_broadcast_id, "part": "status"})
+    for _ in range(15):
+        b = _api(s, "GET", "liveBroadcasts", {"part": "status", "id": j.yt_broadcast_id}).get("items") or []
+        if b and b[0]["status"]["lifeCycleStatus"] in ("testing", "live"):
+            break
+        _pausa(2)
+    else:
+        raise ErroNegocio("O YouTube ainda está preparando a transmissão. Espere uns segundos e toque em Entrar no ar de novo.")
+    if b[0]["status"]["lifeCycleStatus"] != "live":
+        _api(s, "POST", "liveBroadcasts/transition", {"broadcastStatus": "live", "id": j.yt_broadcast_id, "part": "status"})
+
+
 def entrar_no_ar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> dict:
     c, j = _contexto(s, campeonato_id, jogo_id, por)
     if j.yt_estado != "preparada":
@@ -358,7 +383,7 @@ def entrar_no_ar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -
     ls = _api(s, "GET", "liveStreams", {"part": "status", "id": j.yt_stream_id}).get("items") or []
     if not ls or ls[0]["status"]["streamStatus"] != "active":
         raise ErroNegocio("O YouTube ainda não está recebendo o vídeo. Inicie o envio no aplicativo (OBS, Larix…), espere ~15 segundos e tente de novo.")
-    _api(s, "POST", "liveBroadcasts/transition", {"broadcastStatus": "live", "id": j.yt_broadcast_id, "part": "status"})
+    _ir_ao_vivo(s, j)
     j.yt_estado = "ao_vivo"
     auditoria.registrar(s, por.id, "transmissao_no_ar", "jogo", j.id, video=j.yt_broadcast_id)
     s.commit()
