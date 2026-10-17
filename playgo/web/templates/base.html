@@ -75,6 +75,7 @@
 <div class="content">
   {% if erro %}<p class="aviso erro" role="alert">{{ erro }}</p>{% endif %}
   {% if ok %}<p class="aviso ok">{{ ok }}</p>{% endif %}
+  {% if aviso_plano and aba != "planos" %}<p class="aviso erro" role="status">⏳ {{ aviso_plano.texto }} <a href="/planos"><b>Ver planos</b></a></p>{% endif %}
   {% block conteudo %}{% endblock %}
   <footer class="rodape-legal"><a href="/termos">Termos de Uso</a> · <a href="/politica-de-privacidade">Política de Privacidade</a> · <a href="/privacidade">Meus dados e privacidade</a></footer>
 </div>

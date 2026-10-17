@@ -170,6 +170,7 @@ def criar(s: SessaoORM, usuario: Usuario, d: NovoCampeonato) -> Campeonato:
         c.diferenca_set = 2
     s.add(c)
     s.flush()
+    planos.consumir_evento(s, usuario, c.id)  # quem comprou eventos avulsos gasta 1 crédito por campeonato
     _avisar_proximos(s, c)
     s.commit()
     return c

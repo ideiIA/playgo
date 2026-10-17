@@ -28,7 +28,7 @@ def _item(u: Usuario) -> dict:
     }
 
 
-def listar(s: SessaoORM, por: Usuario, q: str = "", perfil: str | None = None, limite: int = 50) -> list[dict]:
+def listar(s: SessaoORM, por: Usuario, q: str = "", perfil: str | None = None, limite: int = 50, vencendo: bool = False) -> list[dict]:
     _exigir_admin(por)
     consulta = select(Usuario).where(Usuario.ativo, Usuario.anonimizado_em.is_(None))
     termo = q.strip().lstrip("@")
@@ -41,14 +41,28 @@ def listar(s: SessaoORM, por: Usuario, q: str = "", perfil: str | None = None, l
         consulta = consulta.where(Usuario.moderador, ~Usuario.admin)
     elif perfil == "usuario":
         consulta = consulta.where(~Usuario.admin, ~Usuario.moderador)
-    consulta = consulta.order_by(Usuario.admin.desc(), Usuario.moderador.desc(), Usuario.usuario).limit(limite)
+    if vencendo:  # só quem tem assinatura ou eventos comprados pode estar perto do fim do acesso
+        from .models import Assinatura, CreditoEvento
+
+        com_prazo = select(Assinatura.usuario_id).union(select(CreditoEvento.usuario_id).where(CreditoEvento.status == "pago"))
+        consulta = consulta.where(Usuario.id.in_(com_prazo))
+    consulta = consulta.order_by(Usuario.admin.desc(), Usuario.moderador.desc(), Usuario.usuario).limit(2000 if vencendo else limite)
     from . import planos
 
     saida = []
     for u in s.scalars(consulta):
         sit = planos.situacao(s, u)
-        saida.append(_item(u) | {"plano": sit["plano"], "plano_status": sit["status"], "plano_fim": sit["fim"].isoformat() if sit["fim"] else None, "plano_inicio": sit["inicio"].isoformat() if sit.get("inicio") else None})
-    return saida
+        dias = sit["dias_restantes"]
+        ev = planos.eventos(s, u)
+        if vencendo:  # só quem está na última semana, em tolerância ou com eventos perto de vencer
+            termina = sit["status"] in ("teste", "ativa", "cancelada", "tolerancia") and dias is not None and dias <= planos.AVISO_DIAS
+            if not termina and not (ev["saldo"] and ev["dias_restantes"] is not None and ev["dias_restantes"] <= planos.AVISO_DIAS):
+                continue
+        saida.append(_item(u) | {
+            "plano": sit["plano"], "plano_status": sit["status"], "plano_fim": sit["fim"].isoformat() if sit["fim"] else None, "plano_inicio": sit["inicio"].isoformat() if sit.get("inicio") else None,
+            "plano_dias": dias, "eventos_saldo": ev["saldo"], "eventos_ate": ev["valida_ate"],
+        })
+    return saida[:limite]
 
 
 def resumo(s: SessaoORM, por: Usuario) -> dict:

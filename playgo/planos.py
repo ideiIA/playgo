@@ -22,7 +22,7 @@ from . import auditoria, notificacoes
 from .config import settings
 from .db import agora
 from .erros import ErroNegocio, NaoEncontrado, PlanoNecessario, SemPermissao
-from .models import Assinatura, Atividade, Pagamento, Plano, Usuario
+from .models import Assinatura, Atividade, CreditoEvento, Pagamento, Plano, Usuario
 
 ORDEM = {"gratuito": 0, "pro": 1, "organizador": 2, "arena": 3}
 CODIGOS = tuple(ORDEM)
@@ -39,6 +39,8 @@ class Regras:
     pode_arena: bool
     descricao: str = ""
     pode_atividade: bool = True
+    valor_anual: Decimal | None = None  # None = sem opção anual
+    valor_evento: Decimal = Decimal(0)  # 0 = sem venda avulsa de eventos
 
 
 # Valores iniciais. Os preços ficam em R$ 0 até o administrador defini-los: sem preço, não há como assinar.
@@ -55,7 +57,8 @@ def regras(s: SessaoORM, codigo: str) -> Regras:
     p = s.get(Plano, codigo)
     if p is None:
         return base
-    return Regras(codigo, p.nome or base.nome, p.valor_mensal, p.max_participantes, p.max_atividades_abertas, p.pode_campeonato, p.pode_arena, base.descricao, p.pode_atividade)
+    return Regras(codigo, p.nome or base.nome, p.valor_mensal, p.max_participantes, p.max_atividades_abertas, p.pode_campeonato, p.pode_arena, base.descricao, p.pode_atividade,
+                  p.valor_anual if p.valor_anual and p.valor_anual > 0 else None, p.valor_evento or Decimal(0))
 
 
 def todas(s: SessaoORM) -> list[Regras]:
@@ -85,7 +88,7 @@ def vitrine(s: SessaoORM) -> list[dict]:
             elif item == "{abertas}":
                 item = f"Até {r.max_atividades_abertas} atividades abertas ao mesmo tempo" if r.max_atividades_abertas else "Atividades abertas sem limite"
             lista.append(item)
-        saida.append({"codigo": r.codigo, "nome": r.nome, "valor": float(r.valor_mensal), "resumo": resumo[r.codigo], "itens": lista})
+        saida.append({"codigo": r.codigo, "nome": r.nome, "valor": float(r.valor_mensal), "valor_anual": float(r.valor_anual) if r.valor_anual else None, "resumo": resumo[r.codigo], "itens": lista})
     return saida
 
 
@@ -94,15 +97,24 @@ def _dict(r: Regras) -> dict:
         "codigo": r.codigo, "nome": r.nome, "valor_mensal": float(r.valor_mensal), "max_participantes": r.max_participantes,
         "max_atividades_abertas": r.max_atividades_abertas, "pode_campeonato": r.pode_campeonato, "pode_arena": r.pode_arena,
         "descricao": r.descricao, "pode_atividade": r.pode_atividade, "assinavel": r.valor_mensal > 0,
+        "valor_anual": float(r.valor_anual) if r.valor_anual else None, "desconto_anual": desconto_anual(r), "anual_disponivel": bool(r.valor_anual and r.valor_mensal > 0),
+        "valor_evento": float(r.valor_evento), "evento_disponivel": bool(r.valor_evento and r.valor_evento > 0 and r.codigo == "organizador"),
     }
 
 
-def salvar_regras(s: SessaoORM, por: Usuario, codigo: str, nome: str | None = None, valor_mensal: Decimal | None = None, max_participantes: int | None = ..., max_atividades_abertas: int | None = ..., pode_campeonato: bool | None = None, pode_arena: bool | None = None, pode_atividade: bool | None = None) -> dict:
+def desconto_anual(r: Regras) -> int:
+    """Quanto o anual economiza em relação a 12 mensalidades, em %."""
+    if not r.valor_anual or r.valor_mensal <= 0:
+        return 0
+    return max(0, round(100 * (1 - float(r.valor_anual) / (12 * float(r.valor_mensal)))))
+
+
+def salvar_regras(s: SessaoORM, por: Usuario, codigo: str, nome: str | None = None, valor_mensal: Decimal | None = None, max_participantes: int | None = ..., max_atividades_abertas: int | None = ..., pode_campeonato: bool | None = None, pode_arena: bool | None = None, pode_atividade: bool | None = None, valor_anual: Decimal | None = ..., valor_evento: Decimal | None = None) -> dict:
     if not por.admin:
         raise SemPermissao("Só administradores definem preços e limites dos planos.")
     if codigo not in CODIGOS:
         raise NaoEncontrado("Plano não encontrado.")
-    if valor_mensal is not None and valor_mensal < 0:
+    if (valor_mensal is not None and valor_mensal < 0) or (valor_evento is not None and valor_evento < 0) or (valor_anual is not ... and valor_anual is not None and valor_anual < 0):
         raise ErroNegocio("O valor não pode ser negativo.")
     p = s.get(Plano, codigo)
     if p is None:
@@ -113,6 +125,10 @@ def salvar_regras(s: SessaoORM, por: Usuario, codigo: str, nome: str | None = No
         p.nome = nome.strip()[:60]
     if valor_mensal is not None:
         p.valor_mensal = valor_mensal
+    if valor_anual is not ...:
+        p.valor_anual = valor_anual if valor_anual and valor_anual > 0 else None
+    if valor_evento is not None:
+        p.valor_evento = valor_evento
     if max_participantes is not ...:
         p.max_participantes = max_participantes if max_participantes and max_participantes > 0 else None
     if max_atividades_abertas is not ...:
@@ -123,7 +139,7 @@ def salvar_regras(s: SessaoORM, por: Usuario, codigo: str, nome: str | None = No
         p.pode_arena = pode_arena
     if pode_atividade is not None:
         p.pode_atividade = pode_atividade
-    auditoria.registrar(s, por.id, "plano_alterar", "plano", None, codigo=codigo, valor=str(p.valor_mensal))
+    auditoria.registrar(s, por.id, "plano_alterar", "plano", None, codigo=codigo, valor=str(p.valor_mensal), anual=str(p.valor_anual), evento=str(p.valor_evento))
     s.commit()
     return _dict(regras(s, codigo))
 
@@ -176,10 +192,70 @@ def _situacao(s: SessaoORM, u: Usuario, hoje: date | None) -> dict:
     return base | {"status": "vencida"}
 
 
+# ---------------------------------------------------------------- eventos avulsos (créditos)
+
+CREDITO_VALIDADE_DIAS = 365  # a pessoa tem 12 meses, depois da confirmação do pagamento, para criar os campeonatos comprados
+AVISO_DIAS = 7  # na última semana a pessoa vê o aviso e recebe a notificação
+
+
+def _creditos_validos(s: SessaoORM, u: Usuario, hoje: date | None = None) -> list[CreditoEvento]:
+    hoje = hoje or agora().date()
+    return list(s.scalars(select(CreditoEvento).where(
+        CreditoEvento.usuario_id == u.id, CreditoEvento.status == "pago", CreditoEvento.valida_ate >= hoje, CreditoEvento.usados < CreditoEvento.quantidade,
+    ).order_by(CreditoEvento.valida_ate, CreditoEvento.id)))
+
+
+def saldo_eventos(s: SessaoORM, u: Usuario) -> int:
+    return sum(c.quantidade - c.usados for c in _creditos_validos(s, u))
+
+
+def consumir_evento(s: SessaoORM, u: Usuario, campeonato_id: int | None = None) -> bool:
+    """Gasta 1 crédito (o que vence primeiro) quando o campeonato foi criado SEM plano que já o permita. Devolve se gastou."""
+    if u.admin or regras(s, situacao(s, u)["plano"]).pode_campeonato:
+        return False
+    for c in _creditos_validos(s, u):
+        c.usados += 1
+        auditoria.registrar(s, u.id, "evento_credito_usar", "campeonato", campeonato_id, credito=c.id, restam=c.quantidade - c.usados)
+        return True
+    return False
+
+
+def eventos(s: SessaoORM, u: Usuario) -> dict:
+    """Situação dos eventos avulsos: saldo, validade mais próxima e as compras (com o link da fatura)."""
+    hoje = agora().date()
+    validos = _creditos_validos(s, u, hoje)
+    compras = s.scalars(select(CreditoEvento).where(CreditoEvento.usuario_id == u.id).order_by(CreditoEvento.id.desc()).limit(20)).all()
+    prox = validos[0].valida_ate if validos else None
+    return {
+        "saldo": sum(c.quantidade - c.usados for c in validos), "valida_ate": prox.isoformat() if prox else None, "dias_restantes": (prox - hoje).days if prox else None,
+        "compras": [{"id": c.id, "quantidade": c.quantidade, "usados": c.usados, "valor": float(c.valor), "status": c.status, "valida_ate": c.valida_ate.isoformat() if c.valida_ate else None,
+                     "criado_em": c.criado_em.date().isoformat(), "link": c.invoice_url if (c.invoice_url or "").startswith("https://") and c.status == "pendente" else None} for c in compras],
+    }
+
+
+def aviso_vencimento(s: SessaoORM, u: Usuario) -> dict | None:
+    """Na última semana do acesso (plano que não renova sozinho, ou eventos comprados): texto para mostrar em destaque."""
+    if u.admin:
+        return None
+    sit = situacao(s, u)
+    a = assinatura_de(s, u)
+    dias = sit["dias_restantes"]
+    if sit["status"] in ("teste", "ativa", "cancelada") and dias is not None and 0 <= dias <= AVISO_DIAS and not (a and a.status == "ativa" and a.asaas_subscription_id):
+        nome = DEFAULTS[sit["plano"]].nome
+        quando = "termina hoje" if dias == 0 else f"termina em {dias} dia{'s' if dias > 1 else ''}"
+        return {"tipo": "plano", "dias": dias, "texto": f"Seu acesso ao plano {nome} {quando}. Depois disso você volta ao plano Usuário (o que já existe continua)."}
+    ev = eventos(s, u)
+    if ev["saldo"] and ev["dias_restantes"] is not None and ev["dias_restantes"] <= AVISO_DIAS:
+        d = ev["dias_restantes"]
+        return {"tipo": "eventos", "dias": d, "texto": f"Seus {ev['saldo']} evento{'s' if ev['saldo'] > 1 else ''} comprado{'s' if ev['saldo'] > 1 else ''} vence{'m' if ev['saldo'] > 1 else ''} {'hoje' if d == 0 else 'em ' + str(d) + ' dia' + ('s' if d > 1 else '')}. Crie o campeonato antes disso."}
+    return None
+
+
 def resumo(s: SessaoORM, u: Usuario) -> dict:
     sit = situacao(s, u)
     r = regras(s, sit["plano"])
     return {
+        "eventos": eventos(s, u), "aviso_vencimento": aviso_vencimento(s, u), "ciclo": (assinatura_de(s, u).ciclo if assinatura_de(s, u) else None),
         **{k: (v.isoformat() if isinstance(v, date) else v) for k, v in sit.items()},
         "regras": _dict(r), "planos": [_dict(x) for x in todas(s)],
         "acesso_basico": acesso_basico(s, u), "atividades_abertas": _abertas(s, u), "teste_dias": settings.teste_dias, "tolerancia_dias": settings.tolerancia_dias,
@@ -194,7 +270,7 @@ def permissoes(s: SessaoORM, u: Usuario) -> dict:
         return {"atividade": True, "campeonato": True, "arena": True, "grupo": True, "comunidade": True}
     r = regras(s, situacao(s, u)["plano"])
     return {
-        "atividade": bool(r.pode_atividade), "campeonato": bool(r.pode_campeonato), "arena": bool(r.pode_arena),
+        "atividade": bool(r.pode_atividade), "campeonato": bool(r.pode_campeonato or saldo_eventos(s, u) > 0), "arena": bool(r.pode_arena),  # evento avulso comprado também libera criar campeonato
         "grupo": bool(r.pode_atividade),  # grupos: do Pro em diante (quem organiza atividades)
         "comunidade": bool(r.pode_campeonato or r.pode_arena),  # comunidades: só Organizador e Arena; os demais participam
     }
@@ -305,7 +381,7 @@ def exigir(s: SessaoORM, u: Usuario, recurso: str, max_participantes: int | None
         else:
             return
     elif recurso == "campeonato":
-        if r.pode_campeonato:
+        if r.pode_campeonato or saldo_eventos(s, u) > 0:
             return
         motivo, necessario = "criar campeonatos", "organizador"
     elif recurso == "grupo":
@@ -360,6 +436,19 @@ def avisar_vencimentos(s: SessaoORM) -> int:
         else:
             continue
         if notificacoes.avisar(s, a.usuario_id, "plano", titulo, corpo, "/planos", None, f"plano:{a.id}:{fim}:{marco}"):
+            total += 1
+    for c in s.scalars(select(CreditoEvento).where(CreditoEvento.status == "pago", CreditoEvento.usados < CreditoEvento.quantidade, CreditoEvento.valida_ate.is_not(None))):
+        dias = (c.valida_ate - hoje).days
+        restam = c.quantidade - c.usados
+        plural = "s" if restam > 1 else ""
+        if dias in (7, 3, 1, 0):
+            titulo = f"Seus {restam} evento{plural} " + ("vence hoje" if dias == 0 else f"vence em {dias} dia{'s' if dias > 1 else ''}")
+            corpo, marco = "Crie o campeonato antes do prazo; depois disso o crédito expira.", f"d{dias}"
+        elif dias == -1:
+            titulo, corpo, marco = f"Seus {restam} evento{plural} expirou", "O prazo de 12 meses acabou. Você pode comprar novos eventos em Meu plano.", "fim"
+        else:
+            continue
+        if notificacoes.avisar(s, c.usuario_id, "plano", titulo, corpo, "/planos", None, f"evento:{c.id}:{marco}"):
             total += 1
     s.commit()
     return total

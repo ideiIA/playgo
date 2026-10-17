@@ -247,10 +247,19 @@ def _permissoes(u: Usuario) -> dict:
     return planos.permissoes(s, u)
 
 
+def _aviso_plano(u: Usuario) -> dict | None:
+    from sqlalchemy.orm import object_session
+
+    from . import planos
+
+    s = object_session(u)
+    return planos.aviso_vencimento(s, u) if s is not None else None
+
+
 def dados_publicos(u: Usuario) -> dict:
     """O que o app recebe sobre o próprio usuário."""
     return {
-        "permissoes": _permissoes(u),
+        "permissoes": _permissoes(u), "aviso_plano": _aviso_plano(u),
         "id": u.id, "nome": u.nome, "email": u.email, "usuario": u.usuario, "arroba": u.arroba, "iniciais": u.iniciais, "foto_url": u.foto_url,
         "admin": u.admin, "moderador": u.moderador, "perfil_acesso": u.perfil_acesso, "equipe_moderacao": u.equipe_moderacao, "gestor": u.gestor, "cidade": u.cidade, "latitude": u.latitude, "longitude": u.longitude,
         "raio_km": u.raio_km, "disponibilidade": list(u.disponibilidade or []), "sexo": u.sexo,

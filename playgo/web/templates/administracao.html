@@ -28,6 +28,7 @@
 <form class="filtros" id="filtros">
   <div class="campo"><label>Buscar</label><input name="q" placeholder="@usuario, nome ou e-mail"></div>
   <div class="campo"><label>Perfil</label><select name="perfil"><option value="">Todos</option><option value="admin">Administradores</option><option value="moderador">Moderadores gerais</option><option value="usuario">Usuários</option></select></div>
+  <div class="campo" style="flex:0 0 auto"><label>Acesso pago</label><label class="suave" style="display:flex;gap:6px;align-items:center;padding:10px 0"><input type="checkbox" name="vencendo" style="width:auto"> ⏳ vencendo em 7 dias</label></div>
   <div class="campo" style="flex:0 0 auto"><label>&nbsp;</label><button class="btn purple">Buscar</button></div>
 </form>
 <div class="panel"><div class="pessoas" id="lista"><p class="suave">Carregando…</p></div></div>
@@ -37,14 +38,14 @@
   const PLANOS = { gratuito: 'Usuário', pro: 'Pro', organizador: 'Organizador', arena: 'Arena' };
   async function carregar() {
     const f = document.getElementById('filtros');
-    const q = new URLSearchParams({ q: f.q.value, perfil: f.perfil.value }).toString();
+    const q = new URLSearchParams({ q: f.q.value, perfil: f.perfil.value, vencendo: f.vencendo.checked ? 'true' : 'false' }).toString();
     try {
       const r = await webApi('/admin/usuarios?' + q);
       window._usuarios = r.itens;
       document.getElementById('resumo').innerHTML = `<div class="stat"><b>${r.resumo.administradores}</b><span>Administradores</span></div><div class="stat"><b>${r.resumo.moderadores}</b><span>Moderadores gerais</span></div><div class="stat"><b>${r.resumo.usuarios}</b><span>Usuários ativos</span></div>`;
       document.getElementById('lista').innerHTML = r.itens.map((i) => `<div class="pessoa" style="flex-wrap:wrap"><span class="avatar pequeno">${i.foto_url ? `<img src="${esc(i.foto_url)}" alt="">` : esc(i.iniciais)}</span>
         <div><b>${esc(i.arroba)}</b>${i.id === PLAYGO.eu.id ? ' <span class="tag roxo">você</span>' : ''}<div class="suave">${esc(i.nome)} · ${esc(i.email)}</div></div>
-        <span class="suave">Plano: <b>${esc(i.plano)}</b>${i.plano_inicio ? ' desde ' + esc(i.plano_inicio.split('-').reverse().join('/')) : ''}${i.plano_fim ? ' até ' + esc(i.plano_fim.split('-').reverse().join('/')) : ''} (${esc(i.plano_status)})</span>
+        <span class="suave">Plano: <b>${esc(i.plano)}</b>${i.plano_inicio ? ' desde ' + esc(i.plano_inicio.split('-').reverse().join('/')) : ''}${i.plano_fim ? ' até ' + esc(i.plano_fim.split('-').reverse().join('/')) : ''} (${esc(i.plano_status)})${i.plano_dias != null && i.plano_dias <= 7 && ['teste', 'ativa', 'cancelada', 'tolerancia'].includes(i.plano_status) ? ` <span class="tag laranja">⏳ ${i.plano_dias < 0 ? 'venceu há ' + (-i.plano_dias) + ' dia(s)' : i.plano_dias === 0 ? 'termina hoje' : 'termina em ' + i.plano_dias + ' dia(s)'}</span>` : ''}${i.eventos_saldo ? ` · 🎟 <b>${i.eventos_saldo}</b> evento(s) até ${esc(i.eventos_ate.split('-').reverse().join('/'))}` : ''}</span>
         <label class="suave" style="display:flex;align-items:center;gap:6px" title="Plano pago: Pro, Organizador ou Arena, com início e validade">Plano
           <select data-plano-sel="${i.id}" data-atual="${esc(i.plano)}" style="border:1px solid var(--border);border-radius:10px;padding:8px">${Object.entries(PLANOS).map(([k, n]) => `<option value="${k}" ${i.plano === k ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
         <span class="acoes" title="Perfil de acesso: moderação e administração"><select data-id="${i.id}" style="border:1px solid var(--border);border-radius:10px;padding:8px">${Object.entries(PERFIS).map(([k, n]) => `<option value="${k}" ${i.perfil === k ? 'selected' : ''}>${n}</option>`).join('')}</select></span></div>`).join('') || '<p class="suave">Ninguém encontrado.</p>';
@@ -64,6 +65,8 @@
       document.getElementById('planos-admin').innerHTML = r.map((p) => `<div class="pessoa" style="flex-wrap:wrap;gap:8px" data-plano-cod="${p.codigo}">
         <b style="min-width:110px">${esc(p.nome)}</b>
         <label class="suave">R$/mês <input name="valor_mensal" value="${p.valor_mensal}" style="width:90px;border:1px solid var(--border);border-radius:8px;padding:6px"></label>
+        ${p.codigo !== 'gratuito' ? `<label class="suave">R$/ano <input name="valor_anual" value="${p.valor_anual ?? ''}" placeholder="sem anual" title="Valor do plano anual (deixe vazio para não oferecer)" style="width:100px;border:1px solid var(--border);border-radius:8px;padding:6px"></label><span class="suave" data-desc>${p.desconto_anual ? '≈ ' + p.desconto_anual + '% de desconto' : ''}</span>` : ''}
+        ${p.codigo === 'organizador' ? `<label class="suave">R$/evento avulso <input name="valor_evento" value="${p.valor_evento || ''}" placeholder="não vende" title="Preço de 1 campeonato avulso (vale 12 meses)" style="width:100px;border:1px solid var(--border);border-radius:8px;padding:6px"></label>` : ''}
         <label class="suave">Máx. participantes <input name="max_participantes" value="${p.max_participantes ?? ''}" placeholder="∞" style="width:70px;border:1px solid var(--border);border-radius:8px;padding:6px"></label>
         <label class="suave">Atividades abertas <input name="max_atividades_abertas" value="${p.max_atividades_abertas ?? ''}" placeholder="∞" style="width:70px;border:1px solid var(--border);border-radius:8px;padding:6px"></label>
         <label class="suave"><input type="checkbox" name="pode_atividade" ${p.pode_atividade ? 'checked' : ''}> atividades</label>
@@ -78,7 +81,7 @@
       const linha = salvar.closest('[data-plano-cod]');
       const v = (n) => linha.querySelector(`[name=${n}]`);
       const num = (x) => (x.value.trim() === '' ? 0 : Number(x.value.replace(',', '.')));
-      try { await webApi('/admin/planos/' + salvar.dataset.salvarPlano, { metodo: 'PUT', corpo: { valor_mensal: String(num(v('valor_mensal'))), max_participantes: num(v('max_participantes')), max_atividades_abertas: num(v('max_atividades_abertas')), pode_atividade: v('pode_atividade').checked, pode_campeonato: v('pode_campeonato').checked, pode_arena: v('pode_arena').checked } }); toast('Plano salvo.'); } catch (e) { toast(e.message); }
+      try { await webApi('/admin/planos/' + salvar.dataset.salvarPlano, { metodo: 'PUT', corpo: { valor_mensal: String(num(v('valor_mensal'))), ...(v('valor_anual') ? { valor_anual: num(v('valor_anual')) ? String(num(v('valor_anual'))) : null } : {}), ...(v('valor_evento') ? { valor_evento: String(num(v('valor_evento'))) } : {}), max_participantes: num(v('max_participantes')), max_atividades_abertas: num(v('max_atividades_abertas')), pode_atividade: v('pode_atividade').checked, pode_campeonato: v('pode_campeonato').checked, pode_arena: v('pode_arena').checked } }); toast('Plano salvo.'); } catch (e) { toast(e.message); }
     }
   });
   // Plano de uma pessoa: escolhe na lista; planos pagos abrem uma janela com início e validade do acesso

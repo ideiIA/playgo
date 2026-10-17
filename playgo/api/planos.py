@@ -21,11 +21,19 @@ class PlanoIn(BaseModel):
 class AssinarIn(BaseModel):
     plano: str
     cpf_cnpj: str
+    ciclo: str = "mensal"  # mensal | anual
+
+
+class EventosIn(BaseModel):
+    quantidade: int
+    cpf_cnpj: str
 
 
 class RegrasIn(BaseModel):
     nome: str | None = None
     valor_mensal: Decimal | None = None
+    valor_anual: Decimal | None = None  # vazio/0 = não oferece anual
+    valor_evento: Decimal | None = None  # preço de 1 evento avulso (Organizador)
     max_participantes: int | None = None
     max_atividades_abertas: int | None = None
     pode_campeonato: bool | None = None
@@ -56,7 +64,12 @@ def iniciar_teste(corpo: PlanoIn, u: AtualApi, s: Sessao):
 
 @router.post("/planos/assinar")
 def assinar(corpo: AssinarIn, u: AtualApi, s: Sessao):
-    return cobranca.assinar(s, u, corpo.plano, corpo.cpf_cnpj)
+    return cobranca.assinar(s, u, corpo.plano, corpo.cpf_cnpj, corpo.ciclo)
+
+
+@router.post("/planos/eventos")
+def comprar_eventos(corpo: EventosIn, u: AtualApi, s: Sessao):
+    return cobranca.comprar_eventos(s, u, corpo.quantidade, corpo.cpf_cnpj)
 
 
 @router.post("/planos/cancelar")

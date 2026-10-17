@@ -343,8 +343,8 @@ class PerfilIn(BaseModel):
 
 
 @router.get("/admin/usuarios")
-def admin_usuarios(u: AtualApi, s: Sessao, q: str = "", perfil: str = ""):
-    return {"itens": administracao.listar(s, u, q, perfil or None), "resumo": administracao.resumo(s, u)}
+def admin_usuarios(u: AtualApi, s: Sessao, q: str = "", perfil: str = "", vencendo: bool = False):
+    return {"itens": administracao.listar(s, u, q, perfil or None, vencendo=vencendo), "resumo": administracao.resumo(s, u)}
 
 
 @router.post("/admin/usuarios/{usuario_id}/perfil")

@@ -151,6 +151,7 @@ def pagina(request: Request, s, usuario: Usuario, nome: str, aba: str = "", **co
         "fila_moderacao": publicacoes.contar_fila(s) if usuario.equipe_moderacao else 0,
         "convites_pendentes": len(convites.pendentes(s, usuario)),
         "pode": planos.permissoes(s, usuario),
+        "aviso_plano": planos.aviso_vencimento(s, usuario),
     }
     return templates.TemplateResponse(request, nome, base | contexto)
 

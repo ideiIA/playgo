@@ -259,6 +259,8 @@ def asaas(monkeypatch, s):
             return httpx.Response(200, json={"id": "cus_001"})
         if req.method == "POST" and caminho.endswith("/subscriptions"):
             return httpx.Response(200, json={"id": "sub_" + uuid.uuid4().hex[:8]})
+        if req.method == "POST" and caminho.endswith("/payments"):
+            return httpx.Response(200, json={"id": "pay_ev" + uuid.uuid4().hex[:6], "invoiceUrl": "https://sandbox.asaas.com/i/evento"})
         if req.method == "GET" and "/payments" in caminho:
             return httpx.Response(200, json={"data": [{"id": "pay_" + uuid.uuid4().hex[:8], "value": 39.9, "status": "PENDING", "dueDate": (agora().date() + timedelta(days=1)).isoformat(), "invoiceUrl": "https://sandbox.asaas.com/i/abc"}]})
         if req.method == "DELETE":
@@ -501,3 +503,102 @@ def test_webhook_http_responde_401_com_token_errado_e_200_com_o_certo(banco, mon
         assert r.status_code == 200 and r.json() == {"resultado": "ignorado"}
         monkeypatch.setattr(settings, "asaas_webhook_token", "")
         assert cli.post("/api/v1/cobranca/asaas", json=corpo, headers={"asaas-access-token": ""}).status_code == 401
+
+
+# ---------------------------------------------------------------- anual com desconto, eventos avulsos e avisos
+
+
+def test_plano_anual_com_desconto_cobra_o_ciclo_certo_e_estende_um_ano(s, fabrica, asaas):
+    admin = _admin_local(s)
+    r = planos.salvar_regras(s, admin, "organizador", valor_mensal=Decimal("39.90"), valor_anual=Decimal("399.00"))
+    assert r["anual_disponivel"] is True and r["valor_anual"] == 399.0 and r["desconto_anual"] == 17  # 12 x 39,90 = 478,80
+    u = fabrica.atleta("Anual")
+    with pytest.raises(ErroNegocio):
+        cobranca.assinar(s, u, "pro", "52998224725", "anual")  # o Pro não tem valor anual definido
+    with pytest.raises(ErroNegocio):
+        cobranca.assinar(s, u, "organizador", "52998224725", "semestral")
+    out = cobranca.assinar(s, u, "organizador", "52998224725", "anual")
+    assert out["ciclo"] == "anual" and out["valor"] == 399.0
+    assinatura = [c for c in asaas if c.method == "POST" and c.url.path.endswith("/subscriptions")][-1]
+    assert json.loads(assinatura.content)["cycle"] == "YEARLY" and json.loads(assinatura.content)["value"] == 399.0
+    a = planos.assinatura_de(s, u)
+    assert a.ciclo == "anual"
+    ev = {"event": "PAYMENT_CONFIRMED", "payment": {"id": "pay_ano", "subscription": a.asaas_subscription_id, "value": 399.0, "status": "CONFIRMED", "dueDate": agora().date().isoformat(), "paymentDate": agora().date().isoformat()}}
+    cobranca.processar_webhook(s, "token-do-webhook", ev)
+    s.refresh(a)
+    assert a.vigente_ate >= agora().date() + timedelta(days=366)
+    planos.salvar_regras(s, admin, "organizador", valor_anual=None)
+    assert planos.regras(s, "organizador").valor_anual is None
+
+
+def test_evento_avulso_so_vale_depois_de_pago_gasta_um_credito_por_campeonato_e_vence(s, fabrica, asaas):
+    admin = _admin_local(s)
+    planos.salvar_regras(s, admin, "organizador", valor_evento=Decimal("80.00"))
+    u = fabrica.atleta("Dois Eventos")
+    assert planos.permissoes(s, u)["campeonato"] is False
+    with pytest.raises(ErroNegocio):
+        cobranca.comprar_eventos(s, u, 0, "52998224725")
+    r = cobranca.comprar_eventos(s, u, 2, "52998224725")
+    assert r["valor"] == 160.0 and r["link_pagamento"] == "https://sandbox.asaas.com/i/evento"
+    pagamento = [c for c in asaas if c.method == "POST" and c.url.path.endswith("/payments")][-1]
+    corpo = json.loads(pagamento.content)
+    assert corpo["value"] == 160.0 and corpo["externalReference"] == f"evento:{r['credito_id']}"
+    assert planos.eventos(s, u)["saldo"] == 0 and planos.permissoes(s, u)["campeonato"] is False  # pendente: ainda não vale
+    # o Asaas confirma: libera 2 eventos por 12 meses (e só uma vez)
+    ev = {"event": "PAYMENT_CONFIRMED", "payment": {"id": "pay_x", "externalReference": f"evento:{r['credito_id']}", "status": "CONFIRMED"}}
+    assert cobranca.processar_webhook(s, "token-do-webhook", ev) == "ok"
+    cobranca.processar_webhook(s, "token-do-webhook", {**ev, "event": "PAYMENT_RECEIVED"})
+    e = planos.eventos(s, u)
+    assert e["saldo"] == 2 and e["dias_restantes"] == 365 and planos.permissoes(s, u)["campeonato"] is True
+    assert s.query(Notificacao).filter(Notificacao.usuario_id == u.id, Notificacao.titulo.like("%Pagamento confirmado%")).count() == 1
+    # cada campeonato criado gasta 1 crédito; sem plano de organizador não há outra forma
+    _camp(s, fabrica, u)
+    assert planos.eventos(s, u)["saldo"] == 1 and planos.assinatura_de(s, u) is None  # nem abriu o teste grátis
+    _camp(s, fabrica, u)
+    assert planos.eventos(s, u)["saldo"] == 0 and planos.permissoes(s, u)["campeonato"] is False
+    # vence em 12 meses: sem saldo útil depois da validade
+    r2 = cobranca.comprar_eventos(s, u, 1, "52998224725")
+    cobranca.processar_webhook(s, "token-do-webhook", {"event": "PAYMENT_CONFIRMED", "payment": {"id": "pay_y", "externalReference": f"evento:{r2['credito_id']}"}})
+    assert planos.eventos(s, u)["saldo"] == 1
+    from playgo.models import CreditoEvento
+
+    s.get(CreditoEvento, r2["credito_id"]).valida_ate = agora().date() - timedelta(days=1)
+    s.commit()
+    assert planos.eventos(s, u)["saldo"] == 0 and planos.permissoes(s, u)["campeonato"] is False
+    planos.salvar_regras(s, admin, "organizador", valor_evento=Decimal(0))
+
+
+def test_aviso_na_ultima_semana_do_plano_e_dos_eventos(s, fabrica):
+    admin = _admin(fabrica, s)
+    u = fabrica.atleta("Quase Vencendo")
+    planos.conceder(s, admin, u.id, "organizador", agora().date() + timedelta(days=5))
+    av = planos.aviso_vencimento(s, u)
+    assert av["tipo"] == "plano" and av["dias"] == 5 and "plano Usuário" in av["texto"]
+    assert planos.resumo(s, u)["aviso_vencimento"]["dias"] == 5
+    planos.conceder(s, admin, u.id, "organizador", agora().date() + timedelta(days=40))
+    assert planos.aviso_vencimento(s, u) is None  # longe do fim: sem aviso
+    # eventos comprados perto de vencer
+    from playgo.models import CreditoEvento
+
+    o = fabrica.atleta("Eventos")
+    c = CreditoEvento(usuario_id=o.id, quantidade=2, usados=0, valor=Decimal(160), status="pago", valida_ate=agora().date() + timedelta(days=3))
+    s.add(c)
+    s.commit()
+    assert planos.aviso_vencimento(s, o)["tipo"] == "eventos"
+    assert planos.avisar_vencimentos(s) >= 1
+    assert s.query(Notificacao).filter(Notificacao.usuario_id == o.id, Notificacao.titulo.like("%evento%vence em 3 dias%")).count() == 1
+    antes = planos.avisar_vencimentos(s)
+    assert s.query(Notificacao).filter(Notificacao.usuario_id == o.id, Notificacao.titulo.like("%evento%vence em 3 dias%")).count() == 1 and antes >= 0  # sem repetir
+
+
+def test_administracao_filtra_quem_esta_na_ultima_semana(s, fabrica):
+    from playgo import administracao
+
+    admin = _admin(fabrica, s)
+    perto, longe = fabrica.atleta("Perto"), fabrica.atleta("Longe")
+    planos.conceder(s, admin, perto.id, "pro", agora().date() + timedelta(days=4))
+    planos.conceder(s, admin, longe.id, "pro", agora().date() + timedelta(days=60))
+    assert administracao.listar(s, admin, q=perto.usuario)[0]["plano_dias"] == 4
+    assert administracao.listar(s, admin, q=longe.usuario)[0]["plano_dias"] == 60
+    vencendo = {i["id"] for i in administracao.listar(s, admin, limite=200, vencendo=True)}
+    assert perto.id in vencendo and longe.id not in vencendo

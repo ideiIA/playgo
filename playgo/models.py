@@ -926,6 +926,8 @@ class Plano(Base):
     codigo: Mapped[str] = mapped_column(String(12), primary_key=True)  # gratuito (Usuário) | pro | organizador | arena
     nome: Mapped[str] = mapped_column(String(60))
     valor_mensal: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
+    valor_anual: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))  # plano anual com desconto; vazio = não oferece anual
+    valor_evento: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)  # preço de 1 evento (campeonato) avulso; só o Organizador vende
     max_participantes: Mapped[int | None] = mapped_column(Integer)  # None = sem limite
     max_atividades_abertas: Mapped[int | None] = mapped_column(Integer)
     pode_atividade: Mapped[bool] = mapped_column(Boolean, default=True)  # organizar atividades
@@ -943,6 +945,7 @@ class Assinatura(Base):
     plano: Mapped[str] = mapped_column(String(12))
     status: Mapped[str] = mapped_column(String(10), default="teste")  # teste | ativa | cancelada
     origem: Mapped[str] = mapped_column(String(10), default="teste")  # teste | asaas | manual
+    ciclo: Mapped[str] = mapped_column(String(6), default="mensal")  # mensal | anual (como a assinatura no Asaas se renova)
     teste_ate: Mapped[date | None] = mapped_column(Date)
     vigente_ate: Mapped[date | None] = mapped_column(Date)
     vigente_desde: Mapped[date | None] = mapped_column(Date)  # concessão do administrador: o acesso só vale a partir desta data
@@ -953,6 +956,25 @@ class Assinatura(Base):
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
 
     pagamentos: Mapped[list["Pagamento"]] = relationship(cascade="all, delete-orphan", order_by="Pagamento.id")
+
+
+class CreditoEvento(Base):
+    """Eventos (campeonatos) comprados avulsos: a pessoa paga só pelos que vai realizar. Cada campeonato criado gasta 1 crédito; vencem em 12 meses."""
+
+    __tablename__ = "creditos_evento"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"), index=True)
+    quantidade: Mapped[int] = mapped_column(Integer)
+    usados: Mapped[int] = mapped_column(Integer, default=0)
+    valor: Mapped[Decimal] = mapped_column(Numeric(10, 2))  # total cobrado
+    status: Mapped[str] = mapped_column(String(10), default="pendente")  # pendente | pago | cancelado
+    valida_ate: Mapped[date | None] = mapped_column(Date)  # definida quando o pagamento é confirmado
+    asaas_customer_id: Mapped[str | None] = mapped_column(String(40))
+    asaas_payment_id: Mapped[str | None] = mapped_column(String(40))
+    invoice_url: Mapped[str | None] = mapped_column(String(300))
+    pago_em: Mapped[date | None] = mapped_column(Date)
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
 
 
 class Pagamento(Base):

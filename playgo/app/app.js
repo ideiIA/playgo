@@ -237,6 +237,7 @@
       const u = estado.usuario;
       montar(`
         <div class="hero"><h1>Olá, ${esc(u.nome.split(' ')[0])}! Bora completar o time?</h1><p>Jogos, grupos, campeonatos e arenas com vagas em tempo real.</p></div>
+        ${u.aviso_plano ? `<a class="aviso erro" href="#/planos" style="display:block">⏳ ${esc(u.aviso_plano.texto)} <b>Ver planos</b></a>` : ''}
         ${!f.centro.informada ? '<p class="aviso alerta">📍 Não sabemos onde você está — mostrando Campo Grande. <button class="btn suave pequeno" data-acao="localizar">Usar minha localização</button></p>' : ''}
         <div class="livebar"><div><span class="pulse"></span><strong>${f.oportunidades_agora} oportunidade${f.oportunidades_agora !== 1 ? 's' : ''} agora</strong> em até 5 km</div><a class="btn lima pequeno" href="#/explorar?mapa=1">Mapa</a></div>
         ${(f.ao_vivo || []).length ? secao('🔴 Ao vivo agora') + lista(f.ao_vivo, cardVivo) : ''}
@@ -955,16 +956,19 @@
   const NOME_PLANO = { gratuito: 'Usuário', pro: 'Pro', organizador: 'Organizador', arena: 'Arena' };
   const brl = (v) => 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',') + '/mês';
   const dataBr = (iso) => (iso ? iso.split('-').reverse().join('/') : '');
+  const reais = (v) => Number(v || 0).toFixed(2).replace('.', ',');
+  let cicloPlano = 'mensal';
 
   async function vPlanos() {
     carregando();
     try {
       const p = await api('/planos');
       const f = dataBr(p.fim), t = dataBr(p.tolerancia_ate);
+      const aviso = p.aviso_vencimento ? `<p class="aviso erro" style="margin-top:12px">⏳ ${esc(p.aviso_vencimento.texto)}</p>` : '';
       const faixa = p.status === 'administrador' ? ['ok', 'Você é administrador: acesso completo, sem cobrança.']
         : p.status === 'teste' ? ['ok', `🎁 Teste do plano ${NOME_PLANO[p.plano]} até ${f} (${p.dias_restantes} dia${p.dias_restantes !== 1 ? 's' : ''}).`]
         : p.status === 'agendada' ? ['ok', `📅 Plano ${NOME_PLANO[p.plano_contratado]} liberado de ${dataBr(p.inicio)} até ${f}. Até lá você segue no plano Usuário.`]
-        : p.status === 'ativa' ? ['ok', `✅ Plano ${NOME_PLANO[p.plano]} ativo até ${f}.`]
+        : p.status === 'ativa' ? ['ok', `✅ Plano ${NOME_PLANO[p.plano]} ${p.ciclo === 'anual' ? '(anual) ' : ''}ativo até ${f}.`]
         : p.status === 'cancelada' ? ['ok', `Plano ${NOME_PLANO[p.plano]} cancelado: vale até ${f}, sem renovação.`]
         : p.status === 'tolerancia' ? ['erro', `⚠️ O plano ${NOME_PLANO[p.plano]} venceu em ${f}. Tolerância até ${t}; depois, não dá para criar nem divulgar nada novo (o que já existe continua).`]
         : p.status === 'vencida' ? ['erro', `O acesso ao plano ${NOME_PLANO[p.plano_contratado]} terminou em ${f}. Criar e divulgar coisas novas exige assinar de novo.`]
@@ -973,21 +977,32 @@
       const cartao = (pl) => {
         const atual = p.plano_contratado === pl.codigo || (pl.codigo === 'gratuito' && p.plano === 'gratuito');
         const lim = pl.codigo === 'gratuito' ? 'Ver tudo, publicar e comentar no feed e participar de atividades. Não organiza atividades.' : pl.codigo === 'pro' ? `Organiza atividades: até ${pl.max_participantes || '∞'} participantes por atividade e ${pl.max_atividades_abertas || '∞'} abertas ao mesmo tempo. Sem campeonatos.` : pl.codigo === 'organizador' ? 'Atividades sem limite e campeonatos.' : 'Tudo do Organizador, mais arenas, quadras, agenda e divulgação de horários.';
+        const cic = cicloPlano === 'anual' && pl.anual_disponivel ? 'anual' : 'mensal';
+        const preco = cic === 'anual' ? `R$ ${reais(pl.valor_anual)}/ano<div class="suave" style="font-size:13px;font-weight:700">≈ R$ ${reais(pl.valor_anual / 12)}/mês${pl.desconto_anual ? ' · economize ' + pl.desconto_anual + '%' : ''}</div>` : brl(pl.valor_mensal);
         let acao = '';
         if ((pl.codigo !== 'gratuito' || pl.assinavel) && p.status !== 'administrador') {
           if (p.assinatura_asaas && p.plano_contratado === pl.codigo) acao = '<button class="btn perigo bloco" data-acao="plano-cancelar">Cancelar assinatura</button>';
           else {
             if (p.teste_disponivel.includes(pl.codigo)) acao += `<button class="btn suave bloco" data-acao="plano-teste" data-p="${pl.codigo}">🎁 Começar teste de ${p.teste_dias} dias</button>`;
-            acao += pl.assinavel && p.cobranca_ativa ? `<button class="btn roxo bloco" style="margin-top:8px" data-acao="plano-assinar" data-p="${pl.codigo}">Assinar</button>` : `<p class="suave" style="margin-top:8px">${pl.assinavel ? 'Cobrança ainda não ativada.' : 'Valor ainda não definido.'}</p>`;
+            acao += pl.assinavel && p.cobranca_ativa ? `<button class="btn roxo bloco" style="margin-top:8px" data-acao="plano-assinar" data-p="${pl.codigo}" data-c="${cic}">Assinar${cic === 'anual' ? ' o anual' : ''}</button>` : `<p class="suave" style="margin-top:8px">${pl.assinavel ? 'Cobrança ainda não ativada.' : 'Valor ainda não definido.'}</p>`;
           }
         }
         return `<div class="card ${atual ? 'champ' : ''}"><span class="tag ${atual ? '' : pl.codigo === 'arena' ? 'verde' : pl.codigo === 'organizador' ? 'laranja' : ''}">${atual ? 'SEU PLANO' : esc(pl.nome.toUpperCase())}</span><h3>${esc(pl.nome)}</h3>
-          <div style="font-size:22px;font-weight:900;margin:4px 0">${brl(pl.valor_mensal)}</div><div class="meta">${esc(lim)}</div><div style="margin-top:12px">${acao}</div></div>`;
+          <div style="font-size:22px;font-weight:900;margin:4px 0">${preco}</div><div class="meta">${esc(lim)}</div><div style="margin-top:12px">${acao}</div></div>`;
       };
       const STATUS_PG = { PENDING: 'Aguardando pagamento', OVERDUE: 'Vencida', CONFIRMED: 'Paga', RECEIVED: 'Paga', RECEIVED_IN_CASH: 'Paga', REFUNDED: 'Estornada', DELETED: 'Cancelada' };
       const cobrancas = (p.cobrancas || []).length ? `<h2 style="margin-top:18px">🧾 Minhas cobranças</h2><div class="lista">${p.cobrancas.map((c) => `<div class="card"><b>${dataBr(c.vencimento)}</b> · R$ ${c.valor.toFixed(2).replace('.', ',')} · <span class="tag ${c.pago_em ? 'verde' : 'laranja'}">${esc(STATUS_PG[c.status] || c.status)}</span>${c.pago_em ? `<div class="suave">paga em ${dataBr(c.pago_em)}</div>` : ''}${c.link ? `<a class="btn suave bloco" style="margin-top:8px" href="${esc(c.link)}" target="_blank" rel="noopener">${c.pago_em ? 'Ver recibo' : 'Abrir fatura / 2ª via'}</a>` : ''}</div>`).join('')}</div>` : '';
-      montar(`<h1>💳 Meu plano</h1><p class="aviso ${faixa[0]}" style="margin-top:12px">${esc(faixa[1])}</p><div class="lista">${p.planos.map(cartao).join('')}</div>${cobrancas}
-        <p class="suave" style="margin-top:14px">A cobrança é mensal pelo Asaas (Pix, boleto ou cartão); você cancela quando quiser e o acesso segue até o fim do período pago. <a href="#/documento/termos">Termos de Uso</a></p>`);
+      const temAnual = p.planos.some((x) => x.anual_disponivel) && p.status !== 'administrador';
+      const seletor = temAnual ? `<div style="display:flex;gap:8px;margin-top:12px"><button class="btn ${cicloPlano === 'mensal' ? 'roxo' : 'suave'} pequeno" data-acao="plano-ciclo" data-c="mensal">Mensal</button><button class="btn ${cicloPlano === 'anual' ? 'roxo' : 'suave'} pequeno" data-acao="plano-ciclo" data-c="anual">Anual${Math.max(...p.planos.map((x) => x.desconto_anual || 0)) ? ' · até ' + Math.max(...p.planos.map((x) => x.desconto_anual || 0)) + '% off' : ''}</button></div>` : '';
+      const org = p.planos.find((x) => x.codigo === 'organizador');
+      const ev = p.eventos || { saldo: 0, compras: [] };
+      const pend = (ev.compras || []).filter((c) => c.status === 'pendente' && c.link);
+      const eventos = p.status === 'administrador' ? '' :
+        (ev.saldo ? `<p class="aviso ok" style="margin-top:14px">🎟 Você tem <b>${ev.saldo}</b> evento${ev.saldo > 1 ? 's' : ''} para criar campeonatos, até ${dataBr(ev.valida_ate)}.</p>` : '') +
+        (org && org.evento_disponivel && p.cobranca_ativa ? `<div class="card" style="margin-top:14px"><h3>🎟 Vai fazer só alguns campeonatos?</h3><p class="suave" style="margin:6px 0">Pague só pelos eventos que vai realizar: <b>R$ ${reais(org.valor_evento)} por evento</b>. Cada campeonato criado usa 1 evento, válidos por 12 meses depois do pagamento. Sem mensalidade.</p><button class="btn roxo bloco" data-acao="eventos-comprar" data-v="${org.valor_evento}">Comprar eventos</button></div>` : '') +
+        (pend.length ? pend.map((c) => `<div class="card" style="margin-top:10px"><b>${c.quantidade} evento${c.quantidade > 1 ? 's' : ''}</b> · R$ ${reais(c.valor)} · <span class="tag laranja">Aguardando pagamento</span><a class="btn suave bloco" style="margin-top:8px" href="${esc(c.link)}" target="_blank" rel="noopener">Abrir fatura</a></div>`).join('') : '');
+      montar(`<h1>💳 Meu plano</h1>${aviso}<p class="aviso ${faixa[0]}" style="margin-top:12px">${esc(faixa[1])}</p>${seletor}<div class="lista">${p.planos.map(cartao).join('')}</div>${eventos}${cobrancas}
+        <p class="suave" style="margin-top:14px">A cobrança é mensal ou anual pelo Asaas (Pix, boleto ou cartão); você cancela quando quiser e o acesso segue até o fim do período pago. Quando termina, você volta ao plano Usuário. <a href="#/documento/termos">Termos de Uso</a></p>`);
     } catch (e) { erroTela(e); }
   }
 
@@ -1073,13 +1088,24 @@
 
   const acoesNovas = {
     'admin-filtro'(el) { vAdmin('', el.dataset.v); },
+    'plano-ciclo'(el) { cicloPlano = el.dataset.c; vPlanos(); },
+    'eventos-comprar'(el) {
+      const v = Number(el.dataset.v);
+      folha(`<h3>Comprar eventos</h3><p class="suave" style="margin-bottom:10px">R$ ${reais(v)} por evento. Informe quantos e seu CPF ou CNPJ (vai direto ao Asaas e não é guardado pelo PlayGo).</p><form id="f-eventos"><div class="campo"><label>Quantos eventos?</label><input name="quantidade" type="number" min="1" max="50" value="1" required></div><p class="suave" id="ev-total" style="margin:6px 0 10px"><b>Total: R$ ${reais(v)}</b></p><div class="campo"><input name="cpf_cnpj" inputmode="numeric" required placeholder="CPF ou CNPJ (só números)"></div><button class="btn roxo bloco">Ir para o pagamento</button></form>`);
+      $('#f-eventos').querySelector('[name=quantidade]').oninput = (ev) => { const n = Math.max(1, Math.min(50, Number(ev.target.value) || 1)); $('#ev-total').innerHTML = `<b>Total: R$ ${reais(v * n)}</b>`; };
+      $('#f-eventos').onsubmit = async (ev) => {
+        ev.preventDefault();
+        const d = dadosForm(ev.target);
+        try { const r = await post('/planos/eventos', { quantidade: Number(d.quantidade), cpf_cnpj: d.cpf_cnpj }); fecharFolha(); if (r.link_pagamento) window.open(r.link_pagamento, '_blank', 'noopener'); else toast('Cobrança criada. O link chega no seu e-mail.'); vPlanos(); } catch (e) { toast(e.message); }
+      };
+    },
     async 'plano-teste'(el) { try { await post('/planos/teste', { plano: el.dataset.p }); toast('Teste começou!'); vPlanos(); } catch (e) { toast(e.message); } },
     async 'plano-cancelar'() { if (!confirm('Cancelar a assinatura? O acesso segue até o fim do período já pago.')) return; try { await post('/planos/cancelar'); toast('Assinatura cancelada.'); vPlanos(); } catch (e) { toast(e.message); } },
     'plano-assinar'(el) {
       folha(`<h3>Assinar plano ${esc(NOME_PLANO[el.dataset.p])}</h3><p class="suave" style="margin-bottom:10px">Informe seu CPF ou CNPJ para emitir a cobrança. Ele vai direto ao Asaas e não é guardado pelo PlayGo.</p><form id="f-assinar"><div class="campo"><input name="cpf_cnpj" inputmode="numeric" required placeholder="CPF ou CNPJ (só números)"></div><button class="btn roxo bloco">Ir para o pagamento</button></form>`);
       $('#f-assinar').onsubmit = async (ev) => {
         ev.preventDefault();
-        try { const r = await post('/planos/assinar', { plano: el.dataset.p, cpf_cnpj: dadosForm(ev.target).cpf_cnpj }); fecharFolha(); if (r.link_pagamento) window.open(r.link_pagamento, '_blank', 'noopener'); else toast('Assinatura criada. A cobrança chega no seu e-mail.'); vPlanos(); } catch (e) { toast(e.message); }
+        try { const r = await post('/planos/assinar', { plano: el.dataset.p, cpf_cnpj: dadosForm(ev.target).cpf_cnpj, ciclo: el.dataset.c || 'mensal' }); fecharFolha(); if (r.link_pagamento) window.open(r.link_pagamento, '_blank', 'noopener'); else toast('Assinatura criada. A cobrança chega no seu e-mail.'); vPlanos(); } catch (e) { toast(e.message); }
       };
     },
     'escolher-arroba'(el) { if (estado.aoEscolherArroba) Promise.resolve(estado.aoEscolherArroba(el.dataset.u)).catch((e) => toast(e.message)); },
