@@ -8,7 +8,7 @@
 
   const css = `
     .pgm-caixa{background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.25);padding:5px;width:min(340px,56vw);font:14px/1.3 system-ui,sans-serif}
-    .leaflet-control.pgm-caixa{position:absolute;top:0;left:44px;margin:0}
+    .leaflet-control.pgm-caixa{position:absolute;top:10px;left:54px;margin:0 !important}
     .pgm-linha{display:flex;gap:6px}
     .pgm-linha input{flex:1;min-width:0;border:1px solid #d9dbe6;border-radius:8px;padding:8px 10px;font:inherit}
     .pgm-linha button{border:0;background:#6c4cff;color:#fff;border-radius:8px;padding:0 12px;font-weight:700;cursor:pointer}
