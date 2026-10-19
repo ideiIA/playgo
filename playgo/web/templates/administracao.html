@@ -15,7 +15,19 @@
 <div class="panel" style="margin-bottom:18px">
   <h2>💳 Planos e mensalidades</h2>
   <p class="suave" style="margin:0 0 10px">Defina preço e limites. Plano com valor R$ 0 não pode ser assinado. Campos de limite em branco = sem limite.</p>
-  <div id="planos-admin" class="pessoas"></div>
+  <div id="planos-admin" class="tabela-planos"></div>
+  <style>
+    .tabela-planos { overflow-x: auto; }
+    .tabela-planos table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .tabela-planos th { text-align: left; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); padding: 6px 8px; border-bottom: 2px solid var(--border); line-height: 1.2; vertical-align: bottom; }
+    .tabela-planos td { padding: 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .tabela-planos td.num input { width: 84px; border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; }
+    .tabela-planos td.lim input { width: 64px; border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; }
+    .tabela-planos td.chk, .tabela-planos th.chk { text-align: center; }
+    .tabela-planos td.chk input { width: auto; transform: scale(1.2); }
+    .tabela-planos .nada { color: var(--muted); }
+    .tabela-planos small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
+  </style>
 </div>
 <div class="panel" style="margin-bottom:18px" id="painel-youtube">
   <h2>🎥 YouTube do PlayGo (transmissões ao vivo)</h2>
@@ -62,17 +74,18 @@
   async function carregarPlanos() {
     try {
       const r = await webApi('/admin/planos');
-      document.getElementById('planos-admin').innerHTML = r.map((p) => `<div class="pessoa" style="flex-wrap:wrap;gap:8px" data-plano-cod="${p.codigo}">
-        <b style="min-width:110px">${esc(p.nome)}</b>
-        <label class="suave">R$/mês <input name="valor_mensal" value="${p.valor_mensal}" style="width:90px;border:1px solid var(--border);border-radius:8px;padding:6px"></label>
-        ${p.codigo !== 'gratuito' ? `<label class="suave">R$/ano <input name="valor_anual" value="${p.valor_anual ?? ''}" placeholder="sem anual" title="Valor do plano anual (deixe vazio para não oferecer)" style="width:100px;border:1px solid var(--border);border-radius:8px;padding:6px"></label><span class="suave" data-desc>${p.desconto_anual ? '≈ ' + p.desconto_anual + '% de desconto' : ''}</span>` : ''}
-        ${p.codigo === 'organizador' ? `<label class="suave">R$/evento avulso <input name="valor_evento" value="${p.valor_evento || ''}" placeholder="não vende" title="Preço de 1 campeonato avulso (vale 12 meses)" style="width:100px;border:1px solid var(--border);border-radius:8px;padding:6px"></label>` : ''}
-        <label class="suave">Máx. participantes <input name="max_participantes" value="${p.max_participantes ?? ''}" placeholder="∞" style="width:70px;border:1px solid var(--border);border-radius:8px;padding:6px"></label>
-        <label class="suave">Atividades abertas <input name="max_atividades_abertas" value="${p.max_atividades_abertas ?? ''}" placeholder="∞" style="width:70px;border:1px solid var(--border);border-radius:8px;padding:6px"></label>
-        <label class="suave"><input type="checkbox" name="pode_atividade" ${p.pode_atividade ? 'checked' : ''}> atividades</label>
-        <label class="suave"><input type="checkbox" name="pode_campeonato" ${p.pode_campeonato ? 'checked' : ''}> campeonatos</label>
-        <label class="suave"><input type="checkbox" name="pode_arena" ${p.pode_arena ? 'checked' : ''}> arenas</label>
-        <button class="btn soft pequeno" data-salvar-plano="${p.codigo}">Salvar</button></div>`).join('');
+      const linha = (p) => `<tr data-plano-cod="${p.codigo}">
+        <td><b>${esc(p.nome)}</b></td>
+        <td class="num"><input name="valor_mensal" value="${p.valor_mensal}" aria-label="R$/mês de ${esc(p.nome)}"></td>
+        <td class="num">${p.codigo !== 'gratuito' ? `<input name="valor_anual" value="${p.valor_anual ?? ''}" placeholder="sem anual" title="Valor do plano anual (deixe vazio para não oferecer)" aria-label="R$/ano de ${esc(p.nome)}">${p.desconto_anual ? `<small>≈ ${p.desconto_anual}% de desconto</small>` : ''}` : '<span class="nada">—</span>'}</td>
+        <td class="num">${p.codigo === 'organizador' ? `<input name="valor_evento" value="${p.valor_evento || ''}" placeholder="não vende" title="Preço de 1 campeonato avulso (vale 12 meses)" aria-label="R$ por evento avulso">` : '<span class="nada">—</span>'}</td>
+        <td class="lim"><input name="max_participantes" value="${p.max_participantes ?? ''}" placeholder="∞" aria-label="Máximo de participantes"></td>
+        <td class="lim"><input name="max_atividades_abertas" value="${p.max_atividades_abertas ?? ''}" placeholder="∞" aria-label="Atividades abertas"></td>
+        <td class="chk"><input type="checkbox" name="pode_atividade" ${p.pode_atividade ? 'checked' : ''} aria-label="Pode organizar atividades"></td>
+        <td class="chk"><input type="checkbox" name="pode_campeonato" ${p.pode_campeonato ? 'checked' : ''} aria-label="Pode criar campeonatos"></td>
+        <td class="chk"><input type="checkbox" name="pode_arena" ${p.pode_arena ? 'checked' : ''} aria-label="Pode gerir arenas"></td>
+        <td><button class="btn soft pequeno" data-salvar-plano="${p.codigo}">Salvar</button></td></tr>`;
+      document.getElementById('planos-admin').innerHTML = `<table><thead><tr><th>Plano</th><th>R$/mês</th><th>R$/ano</th><th>R$/evento avulso</th><th>Máx. participantes</th><th>Ativ. abertas</th><th class="chk">Atividades</th><th class="chk">Campeonatos</th><th class="chk">Arenas</th><th></th></tr></thead><tbody>${r.map(linha).join('')}</tbody></table>`;
     } catch (e) { document.getElementById('planos-admin').innerHTML = `<p class="vazio">${esc(e.message)}</p>`; }
   }
   document.addEventListener('click', async (ev) => {
