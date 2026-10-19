@@ -4,7 +4,7 @@ grupos e horários de quadra ao redor do atleta, com os filtros do mapa."""
 from dataclasses import dataclass, field
 from datetime import datetime, time, timedelta
 
-from sqlalchemy import extract, func, or_, select
+from sqlalchemy import and_, extract, func, or_, select
 from sqlalchemy.orm import Session as SessaoORM
 
 from . import arenas as srv_arenas
@@ -129,7 +129,7 @@ def buscar_campeonatos(s: SessaoORM, lat: float, lng: float, f: Filtros, limite:
     q = (
         select(Campeonato, dist)
         .join(Modalidade, Modalidade.id == Campeonato.modalidade_id)
-        .where(Campeonato.status.in_((C_ABERTO, C_ANDAMENTO)), func.coalesce(Campeonato.data_fim, Campeonato.data_inicio) >= n.date())
+        .where(or_(Campeonato.status == C_ANDAMENTO, and_(Campeonato.status == C_ABERTO, func.coalesce(Campeonato.data_fim, Campeonato.data_inicio) >= n.date())))  # em andamento fica na lista até a organização encerrar, mesmo passada a data
     )
     if f.quando:
         q = q.where(Campeonato.data_inicio >= ini.date(), Campeonato.data_inicio < fim.date())

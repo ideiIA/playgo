@@ -25,7 +25,7 @@
   function montarAcompanhar(el, o) {
     const { get, id } = o;
     el.innerHTML = '<div class="tl" data-tl>' +
-      '<div class="tl-topo"><div><h2 data-t="titulo">Carregando…</h2><small data-t="sub"></small></div><a class="tl-yt off" data-t="yt" target="_blank" rel="noopener" hidden>▶ YouTube</a><div class="tl-vivo parado" data-t="vivo"><i></i><span data-t="vivo-txt">AGUARDANDO</span></div></div>' +
+      '<div class="tl-topo"><div><h2 data-t="titulo">Carregando…</h2><small data-t="sub"></small></div><a class="tl-canal off" data-t="canal" target="_blank" rel="noopener" hidden>▶ YouTube</a><div class="tl-vivo parado" data-t="vivo"><i></i><span data-t="vivo-txt">AGUARDANDO</span></div></div>' +
       '<div class="tl-video" data-t="video" hidden></div>' +
       '<div class="tl-principal" data-t="principal"></div>' +
       '<div class="tl-pontos" data-t="pontos"></div>' +
@@ -41,7 +41,7 @@
       const c = D.campeonato, jogos = D.jogos;
       t('titulo').textContent = c.nome;
       t('sub').textContent = c.icone + ' ' + c.modalidade;
-      const yt = t('yt');
+      const yt = t('canal');
       yt.hidden = !D.canal;
       if (D.canal) { yt.classList.toggle('off', !D.canal.ao_vivo); yt.textContent = D.canal.ao_vivo ? '▶ Assistir no YouTube · 🔴 no ar' : '▶ YouTube · sem transmissão'; if (D.canal.ao_vivo) yt.href = D.canal.url; else yt.removeAttribute('href'); }
       const aoVivo = jogos.some((j) => j.status === 'ao_vivo');

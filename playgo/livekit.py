@@ -66,6 +66,8 @@ def _chamar(metodo: str, corpo: dict) -> dict:
             msg = str(r.json().get("msg") or r.text)[:200]
         except ValueError:
             msg = r.text[:200]
+        if "minutes exceeded" in msg.lower() or "quota" in msg.lower():
+            raise ErroNegocio("Os minutos de transmissão do plano do LiveKit acabaram. Aumente o plano no painel do LiveKit Cloud, espere a renovação do mês ou transmita pelo Larix/OBS com a chave acima.")
         raise ErroNegocio(f"LiveKit: {msg}")
     return r.json()
 

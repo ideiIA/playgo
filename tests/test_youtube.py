@@ -367,3 +367,15 @@ def test_telao_fixado_em_jogo_encerrado_segue_o_jogo_ao_vivo(banco):
             s.commit()
             d = telao.dados_espectador(s, c)
         assert [j["id"] for j in d["jogos"]] == [b] and d["modo"] == "auto"
+
+
+def test_limite_de_minutos_do_livekit_vira_mensagem_clara(monkeypatch):
+    from playgo import livekit
+
+    monkeypatch.setattr(settings, "livekit_url", "wss://t.livekit.cloud")
+    monkeypatch.setattr(settings, "livekit_api_key", "k")
+    monkeypatch.setattr(settings, "livekit_api_secret", "s" * 32)
+    monkeypatch.setattr(livekit, "_http", lambda: httpx.Client(transport=httpx.MockTransport(lambda r: httpx.Response(429, json={"code": "resource_exhausted", "msg": "egress minutes exceeded"}))))
+    with pytest.raises(Exception) as e:
+        livekit.iniciar_saida(1, "rtmp://x/y")
+    assert "minutos de transmissão do plano do LiveKit acabaram" in str(e.value)
