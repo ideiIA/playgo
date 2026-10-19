@@ -323,6 +323,7 @@ def preparar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> di
         j.yt_broadcast_id = j.yt_stream_id = j.yt_estado = None
         s.commit()
         raise
+    _garantir_embed(s, j)
     auditoria.registrar(s, por.id, "transmissao_preparar", "jogo", j.id, video=j.yt_broadcast_id)
     s.commit()
     return painel(s, campeonato_id, jogo_id, por)
@@ -350,6 +351,23 @@ def painel(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> dict
         sinal = {"estado": ls[0]["status"]["streamStatus"], "saude": ((ls[0]["status"].get("healthStatus") or {}).get("status")) or "noData"}
         envio = _entrega(ls[0])
     return base | {"estado": j.yt_estado, "envio": envio, "sinal": sinal, "ciclo": ciclo, "video_id": j.yt_broadcast_id if j.yt_estado == "ao_vivo" else None}
+
+
+def _garantir_embed(s: SessaoORM, j: Jogo) -> None:
+    """Liga a incorporação do vídeo (senão o player do PlayGo mostra "reprodução em outros sites desativada"). Melhor esforço:
+    o YouTube pode recusar no pedido de criação, então confere no vídeo e corrige com `videos.update`."""
+    try:
+        itens = _api(s, "GET", "videos", {"part": "status", "id": j.yt_broadcast_id}).get("items") or []
+        if not itens:
+            return
+        st = itens[0].get("status") or {}
+        if st.get("embeddable") is True:
+            return
+        novo = {k: st[k] for k in ("privacyStatus", "license", "publicStatsViewable", "selfDeclaredMadeForKids") if k in st}
+        novo["embeddable"] = True
+        _api(s, "PUT", "videos", {"part": "status"}, {"id": j.yt_broadcast_id, "status": novo})
+    except ErroNegocio as e:
+        log.warning("YouTube: não consegui ligar a incorporação do vídeo do jogo %s: %s", j.id, e)
 
 
 def _pausa(segundos: float) -> None:
@@ -383,6 +401,7 @@ def entrar_no_ar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -
     ls = _api(s, "GET", "liveStreams", {"part": "status", "id": j.yt_stream_id}).get("items") or []
     if not ls or ls[0]["status"]["streamStatus"] != "active":
         raise ErroNegocio("O YouTube ainda não está recebendo o vídeo. Inicie o envio no aplicativo (OBS, Larix…), espere ~15 segundos e tente de novo.")
+    _garantir_embed(s, j)  # de novo aqui: o vídeo já existe de fato e corrige transmissões preparadas antes desta correção
     _ir_ao_vivo(s, j)
     j.yt_estado = "ao_vivo"
     auditoria.registrar(s, por.id, "transmissao_no_ar", "jogo", j.id, video=j.yt_broadcast_id)

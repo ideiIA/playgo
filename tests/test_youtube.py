@@ -35,6 +35,7 @@ class FalsoYouTube:
         self.proximo = 0
         self.erro_stream: str | None = None
         self.exige_teste = False
+        self.embeddable = False
 
     def __call__(self, req: httpx.Request) -> httpx.Response:
         caminho = req.url.path
@@ -71,6 +72,13 @@ class FalsoYouTube:
                 return httpx.Response(204)
             return httpx.Response(200, json={"items": [{"id": req.url.params["id"], "status": {"streamStatus": self.sinal, "healthStatus": {"status": "good"}},
                                                           "cdn": {"ingestionInfo": {"ingestionAddress": "rtmp://a.rtmp.youtube.com/live2", "streamName": "chave-atual"}}}]})
+        if caminho.endswith("/videos"):
+            if req.method == "PUT":
+                import json as _json
+
+                self.embeddable = bool(_json.loads(req.content)["status"]["embeddable"])
+                return httpx.Response(200, json={"id": "x"})
+            return httpx.Response(200, json={"items": [{"id": req.url.params["id"], "status": {"privacyStatus": "public", "license": "youtube", "embeddable": self.embeddable, "publicStatsViewable": True}}]})
         return httpx.Response(404, json={"error": {"message": "rota inesperada"}})
 
 
@@ -379,3 +387,27 @@ def test_limite_de_minutos_do_livekit_vira_mensagem_clara(monkeypatch):
     with pytest.raises(Exception) as e:
         livekit.iniciar_saida(1, "rtmp://x/y")
     assert "minutos de transmissão do plano do LiveKit acabaram" in str(e.value)
+
+
+def test_liga_a_incorporacao_do_video_para_o_player_do_playgo(banco, yt):
+    yt.sinal = "active"
+    assert yt.embeddable is False
+    with TestClient(app) as cli:
+        adm, adm_id = _conta(cli, "Adm")
+        org, org_id = _conta(cli, "Org")
+        _plano(org_id, "organizador")
+        fas = [_conta(cli, f"Cap{i}")[0] for i in range(4)]
+        with Session() as s:
+            s.query(Usuario).filter(Usuario.id == adm_id).update({Usuario.admin: True})
+            s.query(ConfigExterna).filter(ConfigExterna.chave == "youtube").delete()
+            s.commit()
+            youtube.conectar(s, s.get(Usuario, adm_id), "codigo")
+        cid, jogos = _campeonato(cli, org, fas)
+        j1 = jogos[0]["id"]
+        cli.post(f"/api/v1/campeonatos/{cid}/transmissao/liberar", headers=org, json={"permitir": True, "declaro": True})
+        base = f"/api/v1/campeonatos/{cid}/jogos/{j1}/transmissao"
+        assert cli.post(base, headers=org).status_code == 200
+        assert yt.embeddable is True  # ligado logo ao preparar
+        assert ("PUT", "videos") in yt.chamadas
+        yt.embeddable = False  # transmissão preparada antes da correção: entrar no ar também conserta
+        assert cli.post(base + "/no-ar", headers=org).status_code == 200 and yt.embeddable is True
