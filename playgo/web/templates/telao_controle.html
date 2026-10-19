@@ -37,8 +37,13 @@
   </form>
 </div>
 
+<link rel="stylesheet" href="/static/tutorial.css">
 <div class="panel" style="margin-top:18px" id="transmissao">
   <h2>3 · Transmissão ao vivo no YouTube do PlayGo</h2>
+  <details class="tut-embutido"><summary>📘 Como transmitir — passo a passo para iniciantes</summary>
+    <div class="tut-dentro">{% with embutido = true %}{% include "_tut_transmissao.html" %}{% endwith %}
+      <p class="suave" style="margin:8px 4px 0"><a href="/tutorial/transmissao">Abrir o tutorial em tela cheia →</a></p></div>
+  </details>
   {% if not yt.conectado %}
     <p class="vazio">A administração ainda não conectou o canal do YouTube do PlayGo. Assim que for conectado, a transmissão aparece aqui.</p>
   {% elif not k.transmissao_permitida %}

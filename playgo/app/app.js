@@ -748,7 +748,7 @@
       const mine = await api('/minhas-atividades');
       const nivelDe = (id) => (u.esportes.find((e) => e.modalidade_id === id) || {}).nivel || '';
       montar(`<div style="display:flex;gap:14px;align-items:center;margin-bottom:14px"><span class="avatar grande">${u.foto_url ? `<img src="${esc(u.foto_url)}" alt="Sua foto">` : esc(u.iniciais)}</span><div><h1>${esc(u.arroba)}</h1><p class="suave">${esc(u.nome)} · ${esc(u.email)}</p><button class="btn suave pequeno" data-acao="trocar-usuario" style="margin-top:6px">Trocar @usuario</button> <button class="btn suave pequeno" data-acao="foto" style="margin-top:6px">📷 ${u.foto_url ? 'Trocar foto' : 'Adicionar foto'}</button>${u.foto_url ? ' <button class="btn perigo pequeno" data-acao="remover-foto" style="margin-top:6px">Remover</button>' : ''}</div></div>
-        <div class="painel">${pode('arena') ? '<a class="item-menu" href="#/gestao"><i>▦</i>Minha Arena<span>Gestão ›</span></a>' : ''}<a class="item-menu" href="#/campeonatos"><i>🏆</i>Campeonatos<span>›</span></a><a class="item-menu" href="#/planos"><i>💳</i>Meu plano<span>›</span></a><a class="item-menu" href="#/notificacoes"><i>🔔</i>Notificações<span>›</span></a><a class="item-menu" href="#/comunidades"><i>☺</i>Comunidades<span>›</span></a><a class="item-menu" href="#/convites"><i>✉️</i>Convites<span>›</span></a>${u.equipe_moderacao ? '<a class="item-menu" href="#/moderacao"><i>🛡</i>Moderação<span>Fila ›</span></a>' : ''}${u.admin ? '<a class="item-menu" href="#/admin"><i>⚙️</i>Administração<span>Perfis ›</span></a>' : ''}<a class="item-menu" href="#/privacidade"><i>🔒</i>Meus dados e privacidade<span>›</span></a></div>
+        <div class="painel">${pode('arena') ? '<a class="item-menu" href="#/gestao"><i>▦</i>Minha Arena<span>Gestão ›</span></a>' : ''}<a class="item-menu" href="#/campeonatos"><i>🏆</i>Campeonatos<span>›</span></a><a class="item-menu" href="#/planos"><i>💳</i>Meu plano<span>›</span></a><a class="item-menu" href="#/tutoriais"><i>📘</i>Tutoriais<span>›</span></a><a class="item-menu" href="#/notificacoes"><i>🔔</i>Notificações<span>›</span></a><a class="item-menu" href="#/comunidades"><i>☺</i>Comunidades<span>›</span></a><a class="item-menu" href="#/convites"><i>✉️</i>Convites<span>›</span></a>${u.equipe_moderacao ? '<a class="item-menu" href="#/moderacao"><i>🛡</i>Moderação<span>Fila ›</span></a>' : ''}${u.admin ? '<a class="item-menu" href="#/admin"><i>⚙️</i>Administração<span>Perfis ›</span></a>' : ''}<a class="item-menu" href="#/privacidade"><i>🔒</i>Meus dados e privacidade<span>›</span></a></div>
         ${mine.proximas.length ? secao('Meus próximos jogos') + lista(mine.proximas, (a) => cardAtv(a)) : ''}
         <form id="f-perfil" style="margin-top:18px"><div class="painel"><h3 style="margin-bottom:12px">Esportes que pratico</h3>
           ${estado.mods.map((m) => `<div class="pessoa"><span style="font-size:22px">${esc(m.icone)}</span><b>${esc(m.nome)}</b><span class="acoes"><select name="esporte_${m.id}" style="border:1px solid var(--border);border-radius:10px;padding:7px"><option value="">—</option>${Object.entries(NIVEIS).map(([k, v]) => `<option value="${k}" ${nivelDe(m.id) === k ? 'selected' : ''}>${v}</option>`).join('')}</select></span></div>`).join('')}</div>
@@ -1042,6 +1042,25 @@
     } catch (e) { erroTela(e); }
   }
 
+  // ---- tutoriais (o mesmo conteúdo do site, vindo da API)
+  async function vTutoriais() {
+    carregando();
+    try {
+      const lista = await api('/tutoriais');
+      montar(`<h1>📘 Tutoriais</h1><p class="suave" style="margin:4px 0 12px">Guias passo a passo, em linguagem simples.</p><div class="lista">${lista.map((t) => `<a class="card" href="#/tutorial/${esc(t.codigo)}" style="text-decoration:none;color:inherit;display:block"><h3>${esc(t.icone)} ${esc(t.titulo)}</h3><p class="suave" style="margin-top:4px">Toque para abrir ›</p></a>`).join('')}</div>`);
+    } catch (e) { erroTela(e); }
+  }
+
+  async function vTutorial(codigo) {
+    carregando();
+    try {
+      const [lista, t] = await Promise.all([api('/tutoriais'), api('/tutoriais/' + encodeURIComponent(codigo))]);
+      montar(`<a href="#/tutoriais" class="suave">← Tutoriais</a>
+        <div class="alternar" style="margin:10px 0">${lista.map((x) => `<a class="${x.codigo === codigo ? 'on' : ''}" href="#/tutorial/${esc(x.codigo)}">${esc(x.icone)} ${esc(x.codigo === 'campeonatos' ? 'Campeonatos' : 'Transmissão')}</a>`).join('')}</div>
+        <div class="tut-app">${t.html}</div>`);
+    } catch (e) { erroTela(e); }
+  }
+
   async function vAceite() {
     const T = await fetch(API + '/termos').then((r) => r.json()).catch(() => null);
     montar(`<div class="entrada"><form class="cartao" id="f-aceite"><span class="marca"><img src="/static/marca/icone.svg" alt="" width="40" height="40" class="marca-ico">Play<span>Go</span></span>
@@ -1301,6 +1320,8 @@
       case 'notificacoes': return vNotificacoes();
       case 'feed': return vFeed(parametros);
       case 'planos': return vPlanos();
+      case 'tutoriais': return vTutoriais();
+      case 'tutorial': return vTutorial(arg);
       case 'comunidades': return vComunidades();
       case 'comunidade': return vComunidade(arg);
       case 'nova-comunidade': return vNovaComunidade();

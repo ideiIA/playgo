@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from fastapi import APIRouter, Header, Request
 from pydantic import BaseModel
 
-from .. import cobranca, planos
+from .. import cobranca, planos, tutoriais
 from ..deps import AtualApi, Sessao
 from ..erros import ErroNegocio, SemPermissao
 
@@ -109,3 +109,16 @@ def admin_salvar_plano(codigo: str, corpo: RegrasIn, u: AtualApi, s: Sessao):
 @router.post("/admin/usuarios/{usuario_id}/plano")
 def admin_conceder_plano(usuario_id: int, corpo: ConcederIn, u: AtualApi, s: Sessao):
     return planos.conceder(s, u, usuario_id, corpo.plano, corpo.ate, corpo.inicio)
+
+
+# ---------------------------------------------------------------- tutoriais (o app mostra o mesmo conteúdo do site)
+
+
+@router.get("/tutoriais")
+def tutoriais_lista(u: AtualApi, s: Sessao):
+    return tutoriais.lista(s, u)
+
+
+@router.get("/tutoriais/{codigo}")
+def tutorial(codigo: str, u: AtualApi, s: Sessao, embutido: bool = False):
+    return tutoriais.html(s, u, codigo, embutido)

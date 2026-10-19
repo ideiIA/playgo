@@ -62,3 +62,24 @@
   .tut-hero { padding: 24px 20px; } .tut-hero h1 { font-size: 24px; }
   .tut-cap > header, .tut-corpo { padding-left: 16px; padding-right: 16px; }
 }
+
+/* sub-menu dos tutoriais, hub e versão embutida na aba Telão */
+.tut-hero.tv::after { content: "🎥"; }
+.tut-abas { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 auto 16px; max-width: 1040px; }
+.tut-abas a { text-decoration: none; font-weight: 800; font-size: 14px; padding: 9px 16px; border-radius: 999px; background: #fff; border: 1px solid var(--border); color: var(--ink); }
+.tut-abas a.on { background: var(--purple); border-color: var(--purple); color: #fff; }
+.tut-hub .tut-cartao { text-decoration: none; color: inherit; display: block; }
+.tut-hub .tut-cartao:hover { box-shadow: 0 8px 24px rgba(20, 20, 60, .12); }
+.tut code { background: #f1efff; border-radius: 8px; padding: 2px 8px; font-size: 13px; word-break: break-all; }
+.tut-embutido { margin: 12px 0 14px; border: 2px solid #ffd2d6; border-radius: 16px; background: #fff; overflow: hidden; }
+.tut-embutido > summary { cursor: pointer; list-style: none; padding: 13px 16px; font-weight: 800; background: #fff3f4; display: flex; align-items: center; gap: 8px; }
+.tut-embutido > summary::-webkit-details-marker { display: none; }
+.tut-embutido > summary::after { content: "＋"; margin-left: auto; color: #e5484d; font-size: 20px; }
+.tut-embutido[open] > summary::after { content: "－"; }
+.tut-embutido > .tut-dentro { padding: 6px 10px 14px; }
+.tut-embutido .tut-cap { margin: 14px 0; }
+.tut-embutido .tut-cap > header { padding: 12px 14px; }
+.tut-embutido .tut-corpo { padding: 14px; }
+.tut-app .tut-indice { position: static; }
+.tut-app .tut-hero { border-radius: 18px; padding: 22px 18px; }
+.tut-app .tut-hero h1 { font-size: 22px; }

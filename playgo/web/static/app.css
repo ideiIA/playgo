@@ -25,6 +25,14 @@ h1, h2, h3 { margin: 0; }
 .nav a { color: #c8c8dc; text-decoration: none; padding: 13px 15px; border-radius: 14px; font-weight: 700; display: flex; gap: 12px; align-items: center; }
 .nav a:hover, .nav a.active { background: linear-gradient(90deg, var(--purple), #8c63ff); color: #fff; }
 .nav .ico { width: 18px; text-align: center; }
+.nav details.submenu summary { color: #c8c8dc; padding: 13px 15px; border-radius: 14px; font-weight: 700; display: flex; gap: 12px; align-items: center; cursor: pointer; list-style: none; }
+.nav details.submenu summary::-webkit-details-marker { display: none; }
+.nav details.submenu summary::after { content: "▾"; margin-left: auto; opacity: .7; }
+.nav details.submenu[open] summary::after { content: "▴"; }
+.nav details.submenu summary:hover { background: #2a2a40; color: #fff; }
+.nav details.submenu.active summary { color: #fff; }
+.nav .subitens { display: grid; gap: 2px; margin: 2px 0 4px; }
+.nav .subitens a { padding: 10px 15px 10px 34px; font-size: 14px; }
 .manager { margin-top: 28px; border-top: 1px solid #32324a; padding-top: 20px; }
 .manager small { color: #8989a5; padding: 0 14px; font-weight: 800; text-transform: uppercase; display: block; margin-bottom: 9px; }
 .main { margin-left: 250px; width: calc(100% - 250px); }
@@ -183,6 +191,9 @@ body.entrada { display: grid; place-items: center; min-height: 100vh; background
   .logo .logo-ico { margin: 0; vertical-align: middle; }
   .nav a { justify-content: center; padding: 13px 0; }
   .nav a .t { display: none; }
+  .nav details.submenu summary { justify-content: center; padding: 13px 0; }
+  .nav details.submenu summary .t, .nav details.submenu summary::after { display: none; }
+  .nav .subitens a { padding: 11px 0; }
   .manager small { display: none; }
   .main { margin-left: 74px; width: calc(100% - 74px); }
   .content { padding: 20px; }

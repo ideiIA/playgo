@@ -123,7 +123,8 @@
         (k.sou_gestor ? '<label class="tl-op"><input type="checkbox" data-t="declaro"><span>' + esc(yt.declaracao || 'Declaro que os participantes foram avisados e autorizam a filmagem e a transmissão dos jogos.') + '</span></label>' +
           '<button class="btn roxo bloco" type="button" data-t="liberar">🎥 Liberar transmissão deste campeonato</button>' : '<p class="suave">Peça à organização do campeonato para liberar a transmissão.</p>');
     } else {
-      transmissao = '<p class="suave">O vídeo vai <b>direto do seu celular ou computador para o YouTube</b>: o PlayGo só prepara a transmissão e a chave de cada jogo. Quem assiste vê no Ao vivo, no telão e na tela inicial. A gravação fica no canal e entra no book.' +
+      transmissao = '<details class="tut-embutido" data-t="tut"><summary>📘 Como transmitir — passo a passo para iniciantes</summary><div class="tut-dentro" data-t="tut-corpo"><p class="carregando">Abra para ver o passo a passo.</p></div></details>' +
+        '<p class="suave">O vídeo vai <b>direto do seu celular ou computador para o YouTube</b>: o PlayGo só prepara a transmissão e a chave de cada jogo. Quem assiste vê no Ao vivo, no telão e na tela inicial. A gravação fica no canal e entra no book.' +
         (yt.privacidade ? (yt.privacidade === 'unlisted' ? ' Hoje as transmissões são <b>não listadas</b> (só quem tem o link do PlayGo assiste).' : ' Hoje as transmissões são <b>públicas</b> no canal.') : '') + '</p>' +
         '<div class="campo"><label>Jogo</label><select data-t="jogo-yt">' + p.ao_vivo.concat(p.proximos).map((j) => '<option value="' + j.id + '">' + (j.status === 'ao_vivo' ? '🔴 ' : '') + esc(j.a) + ' × ' + esc(j.b) + ' — ' + esc(j.rodada) + (j.local ? ' · ' + esc(j.local) : '') + '</option>').join('') + '</select></div>' +
         '<button class="btn roxo bloco" type="button" data-t="preparar"' + (p.ao_vivo.length || p.proximos.length ? '' : ' disabled') + '>🎥 Preparar transmissão deste jogo</button>' +
@@ -174,6 +175,17 @@
     };
 
     // ---- transmissão
+    const tut = t('tut');
+    if (tut) {
+      tut.addEventListener('toggle', async () => {
+        if (!tut.open || tut.dataset.carregado) return;
+        try {
+          const r = await get('/tutoriais/transmissao?embutido=true');
+          t('tut-corpo').innerHTML = r.html + '<p class="suave" style="margin:8px 4px 0"><a href="#/tutorial/transmissao">Abrir em tela cheia →</a></p>';
+          tut.dataset.carregado = '1';
+        } catch (e) { t('tut-corpo').innerHTML = '<p class="vazio">' + esc(e.message) + '</p>'; }
+      });
+    }
     const liberar = t('liberar');
     if (liberar) liberar.onclick = async () => {
       try { await post('/campeonatos/' + id + '/transmissao/liberar', { permitir: true, declaro: t('declaro').checked }); montarControle(el, Object.assign({}, o, { k: Object.assign({}, k, { transmissao_permitida: true }) })); } catch (e) { avisar(e.message); }

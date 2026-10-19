@@ -1,0 +1,5 @@
+<nav class="tut-abas" aria-label="Tutoriais">
+  <a href="/tutorial" class="{{ 'on' if sub == 'indice' }}">📘 Todos os tutoriais</a>
+  {% if pode.campeonato %}<a href="/tutorial/campeonatos" class="{{ 'on' if sub == 'campeonatos' }}">🏆 Campeonatos</a>{% endif %}
+  <a href="/tutorial/transmissao" class="{{ 'on' if sub == 'transmissao' }}">🎥 Transmissão ao vivo</a>
+</nav>

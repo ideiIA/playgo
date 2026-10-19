@@ -152,6 +152,7 @@ def pagina(request: Request, s, usuario: Usuario, nome: str, aba: str = "", **co
         "convites_pendentes": len(convites.pendentes(s, usuario)),
         "pode": planos.permissoes(s, usuario),
         "aviso_plano": planos.aviso_vencimento(s, usuario),
+        "tut_sub": request.url.path.rsplit("/", 1)[-1] if request.url.path.startswith("/tutorial/") else "",
     }
     return templates.TemplateResponse(request, nome, base | contexto)
 
@@ -513,6 +514,18 @@ def listar_campeonatos(request: Request, s: Sessao, usuario: Atual, modalidades:
         enc = campeonatos.encerrados(s, usuario, p.get("enc_q", ""), _data_ou_none(p.get("enc_de")), _data_ou_none(p.get("enc_ate")), p.get("enc_org", ""))
         enc["filtros"] = {"q": p.get("enc_q", ""), "de": p.get("enc_de", ""), "ate": p.get("enc_ate", ""), "org": p.get("enc_org", "")}
     return pagina(request, s, usuario, "campeonatos.html", "campeonatos", f=f, lista=descoberta.buscar_campeonatos(s, la, ln, f), enc=enc)
+
+
+@app.get("/tutorial")
+def tutorial_indice(request: Request, s: Sessao, usuario: Atual):
+    """Menu Tutoriais: lista os guias que a pessoa pode ver."""
+    return pagina(request, s, usuario, "tutorial_indice.html", "tutorial")
+
+
+@app.get("/tutorial/transmissao")
+def tutorial_transmissao(request: Request, s: Sessao, usuario: Atual):
+    """Como transmitir os jogos ao vivo. Aberto a qualquer usuário logado: mesários também precisam dele."""
+    return pagina(request, s, usuario, "tutorial_transmissao.html", "tutorial")
 
 
 @app.get("/tutorial/campeonatos")

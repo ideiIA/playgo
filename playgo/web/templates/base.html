@@ -47,9 +47,13 @@
     <a href="/gestao" class="{{ 'active' if aba == 'gestao' }}"><span class="ico">▦</span><span class="t">Minha Arena</span></a>
     {% endif %}
     <a href="/planos" class="{{ 'active' if aba == 'planos' }}"><span class="ico">💳</span><span class="t">Meu plano</span></a>
-    {% if pode.campeonato %}
-    <a href="/tutorial/campeonatos" class="{{ 'active' if aba == 'tutorial' }}"><span class="ico">📘</span><span class="t">Tutorial de campeonatos</span></a>
-    {% endif %}
+    <details class="submenu {{ 'active' if aba == 'tutorial' }}" {{ 'open' if aba == 'tutorial' }}>
+      <summary><span class="ico">📘</span><span class="t">Tutoriais</span></summary>
+      <div class="subitens">
+        {% if pode.campeonato %}<a href="/tutorial/campeonatos" class="{{ 'active' if aba == 'tutorial' and tut_sub == 'campeonatos' }}"><span class="ico">🏆</span><span class="t">Campeonatos</span></a>{% endif %}
+        <a href="/tutorial/transmissao" class="{{ 'active' if aba == 'tutorial' and tut_sub == 'transmissao' }}"><span class="ico">🎥</span><span class="t">Transmissão ao vivo</span></a>
+      </div>
+    </details>
     {% if usuario.admin %}
     <a href="/gestao/locais" class="{{ 'active' if aba == 'locais' }}"><span class="ico">📍</span><span class="t">Guia de locais</span></a>
     <a href="/administracao" class="{{ 'active' if aba == 'administracao' }}"><span class="ico">⚙</span><span class="t">Administração</span></a>

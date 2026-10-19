@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titulo %}Tutoriais — PlayGo{% endblock %}
+{% block conteudo %}
+<link rel="stylesheet" href="/static/tutorial.css">
+{% set sub = 'indice' %}{% include "_tut_abas.html" %}
+<div class="tut">
+  <section class="tut-hero">
+    <h1>Tutoriais do PlayGo</h1>
+    <p>Guias passo a passo, com linguagem simples, para você aproveitar cada recurso.</p>
+  </section>
+  <div class="tut-grade tut-hub">
+    {% if pode.campeonato %}
+    <a class="tut-cartao tut-c1" href="/tutorial/campeonatos"><span class="tag">9 capítulos</span><h3>🏆 Como organizar um campeonato</h3><p>Do cadastro à final: inscrições, sorteio, horários, placar ao vivo e regras de cada modalidade.</p></a>
+    {% endif %}
+    <a class="tut-cartao tut-c2" href="/tutorial/transmissao"><span class="tag">9 capítulos</span><h3>🎥 Como transmitir os jogos ao vivo</h3><p>Pelo navegador, pelo app Larix ou pelo OBS, com o canal do PlayGo no YouTube. Feito para quem nunca transmitiu.</p></a>
+  </div>
+</div>
+{% endblock %}
