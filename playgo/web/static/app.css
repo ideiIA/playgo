@@ -214,3 +214,14 @@ body.entrada { display: grid; place-items: center; min-height: 100vh; background
 .link-botao { background: none; border: 0; padding: 0; color: var(--purple); font-weight: 800; cursor: pointer; font-size: 13px; }
 .avatar { overflow: hidden; }
 .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* campeonato: informações + mural à esquerda, equipes à direita, sem buraco entre eles */
+.two.com-mural { grid-template-areas: "info equipes" "mural equipes"; grid-template-rows: auto 1fr; }
+.two.com-mural > :nth-child(1) { grid-area: info; }
+.two.com-mural > :nth-child(2) { grid-area: equipes; }
+.two.com-mural > .area-mural { grid-area: mural; min-width: 0; }
+.area-mural > .section-title:first-child { margin-top: 0; }
+@media (max-width: 1050px) {
+  .two.com-mural { grid-template-areas: none; grid-template-rows: none; }
+  .two.com-mural > :nth-child(1), .two.com-mural > :nth-child(2), .two.com-mural > .area-mural { grid-area: auto; }
+}

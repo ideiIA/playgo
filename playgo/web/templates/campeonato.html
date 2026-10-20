@@ -24,7 +24,7 @@
   <form method="post" action="/equipes/{{ cv.equipe_id }}/responder"><input type="hidden" name="aceitar" value="0"><button class="btn perigo pequeno">Recusar</button></form></span></p>
 {% endfor %}
 
-<div class="two">
+<div class="two com-mural">
   <div class="panel">
     <div class="fatos">
       <div class="fato"><small>Início</small><b>{{ k.data_inicio_texto }}</b>{% if k.data_fim_texto %}<div class="suave">até {{ k.data_fim_texto }}</div>{% endif %}</div>
@@ -95,6 +95,20 @@
     </div>
     {% else %}{{ c.vazio('Nenhuma equipe inscrita ainda.') }}{% endif %}
   </div>
+  <div class="area-mural">
+{% if k.mural_acesso %}
+<div class="section-title"><h2>💬 Mural do campeonato</h2></div>
+<p class="suave" style="margin:-6px 0 12px">Para inscritos e organização. O local das publicações é sempre o do campeonato.</p>
+<div style="max-width:760px"><div id="mural"></div></div>
+<script>window.addEventListener('load', () => montarMural('mural', { escopo: 'campeonato', escopoId: {{ k.id }} }));</script>
+{% if k.sou_gestor %}
+<div class="panel" style="margin-top:18px;max-width:760px"><h2>Quem cuida do mural</h2><p class="suave">Quem organiza o campeonato modera o mural; indique outras pessoas para ajudar.</p>
+  <div class="moderadores" data-escopo="campeonato" data-id="{{ k.id }}" data-atual='{{ k.moderadores|tojson }}'></div></div>
+{% endif %}
+{% else %}
+<div class="section-title"><h2>💬 Mural do campeonato</h2></div><p class="vazio">O mural é exclusivo das equipes inscritas e da organização.</p>
+{% endif %}
+  </div>
 </div>
 <script src="/static/elenco.js"></script>
 <script>
@@ -119,16 +133,4 @@
     f.addEventListener('submit', (e) => { if (!oculto.value) { e.preventDefault(); toast('Escolha um atleta da lista.'); } });
   });
 </script>
-{% if k.mural_acesso %}
-<div class="section-title"><h2>💬 Mural do campeonato</h2></div>
-<p class="suave" style="margin:-6px 0 12px">Para inscritos e organização. O local das publicações é sempre o do campeonato.</p>
-<div style="max-width:760px"><div id="mural"></div></div>
-<script>window.addEventListener('load', () => montarMural('mural', { escopo: 'campeonato', escopoId: {{ k.id }} }));</script>
-{% if k.sou_gestor %}
-<div class="panel" style="margin-top:18px;max-width:760px"><h2>Quem cuida do mural</h2><p class="suave">Quem organiza o campeonato modera o mural; indique outras pessoas para ajudar.</p>
-  <div class="moderadores" data-escopo="campeonato" data-id="{{ k.id }}" data-atual='{{ k.moderadores|tojson }}'></div></div>
-{% endif %}
-{% else %}
-<div class="section-title"><h2>💬 Mural do campeonato</h2></div><p class="vazio">O mural é exclusivo das equipes inscritas e da organização.</p>
-{% endif %}
 {% endblock %}
