@@ -100,10 +100,11 @@ def _degrade(tam: int) -> Image.Image:
     return pequeno.resize((tam, tam), Image.BICUBIC)
 
 
-def icone_png(tam: int, arredondado: bool = True, ss: int = 4) -> Image.Image:
+def icone_png(tam: int, arredondado: bool = True, ss: int = 4, fundo: bool = True) -> Image.Image:
+    """`fundo=False` gera só o emblema (bola + linhas), transparente: usado na abertura do app, sobre a cor da marca."""
     S = tam * ss
     k = S / 512
-    img = _degrade(S).convert("RGBA")
+    img = _degrade(S).convert("RGBA") if fundo else Image.new("RGBA", (S, S), (0, 0, 0, 0))
 
     d = ImageDraw.Draw(img)
     for x0, y, x1 in LINHAS:  # linhas de velocidade
@@ -211,6 +212,8 @@ def main() -> None:
     icone_png(180, False).convert("RGB").save(MARCA / "apple-touch-icon.png")
     for t in (192, 512):  # ícones do app (maskable): quadrados, a plataforma aplica a máscara
         icone_png(t, False).convert("RGB").save(APP / f"icon-{t}.png")
+    for t in (192, 512):  # abertura do app: só o emblema, sem o quadrado, sobre o roxo da marca (manifest "any")
+        icone_png(t, False, fundo=False).save(APP / f"icon-abertura-{t}.png")
     logo_horizontal_png(1920, True).save(MARCA / "logo-horizontal.png")
     logo_horizontal_png(1920, False).save(MARCA / "logo-horizontal-branco.png")
     og_png().save(MARCA / "og-playgo.png")
