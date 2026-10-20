@@ -23,12 +23,13 @@
     <a class="marca" href="#/"><img src="/static/marca/icone.svg" alt="" width="28" height="28" class="marca-ico">Play<span>Go</span></a>
     <div class="topo-acoes">
       <a class="icone sino" id="mod" href="#/moderacao" aria-label="Moderação" title="Moderação" hidden>🛡<b id="modn" hidden></b></a>
-      <a class="icone" id="adm" href="#/admin" aria-label="Administração" title="Administração" hidden>⚙️</a>
       <a class="icone" href="#/feed" aria-label="Feed" title="Feed">✎</a>
       <button id="loc" class="icone" aria-label="Minha localização" title="Usar minha localização">📍</button>
       <a class="icone sino" href="#/notificacoes" aria-label="Notificações">🔔<b id="sino" hidden></b></a>
+      <button id="eu-btn" class="eu-btn" type="button" aria-label="Menu da conta" aria-haspopup="true" aria-expanded="false"><span class="avatar" id="eu-avatar"></span></button>
     </div>
   </header>
+  <div id="menu-pop" role="menu" hidden></div>
   <main id="view" aria-live="polite"></main>
   <nav id="abas" hidden aria-label="Principal">
     <a href="#/" data-aba="inicio"><i>⌂</i>Início</a>

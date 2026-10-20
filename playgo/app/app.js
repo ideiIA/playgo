@@ -230,19 +230,38 @@
   }
 
   // ------------------------------------------------------------ início
-  // Menu do perfil no topo do Início: foto + atalhos (antes ficava dentro da aba Perfil)
-  function menuPerfil(u) {
-    const itens = [
+  // Menu da conta (foto ao lado do sino): todas as opções do antigo menu do perfil, num menu suspenso
+  function itensMenuEu(u) {
+    return [
       ['#/perfil', '👤', 'Meu perfil'], ['#/campeonatos', '🏆', 'Campeonatos'], ['#/planos', '💳', 'Meu plano'], ['#/tutoriais', '📘', 'Tutoriais'],
       ['#/notificacoes', '🔔', 'Notificações'], ['#/comunidades', '☺', 'Comunidades'], ['#/convites', '✉️', 'Convites'],
       ...(pode('arena') ? [['#/gestao', '▦', 'Minha Arena']] : []),
       ...(u.equipe_moderacao ? [['#/moderacao', '🛡', 'Moderação']] : []),
       ...(u.admin ? [['#/admin', '⚙️', 'Administração']] : []),
-      ['#/privacidade', '🔒', 'Privacidade'],
+      ['#/privacidade', '🔒', 'Meus dados e privacidade'],
     ];
-    return `<div class="eu-card"><a class="eu-foto" href="#/perfil" aria-label="Meu perfil"><span class="avatar grande">${u.foto_url ? `<img src="${esc(u.foto_url)}" alt="Sua foto">` : esc(u.iniciais)}</span></a>
-        <div class="eu-txt"><b>${esc(u.arroba)}</b><span class="suave">${esc(u.nome)}</span></div></div>
-      <div class="atalhos">${itens.map(([h, i, n]) => `<a class="atalho" href="${h}"><i>${i}</i>${esc(n)}</a>`).join('')}</div>`;
+  }
+
+  function atualizarMenuEu() {
+    const u = estado.usuario;
+    if (!u) return;
+    $('#eu-avatar').innerHTML = u.foto_url ? `<img src="${esc(u.foto_url)}" alt="Menu da conta">` : esc(u.iniciais);
+    $('#menu-pop').innerHTML = `<a class="m-cab" href="#/perfil"><span class="avatar grande">${u.foto_url ? `<img src="${esc(u.foto_url)}" alt="">` : esc(u.iniciais)}</span><span class="m-nome"><b>${esc(u.arroba)}</b><small>${esc(u.nome)}</small></span></a>
+      ${itensMenuEu(u).map(([h, i, n]) => `<a class="m-item" role="menuitem" href="${h}"><i>${i}</i>${esc(n)}</a>`).join('')}`;
+  }
+
+  function fecharMenuEu() { $('#menu-pop').hidden = true; $('#eu-btn').setAttribute('aria-expanded', 'false'); }
+
+  function ligarMenuEu() {
+    $('#eu-btn').addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const abrir = $('#menu-pop').hidden;
+      if (abrir) atualizarMenuEu();
+      $('#menu-pop').hidden = !abrir;
+      $('#eu-btn').setAttribute('aria-expanded', abrir ? 'true' : 'false');
+    });
+    document.addEventListener('click', (ev) => { if (!$('#menu-pop').hidden && !ev.target.closest('#eu-btn')) fecharMenuEu(); });  // clicou fora ou numa opção
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') fecharMenuEu(); });
   }
 
   async function vInicio() {
@@ -251,8 +270,7 @@
       const f = await api('/feed?' + comPos());
       const u = estado.usuario;
       montar(`
-        ${menuPerfil(u)}
-        <div class="hero" style="margin-top:14px"><h1>Olá, ${esc(u.nome.split(' ')[0])}! Bora completar o time?</h1><p>Jogos, grupos, campeonatos e arenas com vagas em tempo real.</p></div>
+        <div class="hero"><h1>Olá, ${esc(u.nome.split(' ')[0])}! Bora completar o time?</h1><p>Jogos, grupos, campeonatos e arenas com vagas em tempo real.</p></div>
         ${u.aviso_plano ? `<a class="aviso erro" href="#/planos" style="display:block">⏳ ${esc(u.aviso_plano.texto)} <b>Ver planos</b></a>` : ''}
         ${!f.centro.informada ? '<p class="aviso alerta">📍 Não sabemos onde você está — mostrando Campo Grande. <button class="btn suave pequeno" data-acao="localizar">Usar minha localização</button></p>' : ''}
         <div class="livebar"><div><span class="pulse"></span><strong>${f.oportunidades_agora} oportunidade${f.oportunidades_agora !== 1 ? 's' : ''} agora</strong> em até 5 km</div><a class="btn lima pequeno" href="#/explorar?mapa=1">Mapa</a></div>
@@ -760,6 +778,7 @@
     carregando();
     try {
       estado.usuario = await api('/me');
+      atualizarMenuEu();
       const u = estado.usuario;
       const mine = await api('/minhas-atividades');
       const nivelDe = (id) => (u.esportes.find((e) => e.modalidade_id === id) || {}).nivel || '';
@@ -813,7 +832,7 @@
   // Ícones fixos de Moderação (administrador e moderador geral) e Administração (só administrador), com a fila pendente
   async function atualizarEquipe() {
     const u = estado.usuario || {};
-    $('#mod').hidden = !u.equipe_moderacao; $('#adm').hidden = !u.admin;
+    $('#mod').hidden = !u.equipe_moderacao;
     if (!u.equipe_moderacao) return;
     try { const n = (await api('/moderacao/contagem')).total; const b = $('#modn'); b.hidden = !n; b.textContent = n > 99 ? '99+' : n; } catch (e) { /* sem rede */ }
   }
@@ -1313,6 +1332,7 @@
     }
     if (rota === 'completar' || rota === 'aceite') { location.hash = '#/'; return; }
     $('#topo').hidden = false; $('#abas').hidden = false;
+    fecharMenuEu(); atualizarMenuEu();
     atualizarSino();
     destacarAba({ '': 'inicio', explorar: 'explorar', criar: 'criar', 'nova-atividade': 'criar', 'novo-grupo': 'grupos', grupos: 'grupos', grupo: 'grupos', comunidades: 'grupos', comunidade: 'grupos', 'nova-comunidade': 'grupos', campeonatos: 'campeonatos', campeonato: 'campeonatos', 'novo-campeonato': 'campeonatos' }[rota] || '');
     switch (rota) {
@@ -1349,6 +1369,7 @@
     }
   }
 
+  ligarMenuEu();
   window.addEventListener('hashchange', rotear);
   setInterval(() => { if (estado.token && !document.hidden) atualizarSino(); }, 30000);
   if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
