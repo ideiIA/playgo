@@ -54,14 +54,24 @@
   const qs = (o) => Object.entries(o).filter(([, v]) => v !== '' && v !== null && v !== undefined && v !== false).map(([k, v]) => k + '=' + encodeURIComponent(v === true ? 1 : v)).join('&');
   const comPos = (o = {}) => qs({ ...o, lat: estado.pos && estado.pos.lat, lng: estado.pos && estado.pos.lng });
 
-  function montar(html, depois) {
+  function fecharAbertura() {
+    const a = document.getElementById('abertura');
+    if (!a) return;
+    a.classList.add('sai');
+    setTimeout(() => a.remove(), 350);
+  }
+
+  setTimeout(fecharAbertura, 8000);  // rede ruim ou erro: a abertura nunca fica por cima do app
+
+  function montar(html, depois, manterAbertura) {
+    if (!manterAbertura) fecharAbertura();
     clearInterval(estado.temporizador); estado.temporizador = null;
     if (estado.mapa) { estado.mapa.remove(); estado.mapa = null; }
     $('#view').innerHTML = html;
     window.scrollTo(0, 0);
     if (depois) depois();
   }
-  const carregando = () => montar('<p class="carregando">Carregando…</p>');
+  const carregando = () => montar('<p class="carregando">Carregando…</p>', null, true);  // a abertura (logo) só some quando a tela de verdade aparece
   const erroTela = (e) => montar(`<div class="vazio">${esc(e.message)}<br><br><a class="btn suave" href="#/">Voltar ao início</a></div>`);
 
   function folha(html) {
