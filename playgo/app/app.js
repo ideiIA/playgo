@@ -230,13 +230,29 @@
   }
 
   // ------------------------------------------------------------ início
+  // Menu do perfil no topo do Início: foto + atalhos (antes ficava dentro da aba Perfil)
+  function menuPerfil(u) {
+    const itens = [
+      ['#/perfil', '👤', 'Meu perfil'], ['#/campeonatos', '🏆', 'Campeonatos'], ['#/planos', '💳', 'Meu plano'], ['#/tutoriais', '📘', 'Tutoriais'],
+      ['#/notificacoes', '🔔', 'Notificações'], ['#/comunidades', '☺', 'Comunidades'], ['#/convites', '✉️', 'Convites'],
+      ...(pode('arena') ? [['#/gestao', '▦', 'Minha Arena']] : []),
+      ...(u.equipe_moderacao ? [['#/moderacao', '🛡', 'Moderação']] : []),
+      ...(u.admin ? [['#/admin', '⚙️', 'Administração']] : []),
+      ['#/privacidade', '🔒', 'Privacidade'],
+    ];
+    return `<div class="eu-card"><a class="eu-foto" href="#/perfil" aria-label="Meu perfil"><span class="avatar grande">${u.foto_url ? `<img src="${esc(u.foto_url)}" alt="Sua foto">` : esc(u.iniciais)}</span></a>
+        <div class="eu-txt"><b>${esc(u.arroba)}</b><span class="suave">${esc(u.nome)}</span></div></div>
+      <div class="atalhos">${itens.map(([h, i, n]) => `<a class="atalho" href="${h}"><i>${i}</i>${esc(n)}</a>`).join('')}</div>`;
+  }
+
   async function vInicio() {
     carregando();
     try {
       const f = await api('/feed?' + comPos());
       const u = estado.usuario;
       montar(`
-        <div class="hero"><h1>Olá, ${esc(u.nome.split(' ')[0])}! Bora completar o time?</h1><p>Jogos, grupos, campeonatos e arenas com vagas em tempo real.</p></div>
+        ${menuPerfil(u)}
+        <div class="hero" style="margin-top:14px"><h1>Olá, ${esc(u.nome.split(' ')[0])}! Bora completar o time?</h1><p>Jogos, grupos, campeonatos e arenas com vagas em tempo real.</p></div>
         ${u.aviso_plano ? `<a class="aviso erro" href="#/planos" style="display:block">⏳ ${esc(u.aviso_plano.texto)} <b>Ver planos</b></a>` : ''}
         ${!f.centro.informada ? '<p class="aviso alerta">📍 Não sabemos onde você está — mostrando Campo Grande. <button class="btn suave pequeno" data-acao="localizar">Usar minha localização</button></p>' : ''}
         <div class="livebar"><div><span class="pulse"></span><strong>${f.oportunidades_agora} oportunidade${f.oportunidades_agora !== 1 ? 's' : ''} agora</strong> em até 5 km</div><a class="btn lima pequeno" href="#/explorar?mapa=1">Mapa</a></div>
@@ -748,7 +764,6 @@
       const mine = await api('/minhas-atividades');
       const nivelDe = (id) => (u.esportes.find((e) => e.modalidade_id === id) || {}).nivel || '';
       montar(`<div style="display:flex;gap:14px;align-items:center;margin-bottom:14px"><span class="avatar grande">${u.foto_url ? `<img src="${esc(u.foto_url)}" alt="Sua foto">` : esc(u.iniciais)}</span><div><h1>${esc(u.arroba)}</h1><p class="suave">${esc(u.nome)} · ${esc(u.email)}</p><button class="btn suave pequeno" data-acao="trocar-usuario" style="margin-top:6px">Trocar @usuario</button> <button class="btn suave pequeno" data-acao="foto" style="margin-top:6px">📷 ${u.foto_url ? 'Trocar foto' : 'Adicionar foto'}</button>${u.foto_url ? ' <button class="btn perigo pequeno" data-acao="remover-foto" style="margin-top:6px">Remover</button>' : ''}</div></div>
-        <div class="painel">${pode('arena') ? '<a class="item-menu" href="#/gestao"><i>▦</i>Minha Arena<span>Gestão ›</span></a>' : ''}<a class="item-menu" href="#/campeonatos"><i>🏆</i>Campeonatos<span>›</span></a><a class="item-menu" href="#/planos"><i>💳</i>Meu plano<span>›</span></a><a class="item-menu" href="#/tutoriais"><i>📘</i>Tutoriais<span>›</span></a><a class="item-menu" href="#/notificacoes"><i>🔔</i>Notificações<span>›</span></a><a class="item-menu" href="#/comunidades"><i>☺</i>Comunidades<span>›</span></a><a class="item-menu" href="#/convites"><i>✉️</i>Convites<span>›</span></a>${u.equipe_moderacao ? '<a class="item-menu" href="#/moderacao"><i>🛡</i>Moderação<span>Fila ›</span></a>' : ''}${u.admin ? '<a class="item-menu" href="#/admin"><i>⚙️</i>Administração<span>Perfis ›</span></a>' : ''}<a class="item-menu" href="#/privacidade"><i>🔒</i>Meus dados e privacidade<span>›</span></a></div>
         ${mine.proximas.length ? secao('Meus próximos jogos') + lista(mine.proximas, (a) => cardAtv(a)) : ''}
         <form id="f-perfil" style="margin-top:18px"><div class="painel"><h3 style="margin-bottom:12px">Esportes que pratico</h3>
           ${estado.mods.map((m) => `<div class="pessoa"><span style="font-size:22px">${esc(m.icone)}</span><b>${esc(m.nome)}</b><span class="acoes"><select name="esporte_${m.id}" style="border:1px solid var(--border);border-radius:10px;padding:7px"><option value="">—</option>${Object.entries(NIVEIS).map(([k, v]) => `<option value="${k}" ${nivelDe(m.id) === k ? 'selected' : ''}>${v}</option>`).join('')}</select></span></div>`).join('')}</div>
@@ -1299,7 +1314,7 @@
     if (rota === 'completar' || rota === 'aceite') { location.hash = '#/'; return; }
     $('#topo').hidden = false; $('#abas').hidden = false;
     atualizarSino();
-    destacarAba({ '': 'inicio', explorar: 'explorar', criar: 'criar', 'nova-atividade': 'criar', 'novo-grupo': 'grupos', grupos: 'grupos', grupo: 'grupos', comunidades: 'grupos', comunidade: 'grupos', 'nova-comunidade': 'grupos', perfil: 'perfil' }[rota] || '');
+    destacarAba({ '': 'inicio', explorar: 'explorar', criar: 'criar', 'nova-atividade': 'criar', 'novo-grupo': 'grupos', grupos: 'grupos', grupo: 'grupos', comunidades: 'grupos', comunidade: 'grupos', 'nova-comunidade': 'grupos', campeonatos: 'campeonatos', campeonato: 'campeonatos', 'novo-campeonato': 'campeonatos' }[rota] || '');
     switch (rota) {
       case '': return vInicio();
       case 'explorar': return vExplorar(parametros);

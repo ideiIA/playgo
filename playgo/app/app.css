@@ -158,3 +158,14 @@ h3 { font-size: 16px; }
 
 .filtros-enc { display: grid; gap: 8px; margin-bottom: 12px; }
 .filtros-enc input { width: 100%; padding: 10px 12px; border: 1px solid var(--borda, #e9eaf0); border-radius: 12px; font: inherit; }
+
+/* menu do perfil no topo do Início */
+.eu-card { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.eu-foto { display: block; flex: none; }
+.eu-foto .avatar.grande { width: 56px; height: 56px; border: 3px solid #fff; box-shadow: 0 4px 14px rgba(108, 76, 255, .3); }
+.eu-txt { display: grid; min-width: 0; }
+.eu-txt b { font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.atalhos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.atalho { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 10px 2px; background: #fff; border: 1px solid var(--border); border-radius: 14px; color: var(--ink); font-size: 11px; font-weight: 700; text-align: center; line-height: 1.15; min-height: 62px; }
+.atalho i { font-style: normal; font-size: 21px; line-height: 1; }
+.atalho:active { background: #f0edff; }
