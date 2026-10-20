@@ -64,7 +64,7 @@
 {% macro arena(a) %}
 <div class="card">
   <a class="cobre" href="/arenas/{{ a.id }}" aria-label="{{ a.nome }}"></a>
-  <span class="tag verde">🏟️ {{ a.quadras }} quadra{{ 's' if a.quadras != 1 }}</span>
+  <span class="tag verde">🏟️ {{ a.quadras }} quadra{{ 's' if a.quadras != 1 }}</span>{% if a.premium %} <span class="tag laranja">👑 Parceira</span>{% endif %}
   <h3>{{ a.nome }}</h3>
   <div class="meta">{{ a.endereco or a.cidade }}{% if a.distancia %} • {{ a.distancia }}{% endif %}{% if a.horarios_disponiveis %}<br><b style="color:var(--green)">{{ a.horarios_disponiveis }} horário{{ 's' if a.horarios_disponiveis != 1 }} livre{{ 's' if a.horarios_disponiveis != 1 }} hoje</b>{% endif %}</div>
 </div>

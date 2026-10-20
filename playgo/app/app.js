@@ -145,7 +145,7 @@
     </a>`;
   const cardArena = (a) => `
     <a class="card" href="#/arena/${a.id}">
-      <span class="tag verde">🏟️ ${a.quadras} quadra${a.quadras !== 1 ? 's' : ''}</span>
+      <span class="tag verde">🏟️ ${a.quadras} quadra${a.quadras !== 1 ? 's' : ''}</span>${a.premium ? ' <span class="tag laranja">👑 Parceira</span>' : ''}
       <h3>${esc(a.nome)}</h3>
       <div class="meta">${esc(a.endereco || a.cidade || '')}${a.distancia ? ' • ' + esc(a.distancia) : ''}${a.horarios_disponiveis ? `<br><b style="color:var(--green)">${a.horarios_disponiveis} horário(s) livre(s) hoje</b>` : ''}</div>
     </a>`;
@@ -177,7 +177,10 @@
     const lim = [[centro.latitude, centro.longitude]];
     (pontos || []).forEach((p) => {
       const alvo = p.tipo === 'horario' ? '#/arena/' + p.arena_id : rotas[p.tipo] + p.id;
-      (p.tipo === 'local' && p.icone
+      (p.tipo === 'arena' && p.premium
+        ? L.marker([p.latitude, p.longitude], { icon: L.divIcon({ className: 'pino-local', iconSize: [34, 34], iconAnchor: [17, 17], popupAnchor: [0, -18],
+            html: '<span style="position:relative;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#6c4cff;border:3px solid #f5b301;box-shadow:0 3px 10px rgba(0,0,0,.35);font-size:17px;line-height:1">🏟️<b style="position:absolute;top:-19px;left:50%;transform:translateX(-50%);font-size:17px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))">👑</b></span>' }) })
+        : p.tipo === 'local' && p.icone
         ? L.marker([p.latitude, p.longitude], { icon: L.divIcon({ className: 'pino-local', iconSize: [34, 34], iconAnchor: [17, 17], popupAnchor: [0, -16],
             html: `<span style="display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:${p.cor || '#0ea5e9'};border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.35);font-size:17px;line-height:1">${p.icone}</span>` }) })
         : L.circleMarker([p.latitude, p.longitude], { radius: p.urgente ? 11 : 9, color: '#fff', weight: 2, fillColor: p.urgente ? '#ff3d81' : cores[p.tipo], fillOpacity: 0.95 }))
@@ -761,12 +764,33 @@
       <div class="campo"><label>Nome</label><input name="nome" required></div><div class="campo"><label>Endereço</label><input name="endereco"></div>
       <div class="duas"><div class="campo"><label>Abre</label><input type="time" name="abre" value="06:00" required></div><div class="campo"><label>Fecha</label><input type="time" name="fecha" value="23:00" required></div></div>
       <div class="campo"><label>Estrutura</label><input name="estrutura" placeholder="Vestiário, bar, estacionamento"></div>
-      <div class="campo"><button type="button" class="btn suave bloco" data-acao="marcar-local">📍 Usar minha localização atual</button><span class="suave">A arena será marcada onde você está agora.</span></div>
+      <div class="campo"><label>Onde fica a arena?</label>
+        <div class="mapa pequeno" id="mapa-arena" style="height:300px;margin-top:6px"></div>
+        <span class="suave" id="info-local" style="display:block;margin-top:6px">Busque o endereço na lupa do mapa ou toque no ponto exato. Dá para arrastar o pino.</span>
+        <button type="button" class="btn suave bloco" data-acao="local-arena" style="margin-top:8px">📍 Usar minha localização atual</button></div>
       <button class="btn roxo bloco">Cadastrar</button></form>`, () => {
+      let local = null;
+      const info = $('#info-local');
+      const centro = estado.pos ? [estado.pos.lat, estado.pos.lng] : (estado.usuario && estado.usuario.latitude ? [estado.usuario.latitude, estado.usuario.longitude] : [-20.4697, -54.6201]);
+      if (window.L) {
+        const mapa = L.map('mapa-arena').setView(centro, 14);
+        let pino = null;
+        const definir = (la, ln, nome) => {
+          local = { lat: la, lng: ln };
+          if (!pino) { pino = L.marker([la, ln], { draggable: true }).addTo(mapa); pino.on('dragend', () => { const q = pino.getLatLng(); local = { lat: q.lat, lng: q.lng }; info.textContent = 'Local marcado ✓ (arrastado)'; }); } else pino.setLatLng([la, ln]);
+          info.textContent = 'Local marcado ✓';
+          const campo = $('#f-arena [name=endereco]');
+          if (nome && campo && !campo.value.trim()) campo.value = nome.split(',').slice(0, 3).join(',').trim();  // a busca já preenche o endereço, se estiver vazio
+        };
+        if (window.PlayGoMapa) PlayGoMapa.preparar(mapa, { aoEscolher: (la, ln, nome) => { definir(la, ln, nome); }, marcar: false });
+        else L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(mapa);
+        mapa.on('click', (e) => definir(e.latlng.lat, e.latlng.lng));
+        estado.seletorArena = { definir, mapa };
+      } else { $('#mapa-arena').innerHTML = '<p class="vazio">Mapa indisponível sem conexão. Use “Usar minha localização atual”.</p>'; estado.seletorArena = { definir: (la, ln) => { local = { lat: la, lng: ln }; info.textContent = 'Local marcado ✓'; } }; }
       $('#f-arena').onsubmit = async (ev) => {
         ev.preventDefault(); const d = dadosForm(ev.target);
-        if (!estado.pos) { $('#erro').innerHTML = '<p class="aviso erro">Toque em “Usar minha localização” para marcar a arena.</p>'; return; }
-        try { await post('/gestao/arenas', { nome: d.nome, endereco: d.endereco || '', abre: d.abre, fecha: d.fecha, estrutura: d.estrutura || null, latitude: estado.pos.lat, longitude: estado.pos.lng, cidade: estado.usuario.cidade }); toast('Arena cadastrada!'); estado.arena = null; location.hash = '#/gestao'; }
+        if (!local) { $('#erro').innerHTML = '<p class="aviso erro">Marque o local da arena no mapa (busque o endereço ou toque no ponto).</p>'; return; }
+        try { await post('/gestao/arenas', { nome: d.nome, endereco: d.endereco || '', abre: d.abre, fecha: d.fecha, estrutura: d.estrutura || null, latitude: local.lat, longitude: local.lng, cidade: estado.usuario.cidade }); toast('Arena cadastrada!'); estado.arena = null; location.hash = '#/gestao'; }
         catch (e) { $('#erro').innerHTML = `<p class="aviso erro">${esc(e.message)}</p>`; }
       };
     });
@@ -1256,6 +1280,7 @@
     },
     async 'convidar-1'(el) { try { await post(`/equipes/${el.dataset.id}/convidar`, { usuario_id: Number(el.dataset.v) }); toast('Convite enviado.'); fecharFolha(); } catch (e) { toast(e.message); } },
     async localizar() { try { await pegarLocalizacao(); toast('Localização atualizada.'); rotear(); } catch (e) { /* aviso já mostrado */ } },
+    async 'local-arena'() { try { await pegarLocalizacao(); if (estado.seletorArena) { estado.seletorArena.definir(estado.pos.lat, estado.pos.lng); if (estado.seletorArena.mapa) estado.seletorArena.mapa.setView([estado.pos.lat, estado.pos.lng], 17); } } catch (e) { /* aviso já mostrado */ } },
     async 'marcar-local'() { try { await pegarLocalizacao(); toast('Localização marcada.'); const i = $('#info-local'); if (i) i.textContent = 'Local marcado ✓'; } catch (e) { /* aviso já mostrado */ } },
     'f-quando'(el) { trocaFiltro('quando', el.dataset.v); },
     'f-raio'(el) { trocaFiltro('raio', Number(el.dataset.v)); },

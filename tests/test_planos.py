@@ -602,3 +602,23 @@ def test_administracao_filtra_quem_esta_na_ultima_semana(s, fabrica):
     assert administracao.listar(s, admin, q=longe.usuario)[0]["plano_dias"] == 60
     vencendo = {i["id"] for i in administracao.listar(s, admin, limite=200, vencendo=True)}
     assert perto.id in vencendo and longe.id not in vencendo
+
+
+def test_so_arena_com_plano_pago_ganha_o_pino_com_coroa(s, fabrica):
+    from playgo import descoberta
+    from playgo.descoberta import Filtros
+
+    admin = _admin(fabrica, s)
+    paga, teste, gratis = fabrica.atleta("Dona Paga"), fabrica.atleta("Dona Teste"), fabrica.atleta("Dona Vencida")
+    planos.conceder(s, admin, paga.id, "arena", agora().date() + timedelta(days=30))
+    a_paga = arenas.criar(s, paga, "Arena Paga", *PERTO)
+    a_teste = arenas.criar(s, teste, "Arena em Teste", *PERTO)  # abre o teste grátis do plano Arena: ainda não paga
+    planos.conceder(s, admin, gratis.id, "arena", agora().date() + timedelta(days=30))
+    a_venc = arenas.criar(s, gratis, "Arena Vencida", *PERTO)
+    planos.conceder(s, admin, gratis.id, "gratuito", None)  # voltou ao plano Usuário
+    achadas = {a["nome"]: a for a in descoberta.buscar_arenas(s, PERTO[0], PERTO[1], Filtros(raio_km=5), limite=200)}
+    assert achadas["Arena Paga"]["premium"] is True
+    assert achadas["Arena em Teste"]["premium"] is False and achadas["Arena Vencida"]["premium"] is False
+    res = {"atividades": [], "campeonatos": [], "arenas": [achadas["Arena Paga"], achadas["Arena em Teste"]], "grupos": [], "horarios": [], "locais": []}
+    pinos = {p["id"]: p for p in descoberta.pontos_do_mapa(res)}
+    assert pinos[a_paga.id]["premium"] is True and pinos[a_teste.id]["premium"] is False

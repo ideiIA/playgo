@@ -15,14 +15,14 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session as SessaoORM
 
 from . import auditoria, notificacoes
 from .config import settings
 from .db import agora
 from .erros import ErroNegocio, NaoEncontrado, PlanoNecessario, SemPermissao
-from .models import Assinatura, Atividade, CreditoEvento, Pagamento, Plano, Usuario
+from .models import Assinatura, Atividade, CreditoEvento, Pagamento, Plano, Usuario, arena_gestores
 
 ORDEM = {"gratuito": 0, "pro": 1, "organizador": 2, "arena": 3}
 CODIGOS = tuple(ORDEM)
@@ -190,6 +190,19 @@ def _situacao(s: SessaoORM, u: Usuario, hoje: date | None) -> dict:
     if hoje <= tol:
         return base | {"plano": a.plano, "status": "tolerancia"}
     return base | {"status": "vencida"}
+
+
+def arenas_premium(s: SessaoORM, ids: list[int]) -> set[int]:
+    """Quais dessas arenas têm um gestor com plano Arena pago (ativo ou cancelado ainda dentro do período). Só elas ganham o pino com coroa."""
+    if not ids:
+        return set()
+    hoje = agora().date()
+    q = (
+        select(arena_gestores.c.arena_id).join(Assinatura, Assinatura.usuario_id == arena_gestores.c.usuario_id)
+        .where(arena_gestores.c.arena_id.in_(ids), Assinatura.plano == "arena", Assinatura.status.in_(("ativa", "cancelada")),
+               Assinatura.vigente_ate >= hoje, or_(Assinatura.vigente_desde.is_(None), Assinatura.vigente_desde <= hoje))
+    )
+    return set(s.scalars(q))
 
 
 # ---------------------------------------------------------------- eventos avulsos (créditos)

@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session as SessaoORM
 
 from . import arenas as srv_arenas
 from . import locais as srv_locais
+from . import planos
 from . import serializadores as ser
 from .config import settings
 from .db import agora
@@ -175,7 +176,11 @@ def buscar_arenas(s: SessaoORM, lat: float, lng: float, f: Filtros, limite: int 
             .group_by(Quadra.arena_id)
         ).all()
     )
-    return [ser.arena(a, km, abertos.get(a.id, 0)) for a, km in linhas]
+    itens = [ser.arena(a, km, abertos.get(a.id, 0)) for a, km in linhas]
+    premium = planos.arenas_premium(s, [i["id"] for i in itens])
+    for i in itens:
+        i["premium"] = i["id"] in premium  # arena com plano pago: pino com coroa no mapa
+    return itens
 
 
 def buscar_grupos(s: SessaoORM, usuario: Usuario | None, lat: float, lng: float, f: Filtros, limite: int | None = None) -> list[dict]:
@@ -250,7 +255,7 @@ def pontos_do_mapa(res: dict) -> list[dict]:
                 continue
             pontos.append({
                 "tipo": i["tipo"], "id": i["id"], "latitude": i["latitude"], "longitude": i["longitude"], "rotulo": _rotulo_pino(i), "distancia": i["distancia"],
-                "urgente": bool(i.get("falta_gente")), "arena_id": i.get("arena_id"),
+                "urgente": bool(i.get("falta_gente")), "arena_id": i.get("arena_id"), "premium": bool(i.get("premium")) if i["tipo"] == "arena" else False,
                 "icone": i.get("icone") if i["tipo"] == "local" else None, "cor": i.get("cor") if i["tipo"] == "local" else None,  # pino próprio por tipo de local
             })
     return pontos
