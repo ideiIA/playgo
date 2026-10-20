@@ -37,7 +37,7 @@
   <div class="campo" style="flex:0 0 auto"><label>&nbsp;</label><button class="btn purple">Filtrar</button></div>
 </form>
 
-<div class="two">
+<div class="two explorar">
   <div>
   <div id="mapa" class="map alto"></div>
   <div style="display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:8px;font-size:13px" aria-label="Legenda do mapa">
@@ -45,11 +45,13 @@
   </div>
   </div>
   <div class="panel">
-    <h2>Mais próximos</h2>
-    <div class="lista-lateral">
-      {% for a in res.atividades[:12] %}{{ c.atividade_curta(a) }}{% endfor %}
-      {% for h in res.horarios[:4] %}{{ c.horario(h) }}{% endfor %}
-      {% if not res.atividades and not res.horarios %}{{ c.vazio('Nenhuma atividade com esses filtros. Tente aumentar a distância.') }}{% endif %}
+    <div class="panel-int">
+      <h2>Mais próximos</h2>
+      <div class="lista-lateral">
+        {% for a in res.atividades[:12] %}{{ c.atividade_curta(a) }}{% endfor %}
+        {% for h in res.horarios[:4] %}{{ c.horario(h) }}{% endfor %}
+        {% if not res.atividades and not res.horarios %}{{ c.vazio('Nenhuma atividade com esses filtros. Tente aumentar a distância.') }}{% endif %}
+      </div>
     </div>
   </div>
 </div>
