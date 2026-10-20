@@ -50,11 +50,6 @@
 {% if feed.perto %}<div class="grid">{% for a in feed.perto %}{{ c.atividade(a) }}{% endfor %}</div>
 {% else %}{{ c.vazio('Nada marcado por perto ainda. Que tal criar a primeira atividade?') }}{% endif %}
 
-{% if feed.horarios %}
-<div class="section-title"><h2>🏟️ Quadras disponíveis hoje</h2></div>
-<div class="grid">{% for h in feed.horarios %}{{ c.horario(h) }}{% endfor %}</div>
-{% endif %}
-
 {% if feed.campeonatos %}
 <div class="section-title"><h2>🏆 Campeonatos com inscrições abertas</h2><a href="/campeonatos">Ver todos</a></div>
 <div class="grid">{% for x in feed.campeonatos[:3] %}{{ c.campeonato(x, loop.first) }}{% endfor %}</div>
@@ -74,7 +69,7 @@
 {% endif %}
 
 {% if feed.arenas %}
-<div class="section-title"><h2>🏟️ Arenas próximas</h2></div>
-<div class="grid">{% for a in feed.arenas[:3] %}{{ c.arena(a) }}{% endfor %}</div>
+<div class="section-title"><h2>🏟️ Arenas próximas</h2><a href="/explorar">Ver todas</a></div>
+<div class="grid">{% for a in feed.arenas %}{{ c.arena(a) }}{% endfor %}</div>
 {% endif %}
 {% endblock %}

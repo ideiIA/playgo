@@ -280,11 +280,10 @@
         <div class="esportes">${estado.mods.slice(0, 6).map((m) => `<a class="esporte" href="#/explorar?modalidades=${m.codigo}"><span>${esc(m.icone)}</span>${esc(m.nome)}</a>`).join('')}</div>
         ${secao('Rolando perto de você 🔥', '<a href="#/explorar">Ver no mapa</a>')}
         ${lista(f.perto, (a) => cardAtv(a), 'Nada marcado por perto. Que tal criar a primeira atividade?')}
-        ${f.horarios.length ? secao('🏟️ Quadras disponíveis hoje') + lista(f.horarios, cardHorario) : ''}
         ${f.campeonatos.length ? secao('🏆 Campeonatos abertos', '<a href="#/campeonatos">Ver todos</a>') + `<div class="carrossel">${f.campeonatos.map((c, i) => cardCamp(c, i === 0)).join('')}</div>` : ''}
         ${f.grupos.length ? secao('👥 Seus grupos', '<a href="#/grupos">Ver todos</a>') + lista(f.grupos, cardGrupo) : ''}
         ${f.recomendados.length ? secao('🎯 Recomendados para você') + lista(f.recomendados, (a) => cardAtv(a)) : (!u.esportes.length ? secao('🎯 Recomendados para você') + '<p class="vazio">Conte quais esportes você pratica para receber indicações.<br><br><a class="btn suave" href="#/perfil">Completar perfil</a></p>' : '')}
-        ${f.arenas.length ? secao('🏟️ Arenas próximas') + lista(f.arenas, cardArena) : ''}`);
+        ${f.arenas.length ? secao('🏟️ Arenas próximas', '<a href="#/explorar">Ver todas</a>') + lista(f.arenas, cardArena) : ''}`);
     } catch (e) { erroTela(e); }
   }
 
