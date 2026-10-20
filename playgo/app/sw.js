@@ -1,7 +1,7 @@
 /* Service worker do PlayGo: guarda o "casco" do app para abrir rápido e funcionar sem rede até a
    tela de aviso. Dados (/api) nunca são guardados: vaga em tempo real não pode ser vaga velha. */
-const VERSAO = 'playgo-app-v44';
-const CASCO = ['./', 'index.html', 'app.css', 'app.js', 'manifest.json', 'icon-192.png', 'icon-512.png'];
+const VERSAO = 'playgo-app-v45';
+const CASCO = ['./', 'index.html', 'app.css', 'app.js', 'manifest.json', 'icon-bola-192.png', 'icon-bola-512.png', 'apple-touch-icon-app.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(VERSAO).then((c) => c.addAll(CASCO)).then(() => self.skipWaiting()));

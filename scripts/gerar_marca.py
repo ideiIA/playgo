@@ -1,7 +1,7 @@
 """Gera a identidade visual do PlayGo: ícone (bola + botão de play + linhas de velocidade), logo horizontal, favicon e ícones do app.
 
 Uso: .venv\\Scripts\\python scripts\\gerar_marca.py
-Saída: playgo/web/static/marca/*.svg|png|ico  e  playgo/app/icon-192.png, icon-512.png
+Saída: playgo/web/static/marca/*.svg|png|ico  e  playgo/app/icon-bola-192.png, icon-bola-512.png, apple-touch-icon-app.png
 
 Conceito: uma bola em movimento (esporte) com as linhas de velocidade em lima ("Go"), sobre o degradê roxo→rosa da marca.
 A geometria fica nas constantes abaixo (grade de 512) e alimenta o SVG e o PNG, que ficam idênticos."""
@@ -151,7 +151,7 @@ def icone_png(tam: int, arredondado: bool = True, ss: int = 4, fundo: bool = Tru
 
 
 def icone_app_png(tam: int, escala: float = 0.84) -> Image.Image:
-    """Ícone do app (`icon-192/512.png`, manifest purpose "any"): SÓ a bola e as linhas, em PNG transparente, centralizada.
+    """Ícone do app (`icon-bola-192/512.png`, manifest purpose "any"): SÓ a bola e as linhas, em PNG transparente, centralizada.
     A abertura do Android (fundo branco, `manifest.background_color` e `#abertura` do index.html) mostra apenas a bolinha, sem quadrado."""
     emblema = icone_png(tam, False, fundo=False)
     recorte = emblema.crop(emblema.getbbox())
@@ -225,13 +225,16 @@ def main() -> None:
     icone_png(64, True).save(MARCA / "favicon.ico", format="ICO", sizes=[(16, 16), (32, 32), (48, 48), (64, 64)])
     icone_png(180, False).convert("RGB").save(MARCA / "apple-touch-icon.png")
     for t in (192, 512):  # ícones do app (maskable): quadrados, a plataforma aplica a máscara
-        icone_app_png(t).save(APP / f"icon-{t}.png")  # RGBA transparente
+        icone_app_png(t).save(APP / f"icon-bola-{t}.png")  # RGBA transparente (nome novo: o Android só atualiza o ícone da abertura se a URL mudar)
+    fundo_branco = Image.new("RGBA", (180, 180), (255, 255, 255, 255))  # iPhone não aceita transparência: bola sobre branco
+    fundo_branco.alpha_composite(icone_app_png(180, 0.74))
+    fundo_branco.convert("RGB").save(APP / "apple-touch-icon-app.png")
     logo_horizontal_png(1920, True).save(MARCA / "logo-horizontal.png")
     logo_horizontal_png(1920, False).save(MARCA / "logo-horizontal-branco.png")
     og_png().save(MARCA / "og-playgo.png")
     for p in sorted(MARCA.iterdir()):
         print("marca/" + p.name)
-    print("app/icon-192.png, app/icon-512.png")
+    print("app/icon-bola-192.png, app/icon-bola-512.png, app/apple-touch-icon-app.png")
 
 
 if __name__ == "__main__":
