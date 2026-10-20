@@ -16,6 +16,7 @@ MARCA = RAIZ / "playgo" / "web" / "static" / "marca"
 APP = RAIZ / "playgo" / "app"
 
 ROXO, ROSA, LIMA, ESCURO, BRANCO = (108, 76, 255), (255, 61, 129), (183, 243, 75), (20, 33, 61), (255, 255, 255)
+COR_ABERTURA = ROSA  # fundo da abertura do app: manifest.background_color, ícone do app e #abertura do index.html usam o mesmo valor (#ff3d81)
 HEX = {"roxo": "#6c4cff", "rosa": "#ff3d81", "lima": "#b7f34b", "escuro": "#14213d"}
 
 # grade 512 × 512
@@ -149,14 +150,14 @@ def icone_png(tam: int, arredondado: bool = True, ss: int = 4, fundo: bool = Tru
 
 
 def icone_app_png(tam: int, escala: float = 0.84) -> Image.Image:
-    """Ícone do app (maskable): roxo sólido da marca, igual à cor da abertura, só com o emblema por cima (centralizado e dentro da zona segura).
+    """Ícone do app (maskable): rosa sólido da marca (COR_ABERTURA), igual ao fundo da abertura, só com o emblema por cima (centralizado e dentro da zona segura).
     Sem degradê nem quadrado visível: na abertura do Android o ícone se funde ao fundo."""
     emblema = icone_png(tam, False, fundo=False)
     caixa = emblema.getbbox()
     recorte = emblema.crop(caixa)
     k = escala * tam / max(recorte.size)
     recorte = recorte.resize((round(recorte.width * k), round(recorte.height * k)), Image.LANCZOS)
-    img = Image.new("RGBA", (tam, tam), ROXO + (255,))
+    img = Image.new("RGBA", (tam, tam), COR_ABERTURA + (255,))
     img.alpha_composite(recorte, ((tam - recorte.width) // 2, (tam - recorte.height) // 2))
     return img.convert("RGB")
 
