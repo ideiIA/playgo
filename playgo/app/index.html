@@ -22,21 +22,21 @@
   <header id="topo" hidden>
     <a class="marca" href="#/"><img src="/static/marca/icone.svg" alt="" width="28" height="28" class="marca-ico">Play<span>Go</span></a>
     <div class="topo-acoes">
-      <a class="icone sino" id="mod" href="#/moderacao" aria-label="Moderação" title="Moderação" hidden>🛡<b id="modn" hidden></b></a>
-      <a class="icone" href="#/feed" aria-label="Feed" title="Feed">✎</a>
-      <button id="loc" class="icone" aria-label="Minha localização" title="Usar minha localização">📍</button>
-      <a class="icone sino" href="#/notificacoes" aria-label="Notificações">🔔<b id="sino" hidden></b></a>
+      <a class="icone sino" id="mod" href="#/moderacao" aria-label="Moderação" title="Moderação" hidden><svg class="i" aria-hidden="true"><use href="/static/lucide.svg#shield-check"/></svg><b id="modn" hidden></b></a>
+      <a class="icone" href="#/feed" aria-label="Feed" title="Feed"><svg class="i" aria-hidden="true"><use href="/static/lucide.svg#pen-line"/></svg></a>
+      <button id="loc" class="icone" aria-label="Minha localização" title="Usar minha localização"><svg class="i" aria-hidden="true"><use href="/static/lucide.svg#locate-fixed"/></svg></button>
+      <a class="icone sino" href="#/notificacoes" aria-label="Notificações"><svg class="i" aria-hidden="true"><use href="/static/lucide.svg#bell"/></svg><b id="sino" hidden></b></a>
       <button id="eu-btn" class="eu-btn" type="button" aria-label="Menu da conta" aria-haspopup="true" aria-expanded="false"><span class="avatar" id="eu-avatar"></span></button>
     </div>
   </header>
   <div id="menu-pop" role="menu" hidden></div>
   <main id="view" aria-live="polite"></main>
   <nav id="abas" hidden aria-label="Principal">
-    <a href="#/" data-aba="inicio"><i>⌂</i>Início</a>
-    <a href="#/explorar" data-aba="explorar"><i>⌖</i>Explorar</a>
-    <a href="#/criar" data-aba="criar" class="central"><i>＋</i>Criar</a>
-    <a href="#/grupos" data-aba="grupos"><i>◎</i>Grupos</a>
-    <a href="#/campeonatos" data-aba="campeonatos"><i>🏆</i>Campeonatos</a>
+    <a href="#/" data-aba="inicio"><i><svg class="i" aria-hidden="true"><use href="/static/lucide.svg#home"/></svg></i>Início</a>
+    <a href="#/explorar" data-aba="explorar"><i><svg class="i" aria-hidden="true"><use href="/static/lucide.svg#compass"/></svg></i>Explorar</a>
+    <a href="#/criar" data-aba="criar" class="central"><i><svg class="i" aria-hidden="true"><use href="/static/lucide.svg#plus"/></svg></i>Criar</a>
+    <a href="#/grupos" data-aba="grupos"><i><svg class="i" aria-hidden="true"><use href="/static/lucide.svg#users"/></svg></i>Grupos</a>
+    <a href="#/campeonatos" data-aba="campeonatos"><i><svg class="i" aria-hidden="true"><use href="/static/lucide.svg#trophy"/></svg></i>Campeonatos</a>
   </nav>
   <div id="toast" role="status"></div>
   <div id="folha" hidden></div>
@@ -44,6 +44,7 @@
   <script src="/static/mapa.js" defer></script>
   <script src="/static/mural.js" defer></script>
   <script src="/static/chaves.js" defer></script>
+  <script src="/static/icones.js" defer></script>
   <script src="/static/camera.js" defer></script>
   <script src="/static/telao.js" defer></script>
   <script src="/static/elenco.js" defer></script>

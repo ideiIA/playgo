@@ -4,7 +4,7 @@
 {% block conteudo %}
 <link rel="stylesheet" href="/static/chaves.css">
 {% set e = k.edicao %}
-<div class="detalhe-topo"><div><span class="tag {{ k.modalidade.cor }}">{{ k.modalidade.icone }} {{ k.modalidade.nome|upper }}</span><h1>✏️ Editar campeonato</h1></div></div>
+<div class="detalhe-topo"><div><span class="tag {{ k.modalidade.cor }}">{{ k.modalidade.icone }} {{ k.modalidade.nome }}</span><h1>✏️ Editar campeonato</h1></div></div>
 {{ abas(k, 'editar') }}
 <form id="f-editar" class="panel" style="max-width:760px;display:grid;gap:14px">
   <div class="field"><label>Nome do campeonato</label><input name="nome" required maxlength="150" value="{{ e.nome }}"></div>

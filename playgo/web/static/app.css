@@ -225,3 +225,82 @@ body.entrada { display: grid; place-items: center; min-height: 100vh; background
   .two.com-mural { grid-template-areas: none; grid-template-rows: none; }
   .two.com-mural > :nth-child(1), .two.com-mural > :nth-child(2), .two.com-mural > .area-mural { grid-area: auto; }
 }
+
+/* =====================================================================================================================
+   Refresh de design (2026): ícones Lucide, botões, etiquetas, abas e cartões. Vem por último de propósito: ajusta o que está acima.
+   Ideia: interface calma, o roxo da marca só onde há ação; o resto é cinza-azulado com hierarquia por peso e espaço.
+   ===================================================================================================================== */
+:root {
+  --r-p: 8px; --r-m: 12px; --r-g: 18px;
+  --linha: #e4e7f0; --trilho: #eceef6;
+  --sombra-1: 0 1px 2px rgba(20, 33, 61, .05), 0 3px 12px rgba(20, 33, 61, .05);
+  --sombra-2: 0 2px 4px rgba(20, 33, 61, .06), 0 14px 32px -8px rgba(60, 50, 140, .22);
+  --foco: 0 0 0 3px rgba(108, 76, 255, .3);
+  --roxo-2: #5a3df0;
+}
+:focus-visible { outline: 2px solid var(--purple); outline-offset: 2px; }
+.btn:focus-visible, .chip:focus-visible { outline: none; box-shadow: var(--foco); }
+
+/* ---- ícones (Lucide) ---- */
+.i { width: 1.2em; height: 1.2em; flex: none; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; vertical-align: -0.22em; }
+.i.cheio { fill: currentColor; }
+.i.ok { color: #12a06a; } .i.aviso { color: #e08600; } .i.coroa { color: #f2a900; fill: #ffd25a33; }
+.i.ouro { color: #e0a800; } .i.prata { color: #8a93a6; } .i.bronze { color: #b8742f; }
+.ponto-vivo { display: inline-block; width: .6em; height: .6em; border-radius: 50%; background: #ff3d57; vertical-align: .08em; box-shadow: 0 0 0 0 rgba(255, 61, 87, .55); animation: vivo 1.8s ease-out infinite; }
+@keyframes vivo { 0% { box-shadow: 0 0 0 0 rgba(255, 61, 87, .55); } 70%, 100% { box-shadow: 0 0 0 .55em rgba(255, 61, 87, 0); } }
+@media (prefers-reduced-motion: reduce) { .ponto-vivo { animation: none; } .btn, .card { transition: none !important; } }
+
+/* ---- botões ---- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 10px 18px; border-radius: var(--r-m); font-weight: 700; font-size: 14px; line-height: 1.15; letter-spacing: -.005em; text-align: center; transition: background-color .15s, box-shadow .15s, transform .08s, filter .15s; }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn.pequeno { min-height: 34px; padding: 6px 12px; font-size: 13px; border-radius: 10px; gap: 6px; }
+.btn.bloco { display: flex; width: 100%; }
+.btn .i { width: 1.15em; height: 1.15em; margin: 0; }
+.btn.purple, .btn.roxo { background: linear-gradient(180deg, #7a5bff 0%, #6644f4 100%); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22), 0 6px 16px -6px rgba(102, 68, 244, .75); }
+.btn.purple:hover, .btn.roxo:hover { filter: brightness(1.06); }
+.btn.soft, .btn.suave { background: #efebff; color: var(--roxo-2); box-shadow: none; }
+.btn.soft:hover, .btn.suave:hover { background: #e5dfff; }
+.btn.perigo { background: #fff1f1; color: #d0343a; box-shadow: inset 0 0 0 1px #ffd8da; }
+.btn.perigo:hover { background: #ffe6e7; }
+.btn.lime, .btn.lima { background: var(--lime); color: #172000; box-shadow: 0 6px 16px -8px rgba(120, 170, 0, .8); }
+.btn.confirmado, .btn.ok { background: #12a06a; color: #fff; box-shadow: 0 6px 14px -6px rgba(18, 160, 106, .7); }
+.btn:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
+
+/* ---- etiquetas: texto normal, fundo translúcido, ícone pequeno (não parecem botões) ---- */
+.tag { --t: #6c4cff; display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: var(--r-p); font-size: 12.5px; font-weight: 600; letter-spacing: 0; text-transform: none; line-height: 1.25; background: color-mix(in srgb, var(--t) 11%, #fff); color: color-mix(in srgb, var(--t) 82%, #111); }
+.tag.verde, .tag.green { --t: #12a06a; background: color-mix(in srgb, var(--t) 11%, #fff); color: color-mix(in srgb, var(--t) 80%, #000); }
+.tag.laranja, .tag.orange { --t: #f08a00; background: color-mix(in srgb, var(--t) 13%, #fff); color: color-mix(in srgb, var(--t) 72%, #000); }
+.tag.azul { --t: #2872e0; background: color-mix(in srgb, var(--t) 11%, #fff); color: color-mix(in srgb, var(--t) 85%, #000); }
+.tag.rosa { --t: #e0306f; background: color-mix(in srgb, var(--t) 10%, #fff); color: color-mix(in srgb, var(--t) 85%, #000); }
+.tag.roxo { --t: #6c4cff; background: color-mix(in srgb, var(--t) 11%, #fff); color: color-mix(in srgb, var(--t) 85%, #000); }
+.tag.cinza { --t: #667085; background: #eef0f5; color: #4a5468; }
+.tag .i { width: 14px; height: 14px; stroke-width: 2; }
+
+/* ---- cartões ---- */
+.card { border-radius: var(--r-g); border-color: var(--linha); box-shadow: var(--sombra-1); transition: box-shadow .18s, transform .18s, border-color .18s; }
+.card:has(> a.cobre):hover, a.card:hover { box-shadow: var(--sombra-2); transform: translateY(-2px); border-color: #d8d4fb; }
+.card h3 { letter-spacing: -.01em; }
+.card .meta { color: #5b667b; }
+.ico-bolha { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: var(--r-m); background: color-mix(in srgb, var(--c, #6c4cff) 13%, #fff); color: var(--c, #6c4cff); flex: none; }
+.ico-bolha .i { width: 21px; height: 21px; }
+
+/* ---- títulos de seção com ícone ---- */
+.section-title h2 .i, .secao h2 .i, .panel > h2 .i, .painel > h3 .i, .painel > h2 .i { color: var(--purple); width: 1.1em; height: 1.1em; margin-right: .3em; vertical-align: -.17em; }
+.aviso .i, .stat .i { vertical-align: -.2em; }
+
+/* ---- site: menu lateral, abas e filtros ---- */
+.nav a, .nav details.submenu summary { transition: background-color .15s, color .15s; }
+.nav .ico { display: inline-flex; width: 20px; justify-content: center; }
+.nav .ico .i { width: 19px; height: 19px; stroke-width: 1.8; }
+.nav a:hover { background: #26263f; color: #fff; }
+.nav a.active { background: linear-gradient(90deg, #6c4cff, #8466ff); box-shadow: 0 8px 20px -10px rgba(108, 76, 255, .9); }
+.sino .i, .topo-direita .sino .i { width: 22px; height: 22px; stroke-width: 1.8; color: #3b4559; }
+.chip { font-weight: 700; padding: 8px 14px; border-radius: 999px; background: #fff; border: 1px solid var(--linha); color: #3b4559; }
+.chip:hover { border-color: #cfc8ff; color: var(--roxo-2); }
+.chip.ativo { background: var(--purple); border-color: var(--purple); color: #fff; box-shadow: 0 6px 14px -8px rgba(102, 68, 244, .9); }
+.abas { gap: 4px; border-bottom: 1px solid var(--linha); }
+.abas a, .abas button { font-weight: 700; padding: 11px 16px; border-bottom-width: 2px; border-radius: 8px 8px 0 0; }
+.abas .ativa { color: var(--roxo-2); border-color: var(--purple); }
+.section-title h2 { letter-spacing: -.015em; }
+.panel { border-radius: 20px; border-color: var(--linha); box-shadow: var(--sombra-1); }
+.stat { border-radius: 18px; }

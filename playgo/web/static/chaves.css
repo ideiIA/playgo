@@ -1,7 +1,8 @@
 /* PlayGo — sorteio, chaves e jogo ao vivo (site e PWA) */
-.ch-abas { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0 18px; border-bottom: 1px solid var(--border, #e9eaf0); padding-bottom: 10px; }
-.ch-abas a { padding: 8px 14px; border-radius: 999px; font-weight: 800; font-size: 14px; color: var(--muted, #667085); text-decoration: none; background: transparent; }
-.ch-abas a.ativa { background: var(--purple, #6c4cff); color: #fff; }
+.ch-abas { display: inline-flex; gap: 2px; flex-wrap: wrap; margin: 14px 0 20px; background: var(--trilho, #eceef6); border-radius: 14px; padding: 4px; max-width: 100%; }
+.ch-abas a { display: inline-flex; align-items: center; gap: 7px; padding: 8px 14px; border-radius: 10px; font-weight: 600; font-size: 14px; color: #5b667b; text-decoration: none; background: transparent; transition: background-color .15s, color .15s, box-shadow .15s; }
+.ch-abas a:hover { color: var(--roxo-2, #5a3df0); }
+.ch-abas a.ativa { background: #fff; color: var(--roxo-2, #5a3df0); font-weight: 700; box-shadow: 0 1px 2px rgba(20, 33, 61, .1), 0 2px 8px rgba(20, 33, 61, .06); }
 .ch-vazio { padding: 28px 16px; text-align: center; color: var(--muted, #667085); background: #fff; border: 1px dashed var(--border, #e9eaf0); border-radius: 14px; }
 .ch-sub { font-size: 12px; color: var(--muted, #667085); }
 .ch-tbd { color: var(--muted, #667085); font-weight: 600; }

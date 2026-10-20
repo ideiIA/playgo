@@ -2,7 +2,7 @@
 {% from "_camp_abas.html" import abas %}
 {% block titulo %}Telão — {{ k.nome }} — PlayGo{% endblock %}
 {% block conteudo %}
-<div class="detalhe-topo"><div><span class="tag {{ k.modalidade.cor }}">{{ k.modalidade.icone }} {{ k.modalidade.nome|upper }}</span><h1>📺 Telão: {{ k.nome }}</h1>
+<div class="detalhe-topo"><div><span class="tag {{ k.modalidade.cor }}">{{ k.modalidade.icone }} {{ k.modalidade.nome }}</span><h1>📺 Telão: {{ k.nome }}</h1>
   <div class="meta">Uma tela só com o placar, para deixar numa TV, telão ou tablet no local do jogo.</div></div></div>
 <link rel="stylesheet" href="/static/chaves.css">
 {{ abas(k, 'telao') }}

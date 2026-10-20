@@ -23,16 +23,18 @@
   </script>
   <script src="/static/mapa.js" defer></script>
   <script src="/static/web.js" defer></script>
+  <script src="/static/icones.js" defer></script>
   <script src="/static/mural.js" defer></script>
 </head>
+{% from "_ico.html" import ic %}
 {% set itens_do_menu = [
-  ('home', '/', '⌂', 'Início'),
-  ('mural', '/mural', '✎', 'Feed'),
-  ('explorar', '/explorar', '⌖', 'Explorar'),
-  ('criar', '/atividades/nova', '＋', 'Criar atividade'),
-  ('grupos', '/grupos', '◎', 'Meus grupos'),
-  ('comunidades', '/comunidades', '☺', 'Comunidades'),
-  ('campeonatos', '/campeonatos', '★', 'Campeonatos'),
+  ('home', '/', 'home', 'Início'),
+  ('mural', '/mural', 'pen-line', 'Feed'),
+  ('explorar', '/explorar', 'compass', 'Explorar'),
+  ('criar', '/atividades/nova', 'circle-plus', 'Criar atividade'),
+  ('grupos', '/grupos', 'users', 'Meus grupos'),
+  ('comunidades', '/comunidades', 'users-round', 'Comunidades'),
+  ('campeonatos', '/campeonatos', 'trophy', 'Campeonatos'),
 ] %}
 <body>
 <div class="app">
@@ -40,26 +42,26 @@
   <a class="logo" href="/"><img class="logo-ico" src="/static/marca/icone.svg" alt="" width="34" height="34">Play<span>Go</span></a>
   <nav class="nav">
     {% for chave, url, icone, nome in itens_do_menu if chave != 'criar' or pode.atividade %}
-    <a href="{{ url }}" class="{{ 'active' if aba == chave }}"><span class="ico">{{ icone }}</span><span class="t">{{ nome }}</span></a>
+    <a href="{{ url }}" class="{{ 'active' if aba == chave }}"><span class="ico">{{ ic(icone) }}</span><span class="t">{{ nome }}</span></a>
     {% endfor %}
     <div class="manager"><small>Gestão</small></div>
     {% if pode.arena %}
-    <a href="/gestao" class="{{ 'active' if aba == 'gestao' }}"><span class="ico">▦</span><span class="t">Minha Arena</span></a>
+    <a href="/gestao" class="{{ 'active' if aba == 'gestao' }}"><span class="ico">{{ ic('building-2') }}</span><span class="t">Minha Arena</span></a>
     {% endif %}
-    <a href="/planos" class="{{ 'active' if aba == 'planos' }}"><span class="ico">💳</span><span class="t">Meu plano</span></a>
+    <a href="/planos" class="{{ 'active' if aba == 'planos' }}"><span class="ico">{{ ic('credit-card') }}</span><span class="t">Meu plano</span></a>
     <details class="submenu {{ 'active' if aba == 'tutorial' }}" {{ 'open' if aba == 'tutorial' }}>
-      <summary><span class="ico">📘</span><span class="t">Tutoriais</span></summary>
+      <summary><span class="ico">{{ ic('book-open') }}</span><span class="t">Tutoriais</span></summary>
       <div class="subitens">
-        {% if pode.campeonato %}<a href="/tutorial/campeonatos" class="{{ 'active' if aba == 'tutorial' and tut_sub == 'campeonatos' }}"><span class="ico">🏆</span><span class="t">Campeonatos</span></a>{% endif %}
-        <a href="/tutorial/transmissao" class="{{ 'active' if aba == 'tutorial' and tut_sub == 'transmissao' }}"><span class="ico">🎥</span><span class="t">Transmissão ao vivo</span></a>
+        {% if pode.campeonato %}<a href="/tutorial/campeonatos" class="{{ 'active' if aba == 'tutorial' and tut_sub == 'campeonatos' }}"><span class="ico">{{ ic('trophy') }}</span><span class="t">Campeonatos</span></a>{% endif %}
+        <a href="/tutorial/transmissao" class="{{ 'active' if aba == 'tutorial' and tut_sub == 'transmissao' }}"><span class="ico">{{ ic('video') }}</span><span class="t">Transmissão ao vivo</span></a>
       </div>
     </details>
     {% if usuario.admin %}
-    <a href="/gestao/locais" class="{{ 'active' if aba == 'locais' }}"><span class="ico">📍</span><span class="t">Guia de locais</span></a>
-    <a href="/administracao" class="{{ 'active' if aba == 'administracao' }}"><span class="ico">⚙</span><span class="t">Administração</span></a>
+    <a href="/gestao/locais" class="{{ 'active' if aba == 'locais' }}"><span class="ico">{{ ic('map-pin') }}</span><span class="t">Guia de locais</span></a>
+    <a href="/administracao" class="{{ 'active' if aba == 'administracao' }}"><span class="ico">{{ ic('settings') }}</span><span class="t">Administração</span></a>
     {% endif %}
     {% if usuario.equipe_moderacao %}
-    <a href="/moderacao" class="{{ 'active' if aba == 'moderacao' }}"><span class="ico">🛡</span><span class="t">Moderação{% if fila_moderacao %} <b class="selo">{{ fila_moderacao }}</b>{% endif %}</span></a>
+    <a href="/moderacao" class="{{ 'active' if aba == 'moderacao' }}"><span class="ico">{{ ic('shield-check') }}</span><span class="t">Moderação{% if fila_moderacao %} <b class="selo">{{ fila_moderacao }}</b>{% endif %}</span></a>
     {% endif %}
   </nav>
 </aside>
@@ -67,11 +69,11 @@
 <main class="main">
 <header class="topbar">
   <form class="search" action="/explorar" method="get" role="search">
-    ⌕ <input name="q" value="{{ busca or '' }}" placeholder="Busque futebol, vôlei, corrida, arena..." aria-label="Buscar">
+    {{ ic('search') }} <input name="q" value="{{ busca or '' }}" placeholder="Busque futebol, vôlei, corrida, arena..." aria-label="Buscar">
   </form>
   <div class="topo-direita">
-    {% if convites_pendentes %}<a class="sino" href="/convites" aria-label="Convites" title="Você tem convites">✉️<b>{{ convites_pendentes }}</b></a>{% endif %}
-    <a class="sino" href="/notificacoes" aria-label="Notificações" title="Notificações">🔔{% if nao_lidas %}<b>{{ nao_lidas if nao_lidas < 100 else '99+' }}</b>{% endif %}</a>
+    {% if convites_pendentes %}<a class="sino" href="/convites" aria-label="Convites" title="Você tem convites">{{ ic('mail') }}<b>{{ convites_pendentes }}</b></a>{% endif %}
+    <a class="sino" href="/notificacoes" aria-label="Notificações" title="Notificações">{{ ic('bell') }}{% if nao_lidas %}<b>{{ nao_lidas if nao_lidas < 100 else '99+' }}</b>{% endif %}</a>
     <a class="avatar" href="/perfil" title="{{ usuario.arroba }}">{% if usuario.foto_url %}<img src="{{ usuario.foto_url }}" alt="">{% else %}{{ usuario.iniciais }}{% endif %}</a>
   </div>
 </header>

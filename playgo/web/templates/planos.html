@@ -49,7 +49,7 @@
         acao += pl.assinavel && P.cobranca_ativa ? `<button class="btn purple" data-a="assinar" data-p="${pl.codigo}" data-c="${cic}">Assinar ${cic === 'anual' ? 'o anual' : ''}</button>` : `<span class="suave">${pl.assinavel ? 'Cobrança ainda não ativada.' : 'Valor ainda não definido.'}</span>`;
       }
     }
-    return `<div class="card ${atual ? 'champ' : ''}"><span class="tag ${atual ? '' : pl.codigo === 'arena' ? 'verde' : pl.codigo === 'organizador' ? 'laranja' : pl.codigo === 'pro' ? 'azul' : 'roxo'}">${atual ? 'SEU PLANO' : esc(pl.nome.toUpperCase())}</span>
+    return `<div class="card ${atual ? 'champ' : ''}"><span class="tag ${atual ? '' : pl.codigo === 'arena' ? 'verde' : pl.codigo === 'organizador' ? 'laranja' : pl.codigo === 'pro' ? 'azul' : 'roxo'}">${atual ? 'Seu plano' : esc(pl.nome)}</span>
       <h3>${esc(pl.nome)}</h3><div style="font-size:24px;font-weight:900;margin:6px 0">${preco}</div>
       <div class="meta">${esc(lim)}</div><div class="spots" style="flex-wrap:wrap;gap:8px">${acao || '<span></span>'}</div></div>`;
   }

@@ -1,0 +1,2 @@
+{# Ícone Lucide do sprite local. Uso: {% from "_ico.html" import ic %}{{ ic('trophy') }}  (classe extra opcional: ic('crown', 'coroa')) #}
+{% macro ic(nome, cls='') %}<svg class="i {{ cls }}" aria-hidden="true"><use href="/static/lucide.svg#{{ nome }}"/></svg>{% endmacro %}

@@ -236,12 +236,12 @@
   // Menu da conta (foto ao lado do sino): todas as opções do antigo menu do perfil, num menu suspenso
   function itensMenuEu(u) {
     return [
-      ['#/perfil', '👤', 'Meu perfil'], ['#/campeonatos', '🏆', 'Campeonatos'], ['#/planos', '💳', 'Meu plano'], ['#/tutoriais', '📘', 'Tutoriais'],
-      ['#/notificacoes', '🔔', 'Notificações'], ['#/comunidades', '☺', 'Comunidades'], ['#/convites', '✉️', 'Convites'],
-      ...(pode('arena') ? [['#/gestao', '▦', 'Minha Arena']] : []),
-      ...(u.equipe_moderacao ? [['#/moderacao', '🛡', 'Moderação']] : []),
-      ...(u.admin ? [['#/admin', '⚙️', 'Administração']] : []),
-      ['#/privacidade', '🔒', 'Meus dados e privacidade'],
+      ['#/perfil', 'user-round', 'Meu perfil'], ['#/campeonatos', 'trophy', 'Campeonatos'], ['#/planos', 'credit-card', 'Meu plano'], ['#/tutoriais', 'book-open', 'Tutoriais'],
+      ['#/notificacoes', 'bell', 'Notificações'], ['#/comunidades', 'users-round', 'Comunidades'], ['#/convites', 'mail', 'Convites'],
+      ...(pode('arena') ? [['#/gestao', 'building-2', 'Minha Arena']] : []),
+      ...(u.equipe_moderacao ? [['#/moderacao', 'shield-check', 'Moderação']] : []),
+      ...(u.admin ? [['#/admin', 'settings', 'Administração']] : []),
+      ['#/privacidade', 'lock', 'Meus dados e privacidade'],
     ];
   }
 
@@ -250,7 +250,7 @@
     if (!u) return;
     $('#eu-avatar').innerHTML = u.foto_url ? `<img src="${esc(u.foto_url)}" alt="Menu da conta">` : esc(u.iniciais);
     $('#menu-pop').innerHTML = `<a class="m-cab" href="#/perfil"><span class="avatar grande">${u.foto_url ? `<img src="${esc(u.foto_url)}" alt="">` : esc(u.iniciais)}</span><span class="m-nome"><b>${esc(u.arroba)}</b><small>${esc(u.nome)}</small></span></a>
-      ${itensMenuEu(u).map(([h, i, n]) => `<a class="m-item" role="menuitem" href="${h}"><i>${i}</i>${esc(n)}</a>`).join('')}`;
+      ${itensMenuEu(u).map(([h, i, n]) => `<a class="m-item" role="menuitem" href="${h}"><i>${ic(i)}</i>${esc(n)}</a>`).join('')}`;
   }
 
   function fecharMenuEu() { $('#menu-pop').hidden = true; $('#eu-btn').setAttribute('aria-expanded', 'false'); }
@@ -1044,7 +1044,7 @@
             acao += pl.assinavel && p.cobranca_ativa ? `<button class="btn roxo bloco" style="margin-top:8px" data-acao="plano-assinar" data-p="${pl.codigo}" data-c="${cic}">Assinar${cic === 'anual' ? ' o anual' : ''}</button>` : `<p class="suave" style="margin-top:8px">${pl.assinavel ? 'Cobrança ainda não ativada.' : 'Valor ainda não definido.'}</p>`;
           }
         }
-        return `<div class="card ${atual ? 'champ' : ''}"><span class="tag ${atual ? '' : pl.codigo === 'arena' ? 'verde' : pl.codigo === 'organizador' ? 'laranja' : ''}">${atual ? 'SEU PLANO' : esc(pl.nome.toUpperCase())}</span><h3>${esc(pl.nome)}</h3>
+        return `<div class="card ${atual ? 'champ' : ''}"><span class="tag ${atual ? '' : pl.codigo === 'arena' ? 'verde' : pl.codigo === 'organizador' ? 'laranja' : ''}">${atual ? 'Seu plano' : esc(pl.nome)}</span><h3>${esc(pl.nome)}</h3>
           <div style="font-size:22px;font-weight:900;margin:4px 0">${preco}</div><div class="meta">${esc(lim)}</div><div style="margin-top:12px">${acao}</div></div>`;
       };
       const STATUS_PG = { PENDING: 'Aguardando pagamento', OVERDUE: 'Vencida', CONFIRMED: 'Paga', RECEIVED: 'Paga', RECEIVED_IN_CASH: 'Paga', REFUNDED: 'Estornada', DELETED: 'Cancelada' };

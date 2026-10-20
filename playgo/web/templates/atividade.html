@@ -5,7 +5,7 @@
 {% set pct = (100 * a.confirmados / a.max_participantes)|round|int %}
 <div class="detalhe-topo">
   <div>
-    <span class="tag {{ a.modalidade.cor }}">{{ a.modalidade.icone }} {{ a.modalidade.nome|upper }}</span>
+    <span class="tag {{ a.modalidade.cor }}">{{ a.modalidade.icone }} {{ a.modalidade.nome }}</span>
     {% if a.status == 'cancelada' %}<span class="tag rosa">CANCELADA</span>{% elif a.encerrada %}<span class="tag cinza">ENCERRADA</span>{% elif a.falta_gente %}<span class="tag rosa">🔥 {{ a.rotulo_falta }}</span>{% endif %}
     <h1>{{ a.nome }}</h1>
     <div class="meta">Organizado por <b>{{ a.organizador.arroba }}</b>{% if a.grupo %} • grupo <a href="/grupos/{{ a.grupo.id }}">{{ a.grupo.nome }}</a>{% endif %}</div>

@@ -83,3 +83,10 @@
 .tut-app .tut-indice { position: static; }
 .tut-app .tut-hero { border-radius: 18px; padding: 22px 18px; }
 .tut-app .tut-hero h1 { font-size: 22px; }
+
+/* abas dos tutoriais: controle segmentado, como as do campeonato */
+.tut-abas { display: inline-flex; gap: 2px; background: var(--trilho, #eceef6); border-radius: 14px; padding: 4px; flex-wrap: wrap; max-width: 100%; }
+.tut-abas a { display: inline-flex; align-items: center; gap: 7px; background: transparent; border: 0; font-weight: 600; font-size: 14px; padding: 8px 14px; border-radius: 10px; color: #5b667b; }
+.tut-abas a.on { background: #fff; color: var(--roxo-2, #5a3df0); font-weight: 700; box-shadow: 0 1px 2px rgba(20, 33, 61, .1), 0 2px 8px rgba(20, 33, 61, .06); }
+.tut-selos span { display: inline-flex; align-items: center; gap: 6px; }
+.tut-num .i { width: 20px; height: 20px; }

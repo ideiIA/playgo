@@ -4,7 +4,7 @@
 {% block conteudo %}
 <div class="detalhe-topo">
   <div>
-    <span class="tag {{ g.modalidade.cor }}">{{ g.modalidade.icone }} {{ g.modalidade.nome|upper }}</span>
+    <span class="tag {{ g.modalidade.cor }}">{{ g.modalidade.icone }} {{ g.modalidade.nome }}</span>
     <h1>{{ g.nome }}</h1>
     <div class="meta">{{ g.membros }} membro{{ 's' if g.membros != 1 }}{% if g.cidade %} • {{ g.cidade }}{% endif %}{% if g.local_habitual %} • 📍 {{ g.local_habitual }}{% endif %}</div>
     {% if g.descricao %}<p>{{ g.descricao }}</p>{% endif %}

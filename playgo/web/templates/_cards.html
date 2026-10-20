@@ -10,7 +10,7 @@
 {% macro urgente(a) %}
 <div class="card urgent">
   <a class="cobre" href="/atividades/{{ a.id }}" aria-label="{{ a.nome }}"></a>
-  <span class="tag {{ a.modalidade.cor }}">{{ a.modalidade.icone }} {{ a.modalidade.nome|upper }}</span>
+  <span class="tag {{ a.modalidade.cor }}">{{ a.modalidade.icone }} {{ a.modalidade.nome }}</span>
   <div class="need">{{ a.rotulo_falta or ('RESTAM ' ~ a.vagas ~ ' VAGAS') }}</div>
   <h3>{{ a.nome }}</h3>
   <div class="meta">{{ a.quando }}<br>📍 {{ a.arena_nome or a.local_nome }}{% if a.distancia %} • {{ a.distancia }}{% endif %}<br>{{ a.nivel_nome }} • {{ a.valor_texto }}</div>
@@ -22,7 +22,7 @@
 {% macro atividade(a, rotulo='Quero jogar') %}
 <div class="card">
   <a class="cobre" href="/atividades/{{ a.id }}" aria-label="{{ a.nome }}"></a>
-  <span class="tag {{ a.modalidade.cor }}">{{ a.modalidade.icone }} {{ a.modalidade.nome|upper }}</span>
+  <span class="tag {{ a.modalidade.cor }}">{{ a.modalidade.icone }} {{ a.modalidade.nome }}</span>
   <h3>{{ a.nome }}</h3>
   <div class="meta">{{ a.quando }}<br>📍 {{ a.arena_nome or a.local_nome }}{% if a.distancia %} • {{ a.distancia }}{% endif %}<br>{{ a.nivel_nome }} • {{ a.valor_texto }}</div>
   <div class="spots">
@@ -44,7 +44,7 @@
 {% macro campeonato(c, destaque=False) %}
 <div class="card {{ 'champ' if destaque }}">
   <a class="cobre" href="/campeonatos/{{ c.id }}" aria-label="{{ c.nome }}"></a>
-  <span class="tag {{ '' if destaque else c.modalidade.cor }}">{{ c.situacao|upper }}</span>
+  <span class="tag {{ '' if destaque else c.modalidade.cor }}">{{ c.situacao }}</span>
   <h3>{{ c.nome }}</h3>
   <div class="meta">{{ c.modalidade.icone }} {{ c.max_equipes }} {{ 'duplas' if c.atletas_por_equipe == 2 else 'equipes' }} • {{ c.data_inicio_texto }}{% if c.premiacao %}<br>Premiação: {{ c.premiacao }}{% endif %}{% if c.categoria %}<br>{{ c.categoria }}{% endif %}<br>{{ c.local_nome }}{% if c.distancia %} • {{ c.distancia }}{% endif %}</div>
   <div class="spots"><b>{{ c.valor_inscricao_texto }}</b><span class="btn {{ 'lime' if destaque else 'purple' }}">{{ 'Inscrever equipe' if c.inscricoes_abertas else 'Ver detalhes' }}</span></div>
