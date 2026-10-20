@@ -148,6 +148,19 @@ def icone_png(tam: int, arredondado: bool = True, ss: int = 4, fundo: bool = Tru
     return img.resize((tam, tam), Image.LANCZOS)
 
 
+def icone_app_png(tam: int, escala: float = 0.84) -> Image.Image:
+    """Ícone do app (maskable): roxo sólido da marca, igual à cor da abertura, só com o emblema por cima (centralizado e dentro da zona segura).
+    Sem degradê nem quadrado visível: na abertura do Android o ícone se funde ao fundo."""
+    emblema = icone_png(tam, False, fundo=False)
+    caixa = emblema.getbbox()
+    recorte = emblema.crop(caixa)
+    k = escala * tam / max(recorte.size)
+    recorte = recorte.resize((round(recorte.width * k), round(recorte.height * k)), Image.LANCZOS)
+    img = Image.new("RGBA", (tam, tam), ROXO + (255,))
+    img.alpha_composite(recorte, ((tam - recorte.width) // 2, (tam - recorte.height) // 2))
+    return img.convert("RGB")
+
+
 def _fonte(tam: int) -> ImageFont.FreeTypeFont:
     for caminho in ("C:/Windows/Fonts/ariblk.ttf", "C:/Windows/Fonts/arialbd.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"):
         if Path(caminho).exists():
@@ -211,9 +224,7 @@ def main() -> None:
     icone_png(64, True).save(MARCA / "favicon.ico", format="ICO", sizes=[(16, 16), (32, 32), (48, 48), (64, 64)])
     icone_png(180, False).convert("RGB").save(MARCA / "apple-touch-icon.png")
     for t in (192, 512):  # ícones do app (maskable): quadrados, a plataforma aplica a máscara
-        icone_png(t, False).convert("RGB").save(APP / f"icon-{t}.png")
-    for t in (192, 512):  # abertura do app: só o emblema, sem o quadrado, sobre o roxo da marca (manifest "any")
-        icone_png(t, False, fundo=False).save(APP / f"icon-abertura-{t}.png")
+        icone_app_png(t).save(APP / f"icon-{t}.png")
     logo_horizontal_png(1920, True).save(MARCA / "logo-horizontal.png")
     logo_horizontal_png(1920, False).save(MARCA / "logo-horizontal-branco.png")
     og_png().save(MARCA / "og-playgo.png")
