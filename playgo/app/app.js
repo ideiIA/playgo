@@ -58,7 +58,7 @@
     const a = document.getElementById('abertura');
     if (!a) return;
     a.classList.add('sai');
-    setTimeout(() => a.remove(), 350);
+    setTimeout(() => { a.remove(); document.documentElement.classList.remove('abrindo'); }, 350);
   }
 
   setTimeout(fecharAbertura, 8000);  // rede ruim ou erro: a abertura nunca fica por cima do app
