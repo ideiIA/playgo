@@ -8,6 +8,7 @@ from sqlalchemy import and_, extract, func, or_, select
 from sqlalchemy.orm import Session as SessaoORM
 
 from . import arenas as srv_arenas
+from . import ensino_busca
 from . import locais as srv_locais
 from . import planos
 from . import serializadores as ser
@@ -31,7 +32,7 @@ from .models import (
     Usuario,
 )
 
-TIPOS = ("atividade", "campeonato", "arena", "grupo", "horario", "local")
+TIPOS = ("atividade", "campeonato", "arena", "grupo", "horario", "local", "profissional", "oferta")
 RAIOS = (2, 5, 10, 20)  # None = toda a cidade
 
 
@@ -47,6 +48,14 @@ class Filtros:
     q: str = ""
     ordem: str = "relevancia"  # relevancia | distancia | horario
     tipos: tuple[str, ...] = TIPOS
+    # só para aulas e profissionais (Central "Aulas e Treinamentos")
+    preco_max: float | None = None
+    tipo_oferta: str | None = None  # aula | pacote | turma
+    formato: str | None = None  # individual | coletiva
+    experimental: bool = False
+    idade: int | None = None
+    dia_semana: int | None = None  # 0 = segunda … 6 = domingo
+    nota_min: float | None = None
 
 
 def localizacao(usuario: Usuario | None, lat: float | None = None, lng: float | None = None) -> tuple[float, float, bool]:
@@ -210,7 +219,7 @@ def explorar(s: SessaoORM, usuario: Usuario | None, lat: float | None = None, ln
     """Tudo o que há perto do atleta, por tipo, mais a lista única de pontos para o mapa."""
     f = f or Filtros()
     la, ln, informada = localizacao(usuario, lat, lng)
-    saida: dict = {"centro": {"latitude": la, "longitude": ln, "informada": informada}, "atividades": [], "campeonatos": [], "arenas": [], "grupos": [], "horarios": [], "locais": []}
+    saida: dict = {"centro": {"latitude": la, "longitude": ln, "informada": informada}, "atividades": [], "campeonatos": [], "arenas": [], "grupos": [], "horarios": [], "locais": [], "profissionais": [], "ofertas": []}
     if "atividade" in f.tipos:
         saida["atividades"] = buscar_atividades(s, usuario, la, ln, f)
     if "campeonato" in f.tipos:
@@ -223,9 +232,24 @@ def explorar(s: SessaoORM, usuario: Usuario | None, lat: float | None = None, ln
         saida["horarios"] = buscar_horarios(s, la, ln, f)
     if "local" in f.tipos:
         saida["locais"] = srv_locais.listar(s, la, ln, f.raio_km, f.q, None, f.modalidades)
+    if "profissional" in f.tipos:
+        saida["profissionais"] = ensino_busca.buscar_profissionais(s, la, ln, f)
+    if "oferta" in f.tipos:
+        saida["ofertas"] = ensino_busca.buscar_ofertas(s, la, ln, f)
     saida["pontos"] = pontos_do_mapa(saida)
-    saida["total"] = sum(len(saida[k]) for k in ("atividades", "campeonatos", "arenas", "grupos", "horarios", "locais"))
+    saida["total"] = sum(len(saida[k]) for k in ("atividades", "campeonatos", "arenas", "grupos", "horarios", "locais", "profissionais", "ofertas"))
     return saida
+
+
+def aulas(s: SessaoORM, usuario: Usuario | None, lat: float | None, lng: float | None, f: Filtros) -> dict:
+    """Central "Aulas e Treinamentos": profissionais e ofertas perto de você, já separados em seções."""
+    res = explorar(s, usuario, lat, lng, f)
+    ofs = res["ofertas"]
+    res["secoes"] = {
+        "aulas": [o for o in ofs if o["tipo_oferta"] == "aula"], "pacotes": [o for o in ofs if o["tipo_oferta"] == "pacote"],
+        "turmas": [o for o in ofs if o["tipo_oferta"] == "turma"], "experimentais": [o for o in ofs if o["aula_experimental"]],
+    }
+    return res
 
 
 def _rotulo_pino(i: dict) -> str:
@@ -244,18 +268,26 @@ def _rotulo_pino(i: dict) -> str:
         return f"{icone} {i['nome']}"
     if t == "local":
         return f"{i['icone']} {i['nome']}"
+    if t == "profissional":
+        return f"🎓 {i['nome']}"
+    if t == "oferta":
+        return f"{icone if i.get('modalidade') else '📅'} {i['titulo']} • {i['preco_texto']}"
     return f"{icone} Quadra livre • {i['quando']}"
+
+
+PINO_ENSINO = {"profissional": ("🎓", "#0ea5a4"), "oferta": ("📅", "#f59e0b")}  # Personal/Instrutores e Aulas e treinamentos
 
 
 def pontos_do_mapa(res: dict) -> list[dict]:
     pontos = []
-    for chave in ("atividades", "campeonatos", "arenas", "grupos", "horarios", "locais"):
-        for i in res[chave]:
+    for chave in ("atividades", "campeonatos", "arenas", "grupos", "horarios", "locais", "profissionais", "ofertas"):
+        for i in res.get(chave, []):
             if i.get("latitude") is None:
                 continue
             pontos.append({
                 "tipo": i["tipo"], "id": i["id"], "latitude": i["latitude"], "longitude": i["longitude"], "rotulo": _rotulo_pino(i), "distancia": i["distancia"],
                 "urgente": bool(i.get("falta_gente")), "arena_id": i.get("arena_id"), "premium": bool(i.get("premium")) if i["tipo"] == "arena" else False,
-                "icone": i.get("icone") if i["tipo"] == "local" else None, "cor": i.get("cor") if i["tipo"] == "local" else None,  # pino próprio por tipo de local
+                "icone": i.get("icone") if i["tipo"] == "local" else PINO_ENSINO.get(i["tipo"], (None, None))[0],
+                "cor": i.get("cor") if i["tipo"] == "local" else PINO_ENSINO.get(i["tipo"], (None, None))[1],  # pino próprio por tipo de local e do ensino
             })
     return pontos

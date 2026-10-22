@@ -42,6 +42,7 @@ from .. import (
 from .. import serializadores as ser
 from ..api.chaves import router as api_chaves
 from ..api.elenco import router as api_elenco
+from ..api.ensino import router as api_ensino
 from ..api.instagram import router as api_instagram
 from ..api.mural import router as api_mural
 from ..api.planos import router as api_planos
@@ -90,6 +91,7 @@ app.include_router(api_mural)
 app.include_router(api_planos)
 app.include_router(api_chaves)
 app.include_router(api_elenco)
+app.include_router(api_ensino)
 app.include_router(api_instagram)
 app.include_router(api_youtube)
 templates = Jinja2Templates(directory=PASTA / "templates")

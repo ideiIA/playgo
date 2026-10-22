@@ -273,7 +273,7 @@ def dict_oferta(o: Oferta, dist: float | None = None, completo: bool = False) ->
         "aula_experimental": o.aula_experimental, "valor_experimental": float(o.valor_experimental) if o.valor_experimental is not None else None,
         "valor_aula": float(o.valor_aula) if o.valor_aula is not None else None, "valor_pacote": float(o.valor_pacote) if o.valor_pacote is not None else None,
         "aulas_pacote": o.aulas_pacote, "validade_pacote_dias": o.validade_pacote_dias, "valor_mensal": float(o.valor_mensal) if o.valor_mensal is not None else None,
-        "local_texto": o.local_texto, "endereco": o.endereco, "latitude": o.latitude, "longitude": o.longitude,
+        "local_texto": o.local_texto, "endereco": o.endereco, "latitude": o.latitude if o.latitude is not None else o.perfil.latitude, "longitude": o.longitude if o.longitude is not None else o.perfil.longitude,
         "status": o.status, "status_nome": STATUS_NOME[o.status], "inscricoes_abertas": o.inscricoes_abertas,
         "horarios": [{"id": h.id, "dia_semana": h.dia_semana, "dia": DIAS[h.dia_semana], "hora_inicio": h.hora_inicio.strftime("%H:%M"), "duracao_min": h.duracao_min,
                       "vigencia_inicio": h.vigencia_inicio.isoformat() if h.vigencia_inicio else None, "vigencia_fim": h.vigencia_fim.isoformat() if h.vigencia_fim else None} for h in o.horarios],
