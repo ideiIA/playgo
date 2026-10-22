@@ -96,7 +96,7 @@
     const mapa = L.map(el).setView([centro.latitude, centro.longitude], 13);
     if (window.PlayGoMapa) PlayGoMapa.preparar(mapa); else L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(mapa);
     L.circleMarker([centro.latitude, centro.longitude], { radius: 8, color: '#fff', weight: 3, fillColor: '#6c4cff', fillOpacity: 1 }).addTo(mapa).bindTooltip('Você');
-    const rotas = { atividade: '/atividades/', campeonato: '/campeonatos/', arena: '/arenas/', grupo: '/grupos/', horario: '/arenas/', local: '/locais/' };
+    const rotas = { atividade: '/atividades/', campeonato: '/campeonatos/', arena: '/arenas/', grupo: '/grupos/', horario: '/arenas/', local: '/locais/', profissional: '/profissionais/', oferta: '/ofertas/' };
     const limites = [[centro.latitude, centro.longitude]];
     pontos.forEach((p) => {
       const cor = p.urgente ? '#ff3d81' : { atividade: '#6c4cff', campeonato: '#ff8a00', arena: '#16c784', grupo: '#22c7f2', horario: '#16c784', local: '#0ea5e9' }[p.tipo];
@@ -104,7 +104,7 @@
       const m = p.tipo === 'arena' && p.premium
         ? L.marker([p.latitude, p.longitude], { icon: L.divIcon({ className: 'pino-local', iconSize: [34, 34], iconAnchor: [17, 17], popupAnchor: [0, -18],
             html: '<span style="position:relative;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#6c4cff;border:3px solid #f5b301;box-shadow:0 3px 10px rgba(0,0,0,.35);font-size:17px;line-height:1">🏟️<b style="position:absolute;top:-19px;left:50%;transform:translateX(-50%);font-size:17px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))">👑</b></span>' }) }).addTo(mapa)
-        : p.tipo === 'local' && p.icone
+        : (p.tipo === 'local' || p.tipo === 'profissional' || p.tipo === 'oferta') && p.icone
         ? L.marker([p.latitude, p.longitude], { icon: L.divIcon({ className: 'pino-local', iconSize: [34, 34], iconAnchor: [17, 17], popupAnchor: [0, -16],
             html: '<span style="display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:' + (p.cor || '#0ea5e9') + ';border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.35);font-size:17px;line-height:1">' + p.icone + '</span>' }) }).addTo(mapa)
         : L.circleMarker([p.latitude, p.longitude], { radius: p.urgente ? 11 : 9, color: '#fff', weight: 2, fillColor: cor, fillOpacity: 0.95 }).addTo(mapa);

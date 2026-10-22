@@ -1,0 +1,16 @@
+<link rel="stylesheet" href="/static/ensino.css">
+<script src="/static/ensino.js"></script>
+<script>
+  /* Adaptador do site para o módulo Ensino (o app tem o seu em app.js). */
+  window.ensinoSite = function (extra) {
+    const P = window.PLAYGO || {};
+    return Object.assign({
+      api: (caminho, op) => webApi(caminho, op), toast: (m) => toast(m), cls: { primario: 'btn purple', suave: 'btn soft', perigo: 'btn perigo' },
+      modalidades: {{ mods|tojson }}, pos: P.posicao || null, eu: P.eu,
+      mapa: (id, centro, pontos) => window.mapaPontos(id, centro, pontos),
+      abrir: (caminho) => window.open('/api/v1' + caminho, '_blank', 'noopener'),
+      href: (t, id) => ({ aulas: '/aulas', ensino: '/ensino', profissional: '/profissionais/' + id, oferta: '/ofertas/' + id })[t] || '/',
+      ir: (d) => { location.href = { ensino: '/ensino', planos: '/planos', aulas: '/aulas' }[d] || '/'; },
+    }, extra || {});
+  };
+</script>

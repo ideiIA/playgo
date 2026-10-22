@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block titulo %}Minhas aulas — PlayGo{% endblock %}
+{% block conteudo %}
+<div id="ensino"></div>
+{% include "_ensino_site.html" %}
+<script>window.addEventListener('load', () => Ensino.montarMinhas(document.getElementById('ensino'), ensinoSite()));</script>
+{% endblock %}

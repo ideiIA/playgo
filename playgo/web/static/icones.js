@@ -24,7 +24,7 @@
 
   // onde vale trocar (interface) e onde não (conteúdo de pessoas, campos, avisos temporários)
   const ALVO = '.btn, .tag, .chip, .nav, #abas, .topo-acoes, .ch-abas, .tut-abas, .alternar, .abas-int, .abas, .section-title, .secao, .panel > h2, .painel > h3, .painel > h2, ' +
-    'summary, .item-menu, #menu-pop, .tut-selos, .tut-cap > header, .tut-cartao h3, .tut-hero h1, .aviso, .stat, th, .fato small, .livebar, .ch-btn, .pgm-botao, label, .legenda, .tl-vivo';
+    '.en-hero, .en-sec, .en-bloco > h3, .en-check, summary, .item-menu, #menu-pop, .tut-selos, .tut-cap > header, .tut-cartao h3, .tut-hero h1, .aviso, .stat, th, .fato small, .livebar, .ch-btn, .pgm-botao, label, .legenda, .tl-vivo';
   const FORA = '.mu, .mu-dialogo, #toast, textarea, input, select, option, script, style, svg, .card h3, .card .meta, [data-sem-icones], .nome';
 
   function trocar(no) {

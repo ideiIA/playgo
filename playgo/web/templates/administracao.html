@@ -29,6 +29,11 @@
     .tabela-planos small { display: block; color: var(--muted); font-size: 11px; margin-top: 2px; }
   </style>
 </div>
+<div class="panel" style="margin-bottom:18px" id="painel-profissionais">
+  <h2>🧑‍🏫 Aprovação de profissionais</h2>
+  <p class="suave" style="margin:0 0 10px">Personal e instrutores enviam documentos e só publicam aulas depois de aprovados.</p>
+  <div id="fila-profissionais"></div>
+</div>
 <div class="panel" style="margin-bottom:18px" id="painel-youtube">
   <h2>🎥 YouTube do PlayGo (transmissões ao vivo)</h2>
   <div id="estado-youtube" class="suave">Carregando…</div>
@@ -198,4 +203,6 @@
   }
   window.addEventListener('load', () => { carregar(); carregarPlanos(); carregarInstagram(); carregarYoutube(); });
 </script>
+{% with mods = [] %}{% include "_ensino_site.html" %}{% endwith %}
+<script>window.addEventListener('load', () => Ensino.montarAdmin(document.getElementById('fila-profissionais'), ensinoSite()));</script>
 {% endblock %}
