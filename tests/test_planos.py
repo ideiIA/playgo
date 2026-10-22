@@ -463,7 +463,7 @@ def test_api_webhook_e_painel_admin(banco, monkeypatch):
             s.query(Usuario).filter(Usuario.id == adm_id).update({Usuario.admin: True})
             s.commit()
         assert c.get("/api/v1/admin/planos", headers=comum).status_code == 403
-        assert [p["codigo"] for p in c.get("/api/v1/admin/planos", headers=adm).json()] == ["gratuito", "pro", "organizador", "arena"]
+        assert [p["codigo"] for p in c.get("/api/v1/admin/planos", headers=adm).json()] == ["gratuito", "pro", "organizador", "arena", "prof_basico", "prof_pro", "escolinha"]  # painel traz as duas famílias
         r = c.put("/api/v1/admin/planos/arena", headers=adm, json={"valor_mensal": "99.90"}).json()
         assert r["valor_mensal"] == 99.9 and r["pode_arena"] and r["assinavel"]
         assert c.put("/api/v1/admin/planos/arena", headers=comum, json={"valor_mensal": "1"}).status_code == 403
@@ -622,3 +622,55 @@ def test_so_arena_com_plano_pago_ganha_o_pino_com_coroa(s, fabrica):
     res = {"atividades": [], "campeonatos": [], "arenas": [achadas["Arena Paga"], achadas["Arena em Teste"]], "grupos": [], "horarios": [], "locais": []}
     pinos = {p["id"]: p for p in descoberta.pontos_do_mapa(res)}
     assert pinos[a_paga.id]["premium"] is True and pinos[a_teste.id]["premium"] is False
+
+
+# ---------------------------------------------------------------- Fase 0 do ensino: família de planos do profissional e espaços
+
+
+def test_familia_do_profissional_tem_assinatura_propria_e_nao_mexe_na_geral(s, fabrica):
+    admin = _admin(fabrica, s)
+    u = fabrica.atleta("Instrutor")
+    planos.conceder(s, admin, u.id, "organizador", agora().date() + timedelta(days=30))
+    assert planos.situacao_prof(s, u)["status"] == "sem_plano" and planos.situacao_prof(s, u)["plano"] is None
+    planos.conceder(s, admin, u.id, "prof_pro", agora().date() + timedelta(days=30))
+    sp = planos.situacao_prof(s, u)
+    assert (sp["plano"], sp["status"]) == ("prof_pro", "ativa")
+    assert planos.situacao(s, u)["plano"] == "organizador"  # a família geral continua intacta
+    assert s.query(Assinatura).filter(Assinatura.usuario_id == u.id).count() == 2
+    # tirar o plano do profissional não derruba o Organizador
+    planos.conceder(s, admin, u.id, "nenhum", None, familia="profissional")
+    assert planos.situacao_prof(s, u)["plano"] is None and planos.situacao(s, u)["plano"] == "organizador"
+    # teste grátis do profissional abre sozinho, uma vez por plano
+    outro = fabrica.atleta("Outro Instrutor")
+    assert planos._iniciar_teste(s, outro, "prof_basico") is True
+    assert planos.situacao_prof(s, outro)["status"] == "teste" and planos.situacao(s, outro)["status"] == "gratuito"
+    assert planos._iniciar_teste(s, outro, "prof_basico") is False
+
+
+def test_ensino_exige_perfil_aprovado_e_plano_de_profissional(s, fabrica):
+    from playgo.models import PerfilProfissional
+
+    admin = _admin(fabrica, s)
+    u = fabrica.atleta("Quer Ensinar")
+    assert planos.permissoes(s, u)["ensino"] is False and planos.permissoes(s, u)["perfil_prof"] is False
+    with pytest.raises(ErroNegocio, match="não foi aprovado"):
+        planos.exigir(s, u, "ensino")
+    s.add(PerfilProfissional(usuario_id=u.id, nome_profissional="Prof Teste", status="aprovado"))
+    s.commit()
+    assert planos.permissoes(s, u)["perfil_prof"] is True and planos.permissoes(s, u)["ensino"] is False  # aprovado, ainda sem plano
+    planos.exigir(s, u, "ensino")  # abre o teste grátis do plano básico do profissional
+    assert planos.situacao_prof(s, u)["status"] == "teste" and planos.permissoes(s, u)["ensino"] is True
+    assert planos.permissoes(s, u)["comunidade"] is True  # profissional aprovado também cria comunidade
+    planos.exigir(s, admin, "ensino")
+
+
+def test_arena_com_tipo_e_quadra_como_espaco(s, fabrica):
+    admin = _admin(fabrica, s)
+    a = arenas.criar(s, admin, "Academia Forma", *PERTO, tipo_estabelecimento="academia")
+    assert a.tipo_estabelecimento == "academia"
+    q = arenas.criar_quadra(s, a, admin, "Sala de spinning", [], 20, Decimal(0), tipo="sala")
+    assert q.tipo == "sala"
+    with pytest.raises(ErroNegocio):
+        arenas.criar(s, admin, "X", *PERTO, tipo_estabelecimento="cassino")
+    with pytest.raises(ErroNegocio):
+        arenas.criar_quadra(s, a, admin, "Y", [], None, Decimal(0), tipo="pista")

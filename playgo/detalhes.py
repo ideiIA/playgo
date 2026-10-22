@@ -157,7 +157,7 @@ def arena_publica(s: SessaoORM, a: Arena, usuario: Usuario | None) -> dict:
             "abre": a.abre.strftime("%H:%M"),
             "fecha": a.fecha.strftime("%H:%M"),
             "sou_gestor": bool(usuario and (usuario.admin or usuario in a.gestores)),
-            "quadras_lista": [{"id": q.id, "nome": q.nome, "modalidades": q.modalidades, "capacidade": q.capacidade, "valor_hora": float(q.valor_hora or 0), "valor_texto": ser.valor_texto(q.valor_hora, "/hora")} for q in a.quadras if q.ativa],
+            "quadras_lista": [{"id": q.id, "nome": q.nome, "tipo": q.tipo or "quadra", "modalidades": q.modalidades, "capacidade": q.capacidade, "valor_hora": float(q.valor_hora or 0), "valor_texto": ser.valor_texto(q.valor_hora, "/hora")} for q in a.quadras if q.ativa],
             "horarios": [ser.horario(h, n, d["distancia_km"]) for h in horarios],
         }
     )

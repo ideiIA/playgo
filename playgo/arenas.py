@@ -58,6 +58,10 @@ def minhas(s: SessaoORM, usuario: Usuario) -> list[Arena]:
     return list(s.scalars(q))
 
 
+TIPOS_ESTABELECIMENTO = {"arena": "Arena", "academia": "Academia", "clube": "Clube", "escola": "Escola"}
+TIPOS_ESPACO = {"quadra": "Quadra", "sala": "Sala", "piscina": "Piscina", "campo": "Campo", "outro": "Outro espaço"}
+
+
 def criar(
     s: SessaoORM,
     usuario: Usuario,
@@ -71,15 +75,18 @@ def criar(
     regras: str | None = None,
     abre: time = time(6, 0),
     fecha: time = time(23, 0),
+    tipo_estabelecimento: str = "arena",
 ) -> Arena:
     planos.exigir(s, usuario, "arena")
+    if tipo_estabelecimento not in TIPOS_ESTABELECIMENTO:
+        raise ErroNegocio("Escolha o tipo de estabelecimento: arena, academia, clube ou escola.")
     if not nome.strip():
         raise ErroNegocio("Informe o nome da arena.")
     if abre >= fecha:
         raise ErroNegocio("O horário de abertura precisa ser anterior ao de fechamento.")
     arena = Arena(
         nome=nome.strip(), latitude=latitude, longitude=longitude, endereco=endereco.strip(), cidade=cidade,
-        descricao=descricao, estrutura=estrutura, regras=regras, abre=abre, fecha=fecha,
+        descricao=descricao, estrutura=estrutura, regras=regras, abre=abre, fecha=fecha, tipo_estabelecimento=tipo_estabelecimento,
     )
     arena.gestores.append(usuario)
     usuario.gestor = True  # quem cadastra uma arena ganha a área Gestão
@@ -88,15 +95,17 @@ def criar(
     return arena
 
 
-def criar_quadra(s: SessaoORM, arena: Arena, usuario: Usuario, nome: str, modalidades: list[str], capacidade: int | None, valor_hora: Decimal) -> Quadra:
+def criar_quadra(s: SessaoORM, arena: Arena, usuario: Usuario, nome: str, modalidades: list[str], capacidade: int | None, valor_hora: Decimal, tipo: str = "quadra") -> Quadra:
     exigir_gestor(arena, usuario)
     planos.exigir(s, usuario, "arena")
     if not nome.strip():
-        raise ErroNegocio("Informe o nome da quadra.")
+        raise ErroNegocio("Informe o nome do espaço.")
+    if tipo not in TIPOS_ESPACO:
+        raise ErroNegocio("Escolha o tipo do espaço: quadra, sala, piscina, campo ou outro.")
     if valor_hora < 0:
         raise ErroNegocio("O valor da hora não pode ser negativo.")
     codigos = set(s.scalars(select(Modalidade.codigo).where(Modalidade.codigo.in_(modalidades or ["-"]))))
-    q = Quadra(arena_id=arena.id, nome=nome.strip(), modalidades=sorted(codigos), capacidade=capacidade, valor_hora=valor_hora)
+    q = Quadra(arena_id=arena.id, nome=nome.strip(), tipo=tipo, modalidades=sorted(codigos), capacidade=capacidade, valor_hora=valor_hora)
     s.add(q)
     s.commit()
     return q

@@ -187,6 +187,7 @@ class ArenaIn(BaseModel):
     regras: str | None = None
     abre: time = time(6, 0)
     fecha: time = time(23, 0)
+    tipo_estabelecimento: str = "arena"  # arena | academia | clube | escola
 
 
 class LocalIn(BaseModel):
@@ -213,6 +214,7 @@ class QuadraIn(BaseModel):
     modalidades: list[str] = Field(default_factory=list)
     capacidade: int | None = None
     valor_hora: Decimal = Decimal(0)
+    tipo: str = "quadra"  # quadra | sala | piscina | campo | outro
 
 
 class ReservaIn(BaseModel):

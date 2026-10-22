@@ -6,6 +6,7 @@
 <form class="panel" method="post" action="/gestao/arenas">
   <div class="form-grid">
     <div class="field"><label for="nome">Nome da arena</label><input name="nome" id="nome" required maxlength="200" placeholder="Ex.: Arena Sports"></div>
+    <div class="field"><label for="tipo_estabelecimento">Tipo de estabelecimento</label><select name="tipo_estabelecimento" id="tipo_estabelecimento"><option value="arena">Arena</option><option value="academia">Academia</option><option value="clube">Clube</option><option value="escola">Escola</option></select></div>
     <div class="field"><label for="cidade">Cidade</label><input name="cidade" id="cidade" value="{{ usuario.cidade or '' }}"></div>
     <div class="field full"><label for="endereco">Endereço</label><input name="endereco" id="endereco" placeholder="Rua, número, bairro"></div>
     <div class="field"><label for="abre">Abre às</label><input type="time" name="abre" id="abre" value="06:00" required></div>

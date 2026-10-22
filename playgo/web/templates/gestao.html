@@ -78,14 +78,15 @@
 </div>
 
 <details id="nova-quadra" class="panel" style="margin-top:20px">
-  <summary style="font-weight:800;cursor:pointer">+ Nova quadra</summary>
+  <summary style="font-weight:800;cursor:pointer">+ Nova quadra ou espaço</summary>
   <form method="post" action="/gestao/{{ arena.id }}/quadras" style="margin-top:14px">
     <div class="form-grid">
-      <div class="field"><label for="qnome">Nome</label><input name="nome" id="qnome" required placeholder="Ex.: Quadra 04"></div>
+      <div class="field"><label for="qnome">Nome</label><input name="nome" id="qnome" required placeholder="Ex.: Quadra 04, Sala de spinning"></div>
+      <div class="field"><label for="qtipo">Tipo de espaço</label><select name="tipo" id="qtipo"><option value="quadra">Quadra</option><option value="sala">Sala</option><option value="piscina">Piscina</option><option value="campo">Campo</option><option value="outro">Outro</option></select></div>
       <div class="field"><label for="qvalor">Valor da hora (R$)</label><input name="valor_hora" id="qvalor" inputmode="decimal" placeholder="0,00"></div>
       <div class="field"><label for="qcap">Capacidade</label><input type="number" name="capacidade" id="qcap" min="1"></div>
       <div class="field full"><label>Modalidades</label><div class="checks">{% for m in modalidades %}<label><input type="checkbox" name="modalidades" value="{{ m.codigo }}"> {{ m.icone }} {{ m.nome }}</label>{% endfor %}</div></div>
-    </div><br><button class="btn purple">Cadastrar quadra</button>
+    </div><br><button class="btn purple">Cadastrar espaço</button>
   </form>
 </details>
 

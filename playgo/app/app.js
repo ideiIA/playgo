@@ -771,7 +771,7 @@
   function vNovaArena() {
     montar(`<a href="#/gestao" class="suave">← Voltar</a><h1 style="margin:8px 0 14px">Cadastrar arena</h1>
       <form id="f-arena" class="painel"><div id="erro"></div>
-      <div class="campo"><label>Nome</label><input name="nome" required></div><div class="campo"><label>Endereço</label><input name="endereco"></div>
+      <div class="campo"><label>Nome</label><input name="nome" required></div><div class="campo"><label>Tipo de estabelecimento</label><select name="tipo_estabelecimento"><option value="arena">Arena</option><option value="academia">Academia</option><option value="clube">Clube</option><option value="escola">Escola</option></select></div><div class="campo"><label>Endereço</label><input name="endereco"></div>
       <div class="duas"><div class="campo"><label>Abre</label><input type="time" name="abre" value="06:00" required></div><div class="campo"><label>Fecha</label><input type="time" name="fecha" value="23:00" required></div></div>
       <div class="campo"><label>Estrutura</label><input name="estrutura" placeholder="Vestiário, bar, estacionamento"></div>
       <div class="campo"><label>Onde fica a arena?</label>
@@ -800,7 +800,7 @@
       $('#f-arena').onsubmit = async (ev) => {
         ev.preventDefault(); const d = dadosForm(ev.target);
         if (!local) { $('#erro').innerHTML = '<p class="aviso erro">Marque o local da arena no mapa (busque o endereço ou toque no ponto).</p>'; return; }
-        try { await post('/gestao/arenas', { nome: d.nome, endereco: d.endereco || '', abre: d.abre, fecha: d.fecha, estrutura: d.estrutura || null, latitude: local.lat, longitude: local.lng, cidade: estado.usuario.cidade }); toast('Arena cadastrada!'); estado.arena = null; location.hash = '#/gestao'; }
+        try { await post('/gestao/arenas', { nome: d.nome, tipo_estabelecimento: d.tipo_estabelecimento || 'arena', endereco: d.endereco || '', abre: d.abre, fecha: d.fecha, estrutura: d.estrutura || null, latitude: local.lat, longitude: local.lng, cidade: estado.usuario.cidade }); toast('Arena cadastrada!'); estado.arena = null; location.hash = '#/gestao'; }
         catch (e) { $('#erro').innerHTML = `<p class="aviso erro">${esc(e.message)}</p>`; }
       };
     });
@@ -1313,10 +1313,10 @@
     async 'g-retirar'(el) { try { await api(`/gestao/horarios/${el.dataset.id}`, { metodo: 'DELETE' }); fecharFolha(); vGestao(); } catch (e) { toast(e.message); } },
     async 'g-liberar'(el) { try { await api(`/gestao/reservas/${el.dataset.id}`, { metodo: 'DELETE' }); fecharFolha(); vGestao(); } catch (e) { toast(e.message); } },
     'nova-quadra'(el) {
-      folha(`<h3>Nova quadra</h3><form id="f-quadra"><div class="campo"><label>Nome</label><input name="nome" required placeholder="Ex.: Quadra 04"></div><div class="duas"><div class="campo"><label>Valor da hora (R$)</label><input name="valor_hora" inputmode="decimal"></div><div class="campo"><label>Capacidade</label><input type="number" name="capacidade" min="1"></div></div><div class="campo"><label>Modalidades</label><div class="marcas">${estado.mods.map((m) => `<label><input type="checkbox" name="modalidades" value="${m.codigo}"> ${esc(m.icone)} ${esc(m.nome)}</label>`).join('')}</div></div><button class="btn roxo bloco">Cadastrar quadra</button></form>`);
+      folha(`<h3>Nova quadra ou espaço</h3><form id="f-quadra"><div class="campo"><label>Nome</label><input name="nome" required placeholder="Ex.: Quadra 04, Sala de spinning"></div><div class="campo"><label>Tipo de espaço</label><select name="tipo"><option value="quadra">Quadra</option><option value="sala">Sala</option><option value="piscina">Piscina</option><option value="campo">Campo</option><option value="outro">Outro</option></select></div><div class="duas"><div class="campo"><label>Valor da hora (R$)</label><input name="valor_hora" inputmode="decimal"></div><div class="campo"><label>Capacidade</label><input type="number" name="capacidade" min="1"></div></div><div class="campo"><label>Modalidades</label><div class="marcas">${estado.mods.map((m) => `<label><input type="checkbox" name="modalidades" value="${m.codigo}"> ${esc(m.icone)} ${esc(m.nome)}</label>`).join('')}</div></div><button class="btn roxo bloco">Cadastrar quadra</button></form>`);
       $('#f-quadra').onsubmit = async (ev) => {
         ev.preventDefault(); const f = new FormData(ev.target);
-        try { await post(`/gestao/arenas/${el.dataset.id}/quadras`, { nome: f.get('nome'), valor_hora: num(f.get('valor_hora')) || 0, capacidade: num(f.get('capacidade')), modalidades: f.getAll('modalidades') }); toast('Quadra cadastrada.'); fecharFolha(); vGestao(); } catch (e) { toast(e.message); }
+        try { await post(`/gestao/arenas/${el.dataset.id}/quadras`, { nome: f.get('nome'), tipo: f.get('tipo') || 'quadra', valor_hora: num(f.get('valor_hora')) || 0, capacidade: num(f.get('capacidade')), modalidades: f.getAll('modalidades') }); toast('Quadra cadastrada.'); fecharFolha(); vGestao(); } catch (e) { toast(e.message); }
       };
     },
     async lidas() { await post('/notificacoes/lidas', {}); vNotificacoes(); },

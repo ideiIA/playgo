@@ -72,8 +72,9 @@ def _cpf_cnpj(texto: str) -> str:
 
 def assinar(s: SessaoORM, u: Usuario, plano: str, cpf_cnpj: str, ciclo: str = "mensal") -> dict:
     """Cria (ou troca) a assinatura mensal ou anual e devolve o link para pagar."""
-    if plano not in planos.CODIGOS:
+    if plano not in planos.CODIGOS and plano not in planos.CODIGOS_PROF:
         raise ErroNegocio("Escolha um plano válido.")
+    familia = planos.familia_do_plano(plano)
     if ciclo not in ("mensal", "anual"):
         raise ErroNegocio("Escolha o pagamento mensal ou anual.")
     regra = planos.regras(s, plano)
@@ -83,16 +84,18 @@ def assinar(s: SessaoORM, u: Usuario, plano: str, cpf_cnpj: str, ciclo: str = "m
         raise ErroNegocio(f"O plano {regra.nome} ainda não tem valor anual definido.")
     valor = regra.valor_anual if ciclo == "anual" else regra.valor_mensal
     doc = _cpf_cnpj(cpf_cnpj)
-    a = planos.assinatura_de(s, u)
+    a = planos.assinatura_de(s, u, familia)
     if a is None:
-        a = Assinatura(usuario_id=u.id, plano=plano, status="teste", origem="asaas", testes_usados=[])
+        a = Assinatura(usuario_id=u.id, plano=plano, status="teste", origem="asaas", testes_usados=[], familia=familia)
         s.add(a)
         s.flush()
     hoje = agora().date()
-    sit = planos.situacao(s, u)
+    sit = planos.situacao(s, u, None, familia)
     if a.asaas_subscription_id and a.status != "cancelada":
         _chamar("DELETE", f"/subscriptions/{a.asaas_subscription_id}")  # troca de plano: encerra a anterior
         a.asaas_subscription_id = None
+    if not a.asaas_customer_id:
+        a.asaas_customer_id = s.scalar(select(Assinatura.asaas_customer_id).where(Assinatura.usuario_id == u.id, Assinatura.asaas_customer_id.is_not(None)).limit(1))
     if not a.asaas_customer_id:
         cliente = _chamar("POST", "/customers", {"name": u.nome, "email": u.email, "cpfCnpj": doc, "externalReference": f"usuario:{u.id}", "notificationDisabled": False})
         a.asaas_customer_id = cliente["id"]
@@ -171,9 +174,9 @@ def _webhook_evento(s: SessaoORM, evento: str, pagamento: dict, referencia: str)
     return "ok"
 
 
-def cancelar(s: SessaoORM, u: Usuario) -> dict:
+def cancelar(s: SessaoORM, u: Usuario, familia: str = "geral") -> dict:
     """Para a cobrança recorrente. O acesso continua até o fim do período já pago."""
-    a = planos.assinatura_de(s, u)
+    a = planos.assinatura_de(s, u, familia)
     if a is None or not a.asaas_subscription_id or a.status == "cancelada":
         raise ErroNegocio("Você não tem uma assinatura ativa para cancelar.")
     _chamar("DELETE", f"/subscriptions/{a.asaas_subscription_id}")

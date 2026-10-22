@@ -18,6 +18,10 @@ class PlanoIn(BaseModel):
     plano: str
 
 
+class CancelarIn(BaseModel):
+    familia: str = "geral"  # geral | profissional
+
+
 class AssinarIn(BaseModel):
     plano: str
     cpf_cnpj: str
@@ -39,10 +43,17 @@ class RegrasIn(BaseModel):
     pode_campeonato: bool | None = None
     pode_arena: bool | None = None
     pode_atividade: bool | None = None
+    max_ofertas: int | None = None  # família do profissional (vazio/0 = sem limite)
+    max_turmas: int | None = None
+    max_professores: int | None = None
+    comissao_pct: Decimal | None = None
+    pode_cobrar: bool | None = None
+    pode_escolinha: bool | None = None
 
 
 class ConcederIn(BaseModel):
     plano: str
+    familia: str | None = None  # com plano "nenhum", diz de qual família tirar o plano (geral | profissional)
     ate: date | None = None
     inicio: date | None = None  # quando o acesso começa a valer (padrão: hoje)
 
@@ -54,8 +65,8 @@ def meu_plano(u: AtualApi, s: Sessao):
 
 @router.post("/planos/teste")
 def iniciar_teste(corpo: PlanoIn, u: AtualApi, s: Sessao):
-    if corpo.plano not in ("pro", "organizador", "arena"):
-        raise ErroNegocio("Escolha o plano Pro, Organizador ou Arena.")
+    if corpo.plano not in ("pro", "organizador", "arena") and corpo.plano not in planos.CODIGOS_PROF:
+        raise ErroNegocio("Escolha um plano válido para o teste grátis.")
     if not planos._iniciar_teste(s, u, corpo.plano):
         raise ErroNegocio("O teste grátis deste plano já foi usado ou você já tem acesso a ele.")
     s.commit()
@@ -73,8 +84,8 @@ def comprar_eventos(corpo: EventosIn, u: AtualApi, s: Sessao):
 
 
 @router.post("/planos/cancelar")
-def cancelar(u: AtualApi, s: Sessao):
-    return cobranca.cancelar(s, u)
+def cancelar(u: AtualApi, s: Sessao, corpo: CancelarIn | None = None):
+    return cobranca.cancelar(s, u, corpo.familia if corpo else "geral")
 
 
 @router.post("/cobranca/asaas")
@@ -97,7 +108,7 @@ async def webhook_asaas(request: Request, s: Sessao, asaas_access_token: str = H
 def admin_planos(u: AtualApi, s: Sessao):
     if not u.admin:
         raise SemPermissao("Só administradores veem os planos.")
-    return [planos._dict(r) for r in planos.todas(s)]
+    return [planos._dict(r) for r in planos.todas(s) + planos.todas_prof(s)]
 
 
 @router.put("/admin/planos/{codigo}")
@@ -108,7 +119,7 @@ def admin_salvar_plano(codigo: str, corpo: RegrasIn, u: AtualApi, s: Sessao):
 
 @router.post("/admin/usuarios/{usuario_id}/plano")
 def admin_conceder_plano(usuario_id: int, corpo: ConcederIn, u: AtualApi, s: Sessao):
-    return planos.conceder(s, u, usuario_id, corpo.plano, corpo.ate, corpo.inicio)
+    return planos.conceder(s, u, usuario_id, corpo.plano, corpo.ate, corpo.inicio, corpo.familia)
 
 
 # ---------------------------------------------------------------- tutoriais (o app mostra o mesmo conteúdo do site)

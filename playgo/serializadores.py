@@ -143,6 +143,7 @@ def arena(a: Arena, dist: float | None = None, horarios_hoje: int = 0) -> dict:
         "longitude": a.longitude,
         "estrutura": a.estrutura,
         "quadras": len([q for q in a.quadras if q.ativa]),
+        "tipo_estabelecimento": a.tipo_estabelecimento or "arena",
         "distancia_km": round(dist, 2) if dist is not None else None,
         "distancia": formatar_km(dist),
         "horarios_disponiveis": horarios_hoje,

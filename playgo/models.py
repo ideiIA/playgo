@@ -183,6 +183,7 @@ class Arena(Base):
     fotos: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
     abre: Mapped[time] = mapped_column(Time, default=time(6, 0))
     fecha: Mapped[time] = mapped_column(Time, default=time(23, 0))
+    tipo_estabelecimento: Mapped[str] = mapped_column(String(12), default="arena")  # arena | academia | clube | escola
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
 
@@ -231,6 +232,7 @@ class Quadra(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     arena_id: Mapped[int] = mapped_column(ForeignKey("arenas.id", ondelete="CASCADE"))
     nome: Mapped[str] = mapped_column(String(100))
+    tipo: Mapped[str] = mapped_column(String(12), default="quadra")  # quadra | sala | piscina | campo | outro (na tela: "espaço")
     modalidades: Mapped[list[str]] = mapped_column(ARRAY(String(30)), default=list)  # códigos de Modalidade
     capacidade: Mapped[int | None] = mapped_column(Integer)
     valor_hora: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=0)
@@ -689,6 +691,7 @@ class Comunidade(Base):
     cidade: Mapped[str | None] = mapped_column(String(100))
     visibilidade: Mapped[str] = mapped_column(String(12), default="publica")  # publica | autorizados | link
     convite_token: Mapped[str | None] = mapped_column(String(40), unique=True)
+    perfil_profissional_id: Mapped[int | None] = mapped_column(ForeignKey("perfis_profissionais.id", ondelete="SET NULL"))  # dono: profissional (escolinha: fase 3)
     ativa: Mapped[bool] = mapped_column(Boolean, default=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
 
@@ -933,15 +936,24 @@ class Plano(Base):
     pode_atividade: Mapped[bool] = mapped_column(Boolean, default=True)  # organizar atividades
     pode_campeonato: Mapped[bool] = mapped_column(Boolean, default=False)
     pode_arena: Mapped[bool] = mapped_column(Boolean, default=False)
+    familia: Mapped[str] = mapped_column(String(12), default="geral")  # geral | profissional
+    max_ofertas: Mapped[int | None] = mapped_column(Integer)  # profissional: None = sem limite
+    max_turmas: Mapped[int | None] = mapped_column(Integer)
+    max_professores: Mapped[int | None] = mapped_column(Integer)
+    comissao_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=0)  # fatia do PlayGo nas vendas do profissional (fase financeira)
+    pode_cobrar: Mapped[bool] = mapped_column(Boolean, default=False)
+    pode_escolinha: Mapped[bool] = mapped_column(Boolean, default=False)
 
 
 class Assinatura(Base):
     """Plano pago de uma pessoa (no máximo uma). `teste` = 30 dias grátis; `ativa` = paga ou concedida; `cancelada` = não renova."""
 
     __tablename__ = "assinaturas"
+    __table_args__ = (UniqueConstraint("usuario_id", "familia", name="uq_assinaturas_usuario_familia"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"), unique=True)
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"))
+    familia: Mapped[str] = mapped_column(String(12), default="geral")  # geral (Usuário/Pro/Organizador/Arena) | profissional
     plano: Mapped[str] = mapped_column(String(12))
     status: Mapped[str] = mapped_column(String(10), default="teste")  # teste | ativa | cancelada
     origem: Mapped[str] = mapped_column(String(10), default="teste")  # teste | asaas | manual
@@ -989,3 +1001,119 @@ class Pagamento(Base):
     pago_em: Mapped[date | None] = mapped_column(Date)
     invoice_url: Mapped[str | None] = mapped_column(Text)
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
+
+
+# ---------------------------------------------------------------- ensino: profissionais, ofertas e agenda (docs/especificacao-personal-escolinhas.md)
+
+PP_RASCUNHO, PP_EM_ANALISE, PP_APROVADO, PP_REPROVADO, PP_SUSPENSO = "rascunho", "em_analise", "aprovado", "reprovado", "suspenso"
+DOC_PENDENTE, DOC_APROVADO, DOC_RECUSADO = "pendente", "aprovado", "recusado"
+O_AULA, O_PACOTE, O_TURMA = "aula", "pacote", "turma"
+OF_RASCUNHO, OF_PUBLICADA, OF_PAUSADA, OF_ENCERRADA = "rascunho", "publicada", "pausada", "encerrada"
+
+
+class PerfilProfissional(Base):
+    """Perfil de Personal / Instrutor. Só publica depois de aprovado pela administração (documentos legais)."""
+
+    __tablename__ = "perfis_profissionais"
+    __table_args__ = (Index("ix_perfis_prof_geo", "latitude", "longitude"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"), unique=True)
+    status: Mapped[str] = mapped_column(String(12), default=PP_RASCUNHO)
+    nome_profissional: Mapped[str] = mapped_column(String(120))
+    apresentacao: Mapped[str | None] = mapped_column(Text)
+    foto_url: Mapped[str | None] = mapped_column(Text)
+    registro_tipo: Mapped[str | None] = mapped_column(String(30))  # CREF, federação, etc.
+    registro_numero: Mapped[str | None] = mapped_column(String(40))
+    telefone: Mapped[str | None] = mapped_column(String(40))
+    whatsapp: Mapped[str | None] = mapped_column(String(40))
+    email_contato: Mapped[str | None] = mapped_column(String(200))
+    cidade: Mapped[str | None] = mapped_column(String(100))
+    regiao: Mapped[str | None] = mapped_column(String(120))  # bairros/zonas atendidas
+    latitude: Mapped[float | None] = mapped_column(Float)
+    longitude: Mapped[float | None] = mapped_column(Float)
+    raio_atendimento_km: Mapped[int] = mapped_column(Integer, default=10)
+    modalidades: Mapped[list[str]] = mapped_column(ARRAY(String(30)), default=list)  # códigos de Modalidade
+    especialidades: Mapped[str | None] = mapped_column(Text)
+    aprovado_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id", ondelete="SET NULL"))
+    aprovado_em: Mapped[datetime | None] = mapped_column(DateTime)
+    motivo_recusa: Mapped[str | None] = mapped_column(Text)
+    nota_media: Mapped[float | None] = mapped_column(Float)
+    n_avaliacoes: Mapped[int] = mapped_column(Integer, default=0)
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
+    atualizado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
+
+    usuario: Mapped[Usuario] = relationship(foreign_keys=[usuario_id], lazy="joined")
+    documentos: Mapped[list["DocumentoProfissional"]] = relationship(cascade="all, delete-orphan", order_by="DocumentoProfissional.id")
+
+
+class DocumentoProfissional(Base):
+    """Documento legal do profissional. NUNCA público: só o titular e a administração leem (rota autenticada, sem URL aberta)."""
+
+    __tablename__ = "documentos_profissionais"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    perfil_id: Mapped[int] = mapped_column(ForeignKey("perfis_profissionais.id", ondelete="CASCADE"), index=True)
+    tipo: Mapped[str] = mapped_column(String(30))  # identidade | registro_profissional | comprovante_endereco | certificado | termo_adesao
+    arquivo: Mapped[str] = mapped_column(String(120))  # caminho no armazenamento (documentos/<hex>.<ext>)
+    mime: Mapped[str] = mapped_column(String(40))
+    nome_original: Mapped[str | None] = mapped_column(String(160))
+    status: Mapped[str] = mapped_column(String(10), default=DOC_PENDENTE)
+    motivo: Mapped[str | None] = mapped_column(Text)
+    validade: Mapped[date | None] = mapped_column(Date)
+    decidido_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id", ondelete="SET NULL"))
+    decidido_em: Mapped[datetime | None] = mapped_column(DateTime)
+    enviado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
+
+
+class Oferta(Base):
+    """O que o profissional divulga: aula avulsa, pacote de aulas ou turma recorrente."""
+
+    __tablename__ = "ofertas"
+    __table_args__ = (Index("ix_ofertas_geo", "latitude", "longitude"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    perfil_id: Mapped[int] = mapped_column(ForeignKey("perfis_profissionais.id", ondelete="CASCADE"), index=True)
+    tipo: Mapped[str] = mapped_column(String(8), default=O_AULA)  # aula | pacote | turma
+    titulo: Mapped[str] = mapped_column(String(160))
+    descricao: Mapped[str | None] = mapped_column(Text)
+    modalidade_id: Mapped[int | None] = mapped_column(ForeignKey("modalidades.id"))
+    nivel: Mapped[str | None] = mapped_column(String(14))
+    faixa_etaria_min: Mapped[int | None] = mapped_column(Integer)
+    faixa_etaria_max: Mapped[int | None] = mapped_column(Integer)
+    formato: Mapped[str] = mapped_column(String(10), default="individual")  # individual | coletiva
+    duracao_min: Mapped[int] = mapped_column(Integer, default=60)
+    capacidade: Mapped[int] = mapped_column(Integer, default=1)  # alunos por aula/turma
+    aula_experimental: Mapped[bool] = mapped_column(Boolean, default=False)
+    valor_experimental: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    valor_aula: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    valor_pacote: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    aulas_pacote: Mapped[int | None] = mapped_column(Integer)
+    validade_pacote_dias: Mapped[int | None] = mapped_column(Integer)
+    valor_mensal: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    local_texto: Mapped[str | None] = mapped_column(String(200))  # local externo (parque, condomínio…); espaços de arena vêm na fase de vínculos
+    endereco: Mapped[str | None] = mapped_column(String(300))
+    latitude: Mapped[float | None] = mapped_column(Float)
+    longitude: Mapped[float | None] = mapped_column(Float)
+    status: Mapped[str] = mapped_column(String(10), default=OF_RASCUNHO)
+    inscricoes_abertas: Mapped[bool] = mapped_column(Boolean, default=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
+    atualizado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
+
+    perfil: Mapped[PerfilProfissional] = relationship(lazy="joined")
+    modalidade: Mapped[Modalidade | None] = relationship(lazy="joined")
+    horarios: Mapped[list["OfertaHorario"]] = relationship(cascade="all, delete-orphan", order_by="OfertaHorario.dia_semana, OfertaHorario.hora_inicio")
+
+
+class OfertaHorario(Base):
+    """Regra semanal da oferta (ex.: terças e quintas, 19h). Na fase 1 é informativa; a fase 2 materializa as sessões."""
+
+    __tablename__ = "oferta_horarios"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    oferta_id: Mapped[int] = mapped_column(ForeignKey("ofertas.id", ondelete="CASCADE"), index=True)
+    dia_semana: Mapped[int] = mapped_column(Integer)  # 0 = segunda … 6 = domingo
+    hora_inicio: Mapped[time] = mapped_column(Time)
+    duracao_min: Mapped[int] = mapped_column(Integer, default=60)
+    vigencia_inicio: Mapped[date | None] = mapped_column(Date)
+    vigencia_fim: Mapped[date | None] = mapped_column(Date)

@@ -775,12 +775,12 @@ def nova_arena(request: Request, s: Sessao, usuario: Atual):
 @app.post("/gestao/arenas")
 def criar_arena(
     s: Sessao, usuario: Atual, nome: str = Form(), latitude: str = Form(""), longitude: str = Form(""), endereco: str = Form(""), cidade: str = Form(""),
-    abre: str = Form("06:00"), fecha: str = Form("23:00"), estrutura: str = Form(""), descricao: str = Form(""), regras: str = Form(""),
+    abre: str = Form("06:00"), fecha: str = Form("23:00"), estrutura: str = Form(""), descricao: str = Form(""), regras: str = Form(""), tipo_estabelecimento: str = Form("arena"),
 ):
     lat, lng = _num(latitude, float), _num(longitude, float)
     if lat is None or lng is None:
         raise ErroNegocio("Marque a localização da arena no mapa.")
-    a = arenas.criar(s, usuario, nome, lat, lng, endereco, cidade or None, descricao or None, estrutura or None, regras or None, _hora(abre), _hora(fecha))
+    a = arenas.criar(s, usuario, nome, lat, lng, endereco, cidade or None, descricao or None, estrutura or None, regras or None, _hora(abre), _hora(fecha), tipo_estabelecimento)
     return RedirectResponse(f"/gestao?arena={a.id}", status_code=303)
 
 
@@ -789,9 +789,9 @@ def _volta_gestao(arena_id: int | str, dia: str = "") -> RedirectResponse:
 
 
 @app.post("/gestao/{arena_id}/quadras")
-def criar_quadra(arena_id: int, request: Request, s: Sessao, usuario: Atual, nome: str = Form(), valor_hora: str = Form(""), capacidade: str = Form(""), modalidades: list[str] = Form(default=[])):
-    arenas.criar_quadra(s, arenas.obter(s, arena_id), usuario, nome, modalidades, _num(capacidade, int), _num(valor_hora) or Decimal(0))
-    request.session["ok"] = "Quadra cadastrada."
+def criar_quadra(arena_id: int, request: Request, s: Sessao, usuario: Atual, nome: str = Form(), tipo: str = Form("quadra"), valor_hora: str = Form(""), capacidade: str = Form(""), modalidades: list[str] = Form(default=[])):
+    arenas.criar_quadra(s, arenas.obter(s, arena_id), usuario, nome, modalidades, _num(capacidade, int), _num(valor_hora) or Decimal(0), tipo)
+    request.session["ok"] = "Espaço cadastrado."
     return _volta_gestao(arena_id)
 
 
