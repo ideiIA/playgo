@@ -1038,6 +1038,8 @@ class PerfilProfissional(Base):
     aprovado_por_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id", ondelete="SET NULL"))
     aprovado_em: Mapped[datetime | None] = mapped_column(DateTime)
     motivo_recusa: Mapped[str | None] = mapped_column(Text)
+    aceite_termo_em: Mapped[datetime | None] = mapped_column(DateTime)  # aceite do Termo de Adesão do Profissional
+    enviado_analise_em: Mapped[datetime | None] = mapped_column(DateTime)
     nota_media: Mapped[float | None] = mapped_column(Float)
     n_avaliacoes: Mapped[int] = mapped_column(Integer, default=0)
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)

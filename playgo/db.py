@@ -85,6 +85,8 @@ _COLUNAS_NOVAS: tuple[str, ...] = (
     "ALTER TABLE arenas ADD COLUMN IF NOT EXISTS tipo_estabelecimento varchar(12) DEFAULT 'arena'",
     "ALTER TABLE quadras ADD COLUMN IF NOT EXISTS tipo varchar(12) DEFAULT 'quadra'",
     "ALTER TABLE comunidades ADD COLUMN IF NOT EXISTS perfil_profissional_id integer",
+    "ALTER TABLE perfis_profissionais ADD COLUMN IF NOT EXISTS aceite_termo_em timestamp",
+    "ALTER TABLE perfis_profissionais ADD COLUMN IF NOT EXISTS enviado_analise_em timestamp",
     "ALTER TABLE planos ADD COLUMN IF NOT EXISTS valor_anual numeric(10,2)",
     "ALTER TABLE planos ADD COLUMN IF NOT EXISTS valor_evento numeric(10,2) DEFAULT 0",
     "ALTER TABLE assinaturas ADD COLUMN IF NOT EXISTS ciclo varchar(6) DEFAULT 'mensal'",
