@@ -183,14 +183,14 @@
     if (window.PlayGoMapa) PlayGoMapa.preparar(m); else L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
     L.circleMarker([centro.latitude, centro.longitude], { radius: 8, color: '#fff', weight: 3, fillColor: '#6c4cff', fillOpacity: 1 }).addTo(m);
     const cores = { atividade: '#6c4cff', campeonato: '#ff8a00', arena: '#16c784', grupo: '#22c7f2', horario: '#16c784' };
-    const rotas = { atividade: '#/atividade/', campeonato: '#/campeonato/', arena: '#/arena/', grupo: '#/grupo/', local: '#/local/' };
+    const rotas = { atividade: '#/atividade/', campeonato: '#/campeonato/', arena: '#/arena/', grupo: '#/grupo/', local: '#/local/', profissional: '#/profissional/', oferta: '#/oferta/' };
     const lim = [[centro.latitude, centro.longitude]];
     (pontos || []).forEach((p) => {
       const alvo = p.tipo === 'horario' ? '#/arena/' + p.arena_id : rotas[p.tipo] + p.id;
       (p.tipo === 'arena' && p.premium
         ? L.marker([p.latitude, p.longitude], { icon: L.divIcon({ className: 'pino-local', iconSize: [34, 34], iconAnchor: [17, 17], popupAnchor: [0, -18],
             html: '<span style="position:relative;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#6c4cff;border:3px solid #f5b301;box-shadow:0 3px 10px rgba(0,0,0,.35);font-size:17px;line-height:1">🏟️<b style="position:absolute;top:-19px;left:50%;transform:translateX(-50%);font-size:17px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))">👑</b></span>' }) })
-        : p.tipo === 'local' && p.icone
+        : (p.tipo === 'local' || p.tipo === 'profissional' || p.tipo === 'oferta') && p.icone
         ? L.marker([p.latitude, p.longitude], { icon: L.divIcon({ className: 'pino-local', iconSize: [34, 34], iconAnchor: [17, 17], popupAnchor: [0, -16],
             html: `<span style="display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:${p.cor || '#0ea5e9'};border:3px solid #fff;box-shadow:0 3px 10px rgba(0,0,0,.35);font-size:17px;line-height:1">${p.icone}</span>` }) })
         : L.circleMarker([p.latitude, p.longitude], { radius: p.urgente ? 11 : 9, color: '#fff', weight: 2, fillColor: p.urgente ? '#ff3d81' : cores[p.tipo], fillOpacity: 0.95 }))
@@ -246,7 +246,7 @@
   // Menu da conta (foto ao lado do sino): todas as opções do antigo menu do perfil, num menu suspenso
   function itensMenuEu(u) {
     return [
-      ['#/perfil', 'user-round', 'Meu perfil'], ['#/campeonatos', 'trophy', 'Campeonatos'], ['#/planos', 'credit-card', 'Meu plano'], ['#/tutoriais', 'book-open', 'Tutoriais'],
+      ['#/perfil', 'user-round', 'Meu perfil'], ['#/campeonatos', 'trophy', 'Campeonatos'], ['#/aulas', 'graduation-cap', 'Aulas e Treinamentos'], ['#/ensino', 'clipboard-list', (u.permissoes && u.permissoes.perfil_prof) ? 'Minhas aulas' : 'Dar aulas'], ['#/planos', 'credit-card', 'Meu plano'], ['#/tutoriais', 'book-open', 'Tutoriais'],
       ['#/notificacoes', 'bell', 'Notificações'], ['#/comunidades', 'users-round', 'Comunidades'], ['#/convites', 'mail', 'Convites'],
       ...(pode('arena') ? [['#/gestao', 'building-2', 'Minha Arena']] : []),
       ...(u.equipe_moderacao ? [['#/moderacao', 'shield-check', 'Moderação']] : []),
@@ -1057,6 +1057,21 @@
         return `<div class="card ${atual ? 'champ' : ''}"><span class="tag ${atual ? '' : pl.codigo === 'arena' ? 'verde' : pl.codigo === 'organizador' ? 'laranja' : ''}">${atual ? 'Seu plano' : esc(pl.nome)}</span><h3>${esc(pl.nome)}</h3>
           <div style="font-size:22px;font-weight:900;margin:4px 0">${preco}</div><div class="meta">${esc(lim)}</div><div style="margin-top:12px">${acao}</div></div>`;
       };
+      const pr = p.profissional;
+      const cartaoProf = (pl) => {
+        const atual = pr.plano_contratado === pl.codigo;
+        const itens = [pl.max_ofertas ? `Até ${pl.max_ofertas} ofertas publicadas` : 'Ofertas ilimitadas', pl.pode_cobrar ? 'Recebimento online dos alunos' : 'Divulgação e contato direto', pl.pode_escolinha ? 'Escolinha com turmas' : null].filter(Boolean);
+        let acao = '';
+        if (p.status !== 'administrador') {
+          if (pr.assinatura_asaas && atual) acao = '<button class="btn perigo bloco" data-acao="plano-cancelar" data-f="profissional">Cancelar assinatura</button>';
+          else {
+            if (pr.teste_disponivel.includes(pl.codigo)) acao += `<button class="btn suave bloco" data-acao="plano-teste" data-p="${pl.codigo}">🎁 Começar teste de ${p.teste_dias} dias</button>`;
+            acao += pl.assinavel && p.cobranca_ativa ? `<button class="btn roxo bloco" style="margin-top:8px" data-acao="plano-assinar" data-p="${pl.codigo}" data-nome="${esc(pl.nome)}" data-c="mensal">Assinar</button>` : `<p class="suave" style="margin-top:8px">${pl.assinavel ? 'Cobrança ainda não ativada.' : 'Valor ainda não definido.'}</p>`;
+          }
+        }
+        return `<div class="card ${atual ? 'champ' : ''}"><span class="tag ${atual ? '' : 'azul'}">${atual ? 'Seu plano' : '🎓 Profissional'}</span><h3>${esc(pl.nome)}</h3><div style="font-size:22px;font-weight:900;margin:4px 0">${brl(pl.valor_mensal)}</div><div class="meta">${itens.map(esc).join(' · ')}</div><div style="margin-top:12px">${acao}</div></div>`;
+      };
+      const profissional = pr ? `<h2 style="margin-top:18px">🎓 Para quem dá aulas</h2><p class="suave" style="margin:4px 0 10px">Personal, professores e escolinhas: plano exclusivo para divulgar aulas, pacotes e turmas.${pr.perfil_aprovado ? '' : ' <a href="#/ensino">Crie seu perfil e envie os documentos</a> para ser aprovado.'}</p><div class="lista">${pr.planos.map(cartaoProf).join('')}</div>` : '';
       const STATUS_PG = { PENDING: 'Aguardando pagamento', OVERDUE: 'Vencida', CONFIRMED: 'Paga', RECEIVED: 'Paga', RECEIVED_IN_CASH: 'Paga', REFUNDED: 'Estornada', DELETED: 'Cancelada' };
       const cobrancas = (p.cobrancas || []).length ? `<h2 style="margin-top:18px">🧾 Minhas cobranças</h2><div class="lista">${p.cobrancas.map((c) => `<div class="card"><b>${dataBr(c.vencimento)}</b> · R$ ${c.valor.toFixed(2).replace('.', ',')} · <span class="tag ${c.pago_em ? 'verde' : 'laranja'}">${esc(STATUS_PG[c.status] || c.status)}</span>${c.pago_em ? `<div class="suave">paga em ${dataBr(c.pago_em)}</div>` : ''}${c.link ? `<a class="btn suave bloco" style="margin-top:8px" href="${esc(c.link)}" target="_blank" rel="noopener">${c.pago_em ? 'Ver recibo' : 'Abrir fatura / 2ª via'}</a>` : ''}</div>`).join('')}</div>` : '';
       const temAnual = p.planos.some((x) => x.anual_disponivel) && p.status !== 'administrador';
@@ -1068,7 +1083,7 @@
         (ev.saldo ? `<p class="aviso ok" style="margin-top:14px">🎟 Você tem <b>${ev.saldo}</b> evento${ev.saldo > 1 ? 's' : ''} para criar campeonatos, até ${dataBr(ev.valida_ate)}.</p>` : '') +
         (org && org.evento_disponivel && p.cobranca_ativa ? `<div class="card" style="margin-top:14px"><h3>🎟 Vai fazer só alguns campeonatos?</h3><p class="suave" style="margin:6px 0">Pague só pelos eventos que vai realizar: <b>R$ ${reais(org.valor_evento)} por evento</b>. Cada campeonato criado usa 1 evento, válidos por 12 meses depois do pagamento. Sem mensalidade.</p><button class="btn roxo bloco" data-acao="eventos-comprar" data-v="${org.valor_evento}">Comprar eventos</button></div>` : '') +
         (pend.length ? pend.map((c) => `<div class="card" style="margin-top:10px"><b>${c.quantidade} evento${c.quantidade > 1 ? 's' : ''}</b> · R$ ${reais(c.valor)} · <span class="tag laranja">Aguardando pagamento</span><a class="btn suave bloco" style="margin-top:8px" href="${esc(c.link)}" target="_blank" rel="noopener">Abrir fatura</a></div>`).join('') : '');
-      montar(`<h1>💳 Meu plano</h1>${aviso}<p class="aviso ${faixa[0]}" style="margin-top:12px">${esc(faixa[1])}</p>${seletor}<div class="lista">${p.planos.map(cartao).join('')}</div>${eventos}${cobrancas}
+      montar(`<h1>💳 Meu plano</h1>${aviso}<p class="aviso ${faixa[0]}" style="margin-top:12px">${esc(faixa[1])}</p>${seletor}<div class="lista">${p.planos.map(cartao).join('')}</div>${profissional}${eventos}${cobrancas}
         <p class="suave" style="margin-top:14px">A cobrança é mensal ou anual pelo Asaas (Pix, boleto ou cartão); você cancela quando quiser e o acesso segue até o fim do período pago. Quando termina, você volta ao plano Usuário. <a href="#/documento/termos">Termos de Uso</a></p>`);
     } catch (e) { erroTela(e); }
   }
@@ -1080,6 +1095,7 @@
     try {
       const r = await api('/admin/usuarios?' + qs({ q, perfil }));
       montar(`<h1>⚙️ Administração</h1><p class="suave" style="margin:4px 0 12px"><b>Administrador</b>: tudo, inclusive promover perfis. <b>Moderador geral</b>: aprova a fila e oculta em qualquer mural. <b>Usuário</b>: comum.</p>
+        <a class="btn suave bloco" href="#/admin-profissionais" style="margin-bottom:10px">🧑‍🏫 Aprovação de profissionais</a>
         <form class="busca" id="f-admin"><span>⌕</span><input name="q" value="${esc(q)}" placeholder="@usuario, nome ou e-mail"><button class="btn roxo pequeno">Buscar</button></form>
         <div class="chips">${[['', 'Todos'], ['admin', 'Administradores'], ['moderador', 'Moderadores']].map(([v, n]) => `<button class="chip ${perfil === v ? 'on' : ''}" data-acao="admin-filtro" data-v="${v}">${n}</button>`).join('')}</div>
         <div class="painel">${r.itens.map((i) => `<div class="pessoa" style="flex-wrap:wrap"><span class="avatar">${i.foto_url ? `<img src="${esc(i.foto_url)}" alt="">` : esc(i.iniciais)}</span><div><b>${esc(i.arroba)}</b><div class="suave">${esc(i.nome)} · ${esc(i.email)}</div></div>
@@ -1127,6 +1143,28 @@
         <div class="tut-app">${t.html}</div>`);
     } catch (e) { erroTela(e); }
   }
+
+  // ------------------------------------------------------------ ensino: aulas, profissionais, ofertas (módulo compartilhado com o site)
+  function ensinoApp(extra) {
+    return Object.assign({
+      api: (c, op) => api(c, op), toast, cls: { primario: 'btn roxo', suave: 'btn suave', perigo: 'btn perigo' },
+      modalidades: estado.mods, pos: estado.pos, eu: estado.usuario,
+      mapa: (id, centro, pontos) => iniciarMapa(id, centro, pontos),
+      abrir: async (caminho) => {
+        const r = await fetch(API + caminho, { headers: { Authorization: 'Bearer ' + estado.token } });
+        if (!r.ok) { toast('Não foi possível abrir o documento.'); return; }
+        window.open(URL.createObjectURL(await r.blob()), '_blank');
+      },
+      href: (t, id) => ({ aulas: '#/aulas', ensino: '#/ensino', profissional: '#/profissional/' + id, oferta: '#/oferta/' + id })[t] || '#/',
+      ir: (d) => { location.hash = ({ ensino: '#/ensino', planos: '#/planos', aulas: '#/aulas' })[d] || '#/'; },
+    }, extra || {});
+  }
+  const montarEnsino = (fn, extra) => { montar('<div id="ensino"></div>'); window.Ensino[fn]($('#ensino'), ensinoApp(extra)); };
+  const vAulas = () => montarEnsino('montarCentral');
+  const vProfissional = (id) => montarEnsino('montarProfissional', { id });
+  const vOfertaEnsino = (id) => montarEnsino('montarOferta', { id });
+  const vEnsino = () => montarEnsino('montarMinhas');
+  const vAdminProfissionais = () => { montar('<a href="#/admin" class="suave">← Administração</a><h1 style="margin:8px 0 12px">🧑‍🏫 Aprovação de profissionais</h1><div id="ensino"></div>'); window.Ensino.montarAdmin($('#ensino'), ensinoApp()); };
 
   async function vAceite() {
     const T = await fetch(API + '/termos').then((r) => r.json()).catch(() => null);
@@ -1186,9 +1224,9 @@
       };
     },
     async 'plano-teste'(el) { try { await post('/planos/teste', { plano: el.dataset.p }); toast('Teste começou!'); vPlanos(); } catch (e) { toast(e.message); } },
-    async 'plano-cancelar'() { if (!confirm('Cancelar a assinatura? O acesso segue até o fim do período já pago.')) return; try { await post('/planos/cancelar'); toast('Assinatura cancelada.'); vPlanos(); } catch (e) { toast(e.message); } },
+    async 'plano-cancelar'(el) { if (!confirm('Cancelar a assinatura? O acesso segue até o fim do período já pago.')) return; try { await post('/planos/cancelar', { familia: el.dataset.f || 'geral' }); toast('Assinatura cancelada.'); vPlanos(); } catch (e) { toast(e.message); } },
     'plano-assinar'(el) {
-      folha(`<h3>Assinar plano ${esc(NOME_PLANO[el.dataset.p])}</h3><p class="suave" style="margin-bottom:10px">Informe seu CPF ou CNPJ para emitir a cobrança. Ele vai direto ao Asaas e não é guardado pelo PlayGo.</p><form id="f-assinar"><div class="campo"><input name="cpf_cnpj" inputmode="numeric" required placeholder="CPF ou CNPJ (só números)"></div><button class="btn roxo bloco">Ir para o pagamento</button></form>`);
+      folha(`<h3>Assinar plano ${esc(NOME_PLANO[el.dataset.p] || el.dataset.nome)}</h3><p class="suave" style="margin-bottom:10px">Informe seu CPF ou CNPJ para emitir a cobrança. Ele vai direto ao Asaas e não é guardado pelo PlayGo.</p><form id="f-assinar"><div class="campo"><input name="cpf_cnpj" inputmode="numeric" required placeholder="CPF ou CNPJ (só números)"></div><button class="btn roxo bloco">Ir para o pagamento</button></form>`);
       $('#f-assinar').onsubmit = async (ev) => {
         ev.preventDefault();
         try { const r = await post('/planos/assinar', { plano: el.dataset.p, cpf_cnpj: dadosForm(ev.target).cpf_cnpj, ciclo: el.dataset.c || 'mensal' }); fecharFolha(); if (r.link_pagamento) window.open(r.link_pagamento, '_blank', 'noopener'); else toast('Assinatura criada. A cobrança chega no seu e-mail.'); vPlanos(); } catch (e) { toast(e.message); }
@@ -1389,6 +1427,11 @@
       case 'notificacoes': return vNotificacoes();
       case 'feed': return vFeed(parametros);
       case 'planos': return vPlanos();
+      case 'aulas': return vAulas();
+      case 'profissional': return vProfissional(arg);
+      case 'oferta': return vOfertaEnsino(arg);
+      case 'ensino': return vEnsino();
+      case 'admin-profissionais': return vAdminProfissionais();
       case 'tutoriais': return vTutoriais();
       case 'tutorial': return vTutorial(arg);
       case 'comunidades': return vComunidades();

@@ -78,7 +78,9 @@
   });
   async function carregarPlanos() {
     try {
-      const r = await webApi('/admin/planos');
+      const todos = await webApi('/admin/planos');
+      const r = todos.filter((x) => x.familia !== 'profissional');
+      const prof = todos.filter((x) => x.familia === 'profissional');
       const linha = (p) => `<tr data-plano-cod="${p.codigo}">
         <td><b>${esc(p.nome)}</b></td>
         <td class="num"><input name="valor_mensal" value="${p.valor_mensal}" aria-label="R$/mês de ${esc(p.nome)}"></td>
@@ -91,12 +93,33 @@
         <td class="chk"><input type="checkbox" name="pode_arena" ${p.pode_arena ? 'checked' : ''} aria-label="Pode gerir arenas"></td>
         <td><button class="btn soft pequeno" data-salvar-plano="${p.codigo}">Salvar</button></td></tr>`;
       document.getElementById('planos-admin').innerHTML = `<table><thead><tr><th>Plano</th><th>R$/mês</th><th>R$/ano</th><th>R$/evento avulso</th><th>Máx. participantes</th><th>Ativ. abertas</th><th class="chk">Atividades</th><th class="chk">Campeonatos</th><th class="chk">Arenas</th><th></th></tr></thead><tbody>${r.map(linha).join('')}</tbody></table>`;
+      const linhaProf = (p) => `<tr data-plano-cod="${p.codigo}" data-familia="profissional">
+        <td><b>${esc(p.nome)}</b></td>
+        <td class="num"><input name="valor_mensal" value="${p.valor_mensal}" aria-label="R$/mês de ${esc(p.nome)}"></td>
+        <td class="num"><input name="valor_anual" value="${p.valor_anual ?? ''}" placeholder="sem anual" aria-label="R$/ano de ${esc(p.nome)}">${p.desconto_anual ? `<small>≈ ${p.desconto_anual}% de desconto</small>` : ''}</td>
+        <td class="lim"><input name="max_ofertas" value="${p.max_ofertas ?? ''}" placeholder="∞" aria-label="Máximo de ofertas"></td>
+        <td class="lim"><input name="max_turmas" value="${p.max_turmas ?? ''}" placeholder="∞" aria-label="Máximo de turmas"></td>
+        <td class="lim"><input name="max_professores" value="${p.max_professores ?? ''}" placeholder="∞" aria-label="Máximo de professores"></td>
+        <td class="lim"><input name="comissao_pct" value="${p.comissao_pct}" aria-label="Comissão do PlayGo (%)"></td>
+        <td class="chk"><input type="checkbox" name="pode_cobrar" ${p.pode_cobrar ? 'checked' : ''} aria-label="Pode cobrar dos alunos"></td>
+        <td class="chk"><input type="checkbox" name="pode_escolinha" ${p.pode_escolinha ? 'checked' : ''} aria-label="Pode ter escolinha"></td>
+        <td><button class="btn soft pequeno" data-salvar-plano="${p.codigo}">Salvar</button></td></tr>`;
+      document.getElementById('planos-admin').innerHTML += `<h3 style="margin:22px 0 4px">🎓 Planos do profissional (personal, instrutores e escolinhas)</h3><p class="suave" style="margin:0 0 8px">Assinatura própria, separada dos planos acima. Comissão = fatia do PlayGo nas vendas do profissional (fase de cobrança). Campos de limite em branco = sem limite.</p><table><thead><tr><th>Plano</th><th>R$/mês</th><th>R$/ano</th><th>Máx. ofertas</th><th>Máx. turmas</th><th>Máx. professores</th><th>Comissão %</th><th class="chk">Cobrar alunos</th><th class="chk">Escolinha</th><th></th></tr></thead><tbody>${prof.map(linhaProf).join('')}</tbody></table>`;
     } catch (e) { document.getElementById('planos-admin').innerHTML = `<p class="vazio">${esc(e.message)}</p>`; }
   }
   document.addEventListener('click', async (ev) => {
     const salvar = ev.target.closest('[data-salvar-plano]');
     if (salvar) {
       const linha = salvar.closest('[data-plano-cod]');
+      if (linha.dataset.familia === 'profissional') {
+        const q = (n) => linha.querySelector(`[name=${n}]`);
+        const n0 = (x) => (x.value.trim() === '' ? 0 : Number(x.value.replace(',', '.')));
+        try {
+          await webApi('/admin/planos/' + salvar.dataset.salvarPlano, { metodo: 'PUT', corpo: { valor_mensal: String(n0(q('valor_mensal'))), valor_anual: n0(q('valor_anual')) ? String(n0(q('valor_anual'))) : null, max_ofertas: n0(q('max_ofertas')), max_turmas: n0(q('max_turmas')), max_professores: n0(q('max_professores')), comissao_pct: String(n0(q('comissao_pct'))), pode_cobrar: q('pode_cobrar').checked, pode_escolinha: q('pode_escolinha').checked } });
+          toast('Plano salvo.'); carregarPlanos();
+        } catch (e) { toast(e.message); }
+        return;
+      }
       const v = (n) => linha.querySelector(`[name=${n}]`);
       const num = (x) => (x.value.trim() === '' ? 0 : Number(x.value.replace(',', '.')));
       try { await webApi('/admin/planos/' + salvar.dataset.salvarPlano, { metodo: 'PUT', corpo: { valor_mensal: String(num(v('valor_mensal'))), ...(v('valor_anual') ? { valor_anual: num(v('valor_anual')) ? String(num(v('valor_anual'))) : null } : {}), ...(v('valor_evento') ? { valor_evento: String(num(v('valor_evento'))) } : {}), max_participantes: num(v('max_participantes')), max_atividades_abertas: num(v('max_atividades_abertas')), pode_atividade: v('pode_atividade').checked, pode_campeonato: v('pode_campeonato').checked, pode_arena: v('pode_arena').checked } }); toast('Plano salvo.'); } catch (e) { toast(e.message); }

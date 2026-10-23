@@ -5,6 +5,7 @@
 <div id="situacao"></div>
 <div id="ciclo"></div>
 <div class="grid" id="cards" style="margin-top:12px"></div>
+<div id="profissional"></div>
 <div id="eventos"></div>
 <div id="cobrancas"></div>
 <p class="suave" style="margin-top:18px">A cobrança é mensal ou anual e recorrente pelo Asaas (Pix, boleto ou cartão); você cancela quando quiser e o acesso segue até o fim do período pago. Quando o acesso termina, você volta ao plano Usuário e o que já existe continua. Veja os <a href="/termos">Termos de Uso</a>.</p>
@@ -54,6 +55,36 @@
       <div class="meta">${esc(lim)}</div><div class="spots" style="flex-wrap:wrap;gap:8px">${acao || '<span></span>'}</div></div>`;
   }
 
+  // Família do profissional: personal, instrutores e escolinhas (assinatura própria, independente dos planos acima)
+  function cartaoProf(pl) {
+    const pr = P.profissional;
+    const atual = pr.plano_contratado === pl.codigo;
+    const podeTeste = pr.teste_disponivel.includes(pl.codigo) && P.status !== 'administrador';
+    const cic = ciclo === 'anual' && pl.anual_disponivel ? 'anual' : 'mensal';
+    const preco = cic === 'anual' ? `R$ ${valor(pl.valor_anual)}/ano<div class="suave" style="font-size:13px;font-weight:700">≈ R$ ${valor(pl.valor_anual / 12)}/mês${pl.desconto_anual ? ` · economize ${pl.desconto_anual}%` : ''}</div>` : brl(pl.valor_mensal);
+    const itens = [pl.max_ofertas ? `Até ${pl.max_ofertas} ofertas publicadas` : 'Ofertas ilimitadas', pl.pode_cobrar ? 'Recebimento online dos alunos' : 'Divulgação e contato direto', pl.pode_escolinha ? `Escolinha com turmas${pl.max_professores ? ' e até ' + pl.max_professores + ' professores' : ''}` : null].filter(Boolean);
+    let acao = '';
+    if (P.status !== 'administrador') {
+      if (pr.assinatura_asaas && atual) acao = `<button class="btn perigo" data-a="cancelar" data-f="profissional">Cancelar assinatura</button>`;
+      else {
+        if (podeTeste) acao += `<button class="btn soft" data-a="teste" data-p="${pl.codigo}">🎁 Começar teste de ${P.teste_dias} dias</button> `;
+        acao += pl.assinavel && P.cobranca_ativa ? `<button class="btn purple" data-a="assinar" data-p="${pl.codigo}" data-nome="${esc(pl.nome)}" data-c="${cic}">Assinar</button>` : `<span class="suave">${pl.assinavel ? 'Cobrança ainda não ativada.' : 'Valor ainda não definido.'}</span>`;
+      }
+    }
+    return `<div class="card ${atual ? 'champ' : ''}"><span class="tag ${atual ? '' : 'azul'}">${atual ? 'Seu plano' : '🎓 Profissional'}</span><h3>${esc(pl.nome)}</h3><div style="font-size:24px;font-weight:900;margin:6px 0">${preco}</div>
+      <div class="meta">${itens.map(esc).join(' · ')}</div><div class="spots" style="flex-wrap:wrap;gap:8px">${acao || '<span></span>'}</div></div>`;
+  }
+
+  function painelProfissional() {
+    const pr = P.profissional;
+    if (!pr) return '';
+    const f = fmt(pr.fim);
+    const sit = pr.status === 'administrador' ? 'Administrador: sem cobrança.' : pr.status === 'teste' ? `🎁 Teste do plano <b>${esc(pr.plano)}</b> até <b>${f}</b>.` : pr.status === 'ativa' ? `✅ Plano ativo até <b>${f}</b>.` :
+      pr.status === 'cancelada' ? `Plano cancelado: vale até <b>${f}</b>.` : pr.status === 'tolerancia' ? `⚠️ O acesso venceu em ${f}. Regularize para manter suas ofertas na busca.` : pr.status === 'vencida' ? 'O acesso de profissional terminou: suas ofertas saíram da busca (nada foi apagado).' : 'Você ainda não tem plano de profissional.';
+    return `<div class="panel" style="margin-top:18px"><h2>🎓 Para quem dá aulas</h2><p class="suave" style="margin:6px 0 10px">Personal, professores e escolinhas: divulgue aulas, pacotes e turmas. Plano exclusivo, separado dos planos acima. ${sit}${pr.perfil_aprovado ? '' : ' <a href="/ensino">Crie seu perfil e envie os documentos</a> para ser aprovado.'}</p>
+      <div class="grid">${pr.planos.map(cartaoProf).join('')}</div></div>`;
+  }
+
   function seletorCiclo() {
     if (!P.planos.some((x) => x.anual_disponivel) || P.status === 'administrador') return '';
     const b = (c, t) => `<button type="button" class="btn ${ciclo === c ? 'purple' : 'soft'} pequeno" data-a="ciclo" data-c="${c}">${t}</button>`;
@@ -91,6 +122,7 @@
     document.getElementById('situacao').innerHTML = aviso + `<p class="aviso ${cls}">${texto}</p>`;
     document.getElementById('ciclo').innerHTML = seletorCiclo();
     document.getElementById('cards').innerHTML = P.planos.map(cartao).join('');
+    document.getElementById('profissional').innerHTML = painelProfissional();
     document.getElementById('eventos').innerHTML = painelEventos();
     document.getElementById('cobrancas').innerHTML = cobrancas();
   }
@@ -114,9 +146,9 @@
     try {
       if (b.dataset.a === 'ciclo') { ciclo = b.dataset.c; desenhar(); }
       else if (b.dataset.a === 'teste') { P = await webApi('/planos/teste', { metodo: 'POST', corpo: { plano: b.dataset.p } }); toast('Teste começou!'); desenhar(); }
-      else if (b.dataset.a === 'cancelar') { if (!confirm('Cancelar a assinatura? O acesso segue até o fim do período já pago.')) return; P = await webApi('/planos/cancelar', { metodo: 'POST', corpo: {} }); toast('Assinatura cancelada.'); desenhar(); }
+      else if (b.dataset.a === 'cancelar') { if (!confirm('Cancelar a assinatura? O acesso segue até o fim do período já pago.')) return; P = await webApi('/planos/cancelar', { metodo: 'POST', corpo: { familia: b.dataset.f || 'geral' } }); toast('Assinatura cancelada.'); desenhar(); }
       else if (b.dataset.a === 'assinar') {
-        const d = await pedirDocumento('Assinar plano ' + NOME[b.dataset.p] + (b.dataset.c === 'anual' ? ' (anual)' : ''), 'Ir para o pagamento');
+        const d = await pedirDocumento('Assinar plano ' + (NOME[b.dataset.p] || b.dataset.nome) + (b.dataset.c === 'anual' ? ' (anual)' : ''), 'Ir para o pagamento');
         if (!d) return;
         const r = await webApi('/planos/assinar', { metodo: 'POST', corpo: { plano: b.dataset.p, cpf_cnpj: d.detalhe, ciclo: b.dataset.c || 'mensal' } });
         if (r.link_pagamento) window.open(r.link_pagamento, '_blank', 'noopener'); else toast('Assinatura criada. A cobrança chega no seu e-mail.');

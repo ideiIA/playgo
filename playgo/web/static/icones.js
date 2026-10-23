@@ -17,7 +17,7 @@
     '🔗': ['link'], '👁': ['eye'], '🤖': ['bot'], '🎁': ['gift'], '🧾': ['receipt'], '✨': ['sparkles'], '🚀': ['rocket'], '🌳': ['trees'], '🏋': ['dumbbell'],
     '🛍': ['shopping-bag'], '🎉': ['party-popper'], '📌': ['pin'], '📖': ['book-open'], '👍': ['thumbs-up'], '❤': ['heart', 'cheio'], '🥇': ['medal', 'ouro'],
     '🥈': ['medal', 'prata'], '🥉': ['medal', 'bronze'], '🔔': ['bell'], '🗺': ['map'], '🛰': ['satellite'], '⛶': ['maximize'], '🎬': ['clapperboard'],
-    '🖼': ['image'], '🚫': ['ban'], '⚙': ['settings'], '📢': ['megaphone'], '🧑‍🤝‍🧑': ['handshake'], '🔓': ['lock-open'], '📝': ['file-pen'], '⭐': ['star', 'cheio'],
+    '🖼': ['image'], '🚫': ['ban'], '⚙': ['settings'], '📢': ['megaphone'], '🎓': ['graduation-cap'], '🏫': ['school'], '🧑‍🏫': ['graduation-cap'], '🧑‍🤝‍🧑': ['handshake'], '🔓': ['lock-open'], '📝': ['file-pen'], '⭐': ['star', 'cheio'],
   };
   const chaves = Object.keys(MAPA).sort((a, b) => b.length - a.length);
   const RE = new RegExp('(' + chaves.map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')\\uFE0F?', 'g');
