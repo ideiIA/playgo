@@ -179,6 +179,7 @@
     const el = document.getElementById(id);
     if (!el) return;
     if (!window.L) { el.innerHTML = '<p class="vazio">Mapa indisponível sem conexão.</p>'; return; }
+    if (estado.mapa && estado.mapa.getContainer && estado.mapa.getContainer() === el) estado.mapa.remove();
     const m = (estado.mapa = L.map(el).setView([centro.latitude, centro.longitude], 13));
     if (window.PlayGoMapa) PlayGoMapa.preparar(m); else L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
     L.circleMarker([centro.latitude, centro.longitude], { radius: 8, color: '#fff', weight: 3, fillColor: '#6c4cff', fillOpacity: 1 }).addTo(m);
