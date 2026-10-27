@@ -145,7 +145,8 @@ def _avisar_equipes(s: SessaoORM, c: Campeonato, equipes: list[int | None], titu
 
 
 def sortear(
-    s: SessaoORM, campeonato_id: int, por: Usuario, formato: str, grupos: int | None = None, classificam: int | None = None, cabecas: list[int] | None = None
+    s: SessaoORM, campeonato_id: int, por: Usuario, formato: str, grupos: int | None = None, classificam: int | None = None, cabecas: list[int] | None = None,
+    classificam_geral: int | None = None,
 ) -> dict:
     """`cabecas` = ids das equipes cabeças de chave, em ordem (o primeiro é o nº 1). Na eliminatória ocupam as melhores posições da chave
     (e as folgas); na fase de grupos cada grupo recebe no máximo um. As demais equipes são sorteadas."""
@@ -171,11 +172,16 @@ def sortear(
             raise ErroNegocio(f"Escolha de 2 a {n // 2} grupos (cada grupo precisa de pelo menos 2 equipes).")
         if len(cabecas) > grupos:
             raise ErroNegocio("Há mais cabeças de chave do que grupos: cada grupo recebe no máximo um.")
-        q = classificam or 2
-        if not 1 <= q <= n // grupos:
-            raise ErroNegocio(f"Classificam de 1 a {n // grupos} equipes por grupo.")
-        if grupos * q < 2:
-            raise ErroNegocio("O mata-mata precisa de pelo menos 2 classificados.")
+        if classificam_geral:  # as N melhores no geral, numa tabela única: 1ºxN, 2ºx(N-1)…
+            if not 2 <= classificam_geral <= n:
+                raise ErroNegocio(f"Classificam de 2 a {n} equipes no geral.")
+            q = None
+        else:
+            q = classificam or 2
+            if not 1 <= q <= n // grupos:
+                raise ErroNegocio(f"Classificam de 1 a {n // grupos} equipes por grupo.")
+            if grupos * q < 2:
+                raise ErroNegocio("O mata-mata precisa de pelo menos 2 classificados.")
     elif formato == "pontos_corridos":
         cabecas = []  # todos jogam contra todos: a posição na tabela não depende do sorteio
     elif formato == "super8":
@@ -225,14 +231,64 @@ def sortear(
     else:
         _montar_pontos_corridos(s, c, resto)
     c.grupos_qtd, c.classificam = (grupos, q) if formato == "grupos" else (None, None)
+    c.classificam_geral = classificam_geral if formato == "grupos" and classificam_geral else None
     c.formato, c.sorteado_em, c.sorteio_semente = formato, agora(), semente
     if c.status != C_ENCERRADO:
         c.status = C_ANDAMENTO
-    auditoria.registrar(s, por.id, "campeonato_sorteio", "campeonato", c.id, formato=formato, equipes=len(equipes), semente=semente, grupos=grupos, cabecas=cabecas)
+    auditoria.registrar(s, por.id, "campeonato_sorteio", "campeonato", c.id, formato=formato, equipes=len(equipes), semente=semente, grupos=grupos, cabecas=cabecas, classificam_geral=c.classificam_geral)
     s.flush()
     _avisar_equipes(s, c, [e.id for e in equipes], f"🎲 Sorteio feito: {c.nome}", "Veja seus jogos nas chaves do campeonato.", f"sorteio:{c.id}:{semente}", excluir=por.id)
     s.commit()
     return {"formato": formato, "equipes": len(equipes), "semente": semente}
+
+
+def _equipes_no_sorteio(jogos: list[Jogo]) -> set[int]:
+    return {i for j in jogos for i in (j.equipe_a_id, j.equipe_b_id, j.equipe_a2_id, j.equipe_b2_id) if i}
+
+
+def trocar_equipes(s: SessaoORM, campeonato_id: int, por: Usuario, equipe_a_id: int, equipe_b_id: int) -> dict:
+    """Troca duas equipes de lugar no sorteio (grupo, confronto, cabeça de chave) ou põe no lugar de uma equipe do sorteio outra
+    confirmada que ficou de fora. Só enquanto nenhum jogo das duas começou; folgas da eliminatória acompanham. Não vale no Super 8."""
+    c = campeonatos.obter(s, campeonato_id)
+    campeonatos.exigir_gestao(c, por)
+    if c.formato is None:
+        raise ErroNegocio("Faça o sorteio antes de trocar equipes.")
+    if c.formato == "super8":
+        raise ErroNegocio("O Super 8 não permite trocar equipes de lugar: sorteie de novo.")
+    if equipe_a_id == equipe_b_id:
+        raise ErroNegocio("Escolha duas equipes diferentes.")
+    jogos = list(s.scalars(select(Jogo).where(Jogo.campeonato_id == c.id).with_for_update(of=Jogo).execution_options(populate_existing=True)))
+    no_sorteio = _equipes_no_sorteio(jogos)
+    equipes = {e.id: e for e in s.scalars(select(Equipe).where(Equipe.id.in_([equipe_a_id, equipe_b_id]), Equipe.campeonato_id == c.id, Equipe.status == E_CONFIRMADA))}
+    if len(equipes) != 2:
+        raise ErroNegocio("As duas equipes precisam estar confirmadas neste campeonato.")
+    if equipe_a_id not in no_sorteio:  # a equipe de fora entra no lugar da que está no sorteio
+        equipe_a_id, equipe_b_id = equipe_b_id, equipe_a_id
+    if equipe_a_id not in no_sorteio:
+        raise ErroNegocio("Nenhuma das duas equipes está no sorteio.")
+    ids = {equipe_a_id, equipe_b_id}
+    envolvidos = [j for j in jogos if ids & {j.equipe_a_id, j.equipe_b_id, j.equipe_a2_id, j.equipe_b2_id, j.vencedor_id}]
+    if any(j.status != J_AGENDADO and not j.folga for j in envolvidos):
+        raise ErroNegocio("Uma das equipes já tem jogo começado ou encerrado: não dá mais para trocar de lugar.")
+    troca = {equipe_a_id: equipe_b_id, equipe_b_id: equipe_a_id}
+    for j in envolvidos:
+        for campo in ("equipe_a_id", "equipe_b_id", "equipe_a2_id", "equipe_b2_id", "vencedor_id"):
+            v = getattr(j, campo)
+            if v in troca:
+                setattr(j, campo, troca[v])
+    marcas_antigas = list(s.scalars(select(ChaveEquipe).where(ChaveEquipe.campeonato_id == c.id, ChaveEquipe.equipe_id.in_(ids))))
+    marcas = {k.equipe_id: (k.grupo, k.cabeca) for k in marcas_antigas}
+    for k in marcas_antigas:
+        s.delete(k)
+    s.flush()
+    for origem, destino in troca.items():
+        if origem in marcas:
+            grupo, cabeca = marcas[origem]
+            s.add(ChaveEquipe(campeonato_id=c.id, equipe_id=destino, grupo=grupo, cabeca=cabeca))
+    auditoria.registrar(s, por.id, "chave_troca", "campeonato", c.id, a=equipe_a_id, b=equipe_b_id)
+    s.commit()
+    s.expire_all()  # a sessão não expira ao salvar: relações como jogo.equipe_a ficariam velhas
+    return {"trocadas": [equipes[equipe_a_id].nome, equipes[equipe_b_id].nome]}
 
 
 def _limpar_chaves(s: SessaoORM, c: Campeonato) -> None:
@@ -896,6 +952,8 @@ def _classificados(s: SessaoORM, c: Campeonato, jogos: list[Jogo]) -> list[Equip
     por_grupo: dict[str, list[Equipe]] = {}
     for m in membros:
         por_grupo.setdefault(m.grupo, []).append(s.get(Equipe, m.equipe_id))
+    if c.classificam_geral:  # tabela única entre os grupos: a ordem final já é a de cabeça de chave (1ºxN, 2ºx(N-1)…), sem reembaralhar
+        return [s.get(Equipe, L["equipe"]["id"]) for L in _classificacao_geral(jogos, por_grupo, c)[: c.classificam_geral]]
     tabelas = {g: classificacao([j for j in jogos if j.grupo == g], eqs, c) for g, eqs in sorted(por_grupo.items())}
     ordem: list[Equipe] = []
     nivel: list[int] = []  # colocação no grupo de cada equipe de `ordem` (0 = 1º)
@@ -908,6 +966,12 @@ def _classificados(s: SessaoORM, c: Campeonato, jogos: list[Jogo]) -> list[Equip
             grupo_de[e.id] = g
     _evitar_revanche(ordem, nivel, grupo_de)
     return ordem
+
+
+def _classificacao_geral(jogos: list[Jogo], por_grupo: dict[str, list[Equipe]], c: Campeonato) -> list[dict]:
+    """Todas as equipes da fase de grupos numa tabela só (pontos, saldo de sets, saldo de pontos). Com grupos de tamanhos diferentes
+    há jogos a mais para alguns: a organização é quem decide se isso é justo para o regulamento."""
+    return classificacao([j for j in jogos if j.fase == "grupos"], [e for eqs in por_grupo.values() for e in eqs], c)
 
 
 def _evitar_revanche(ordem: list[Equipe], nivel: list[int], grupo_de: dict[int, str]) -> None:
@@ -1148,6 +1212,17 @@ def chaveamento(s: SessaoORM, c: Campeonato, u: Usuario) -> dict:
     confirmadas = list(s.scalars(select(Equipe).where(Equipe.campeonato_id == c.id, Equipe.status == E_CONFIRMADA).order_by(Equipe.id)))
     marcas = {k.equipe_id: k for k in s.scalars(select(ChaveEquipe).where(ChaveEquipe.campeonato_id == c.id))}
     grupos_out: list[dict] = []
+    geral: list[dict] = []
+    if c.classificam_geral and c.formato == "grupos":
+        por_g: dict[str, list[Equipe]] = {}
+        for e in confirmadas:
+            if e.id in marcas and marcas[e.id].grupo:
+                por_g.setdefault(marcas[e.id].grupo, []).append(e)
+        geral = _classificacao_geral(de_grupo, por_g, c)
+        for L in geral:
+            L["classifica"] = L["posicao"] <= c.classificam_geral
+            L["grupo"] = marcas[L["equipe"]["id"]].grupo
+    geral_ids = {L["equipe"]["id"] for L in geral if L["classifica"]}
     for letra in sorted({k.grupo for k in marcas.values() if k.grupo} if c.formato != "super8" else ()):
         eqs = [e for e in confirmadas if e.id in marcas and marcas[e.id].grupo == letra]
         js = [j for j in de_grupo if j.grupo == letra]
@@ -1158,7 +1233,7 @@ def chaveamento(s: SessaoORM, c: Campeonato, u: Usuario) -> dict:
             rod[-1]["jogos"].append(jogo_dict(j))
         tabela = classificacao(js, eqs, c)
         for L in tabela:
-            L["classifica"] = L["posicao"] <= (c.classificam or 0)
+            L["classifica"] = L["equipe"]["id"] in geral_ids if c.classificam_geral else L["posicao"] <= (c.classificam or 0)
             L["cabeca"] = marcas[L["equipe"]["id"]].cabeca
         grupos_out.append({"grupo": letra, "classificacao": tabela, "rodadas": rod})
     cabecas = sorted(({"ordem": k.cabeca, "equipe": _eq(next((e for e in confirmadas if e.id == k.equipe_id), None))} for k in marcas.values() if k.cabeca), key=lambda x: x["ordem"])
@@ -1172,6 +1247,7 @@ def chaveamento(s: SessaoORM, c: Campeonato, u: Usuario) -> dict:
     elif c.formato == "super8" and chave and all(j.status == J_ENCERRADO for j in chave):
         ranking = _ranking_super8(s, c, jogos)
         campeao = ranking[0]["classificacao"][0]["equipe"] if len(ranking) == 1 else None  # com vários grupos há um campeão por grupo
+    no_sorteio = _equipes_no_sorteio(jogos)
     pendentes = campeonatos.contar_pendentes(s, c)
     return {
         "campeonato": {"id": c.id, "nome": c.nome, "status": c.status, "modalidade": c.modalidade.nome, "icone": c.modalidade.icone},
@@ -1181,9 +1257,10 @@ def chaveamento(s: SessaoORM, c: Campeonato, u: Usuario) -> dict:
         "ranking_super8": _ranking_super8(s, c, chave) if c.formato == "super8" and chave else [],
         "campeao": campeao,
         "regras_placar": regras_placar(c), "placar_travado": any(j.status != J_AGENDADO and not j.folga for j in jogos),
-        "grupos": grupos_out, "classificam": c.classificam, "cabecas": cabecas, "duracao_jogo_min": c.duracao_jogo_min,
+        "grupos": grupos_out, "classificam": c.classificam, "classificam_geral": c.classificam_geral, "classificacao_geral": geral, "cabecas": cabecas, "duracao_jogo_min": c.duracao_jogo_min,
         "jogos_grupos_restantes": sum(1 for j in de_grupo if j.status != J_ENCERRADO) if c.formato == "grupos" and not chave else 0,
         "equipes": [_eq(e) for e in confirmadas],
+        "equipes_lugar": [{"id": e.id, "nome": e.nome, "grupo": marcas[e.id].grupo if e.id in marcas else None, "no_sorteio": e.id in no_sorteio} for e in confirmadas],
         "equipes_confirmadas": len(confirmadas), "equipes_pendentes": pendentes,
         "pode_gerir": campeonatos.pode_gerir(c, u), "pode_pontuar": pode_pontuar(s, c, u),
         "pode_sortear_de_novo": all(j.status == J_AGENDADO or j.folga for j in jogos),

@@ -20,6 +20,7 @@ from .erros import ErroNegocio, NaoEncontrado, SemPermissao
 from .geo import distancia_sql, formatar_km
 from .models import (
     C_ABERTO,
+    C_ANDAMENTO,
     C_CANCELADO,
     C_ENCERRADO,
     E_CANCELADA,
@@ -93,14 +94,17 @@ def exigir_gestao(c: Campeonato, usuario: Usuario) -> None:
 
 
 def encerrados(
-    s: SessaoORM, usuario: Usuario, q: str = "", de: date | None = None, ate: date | None = None, organizador: str = "", limite: int = 100,
+    s: SessaoORM, usuario: Usuario, q: str = "", de: date | None = None, ate: date | None = None, organizador: str = "", limite: int = 100, situacao: str = "encerrado",
 ) -> dict:
     """Campeonatos já encerrados, para a organização. O administrador vê todos (e filtra por organizador); organizadores e arenas
-    veem só os seus (que criaram ou que acontecem em arena sua). `de`/`ate` filtram pela data final (ou inicial, sem final)."""
+    veem só os seus (que criaram ou que acontecem em arena sua). `de`/`ate` filtram pela data final (ou inicial, sem final).
+    `situacao` = encerrado (padrão) | todos | aberto | em_andamento | cancelado: "todos" inclui os que nunca foram encerrados e já saíram da busca pública."""
     if not planos.permissoes(s, usuario)["campeonato"]:
         raise SemPermissao("O histórico de campeonatos encerrados é para quem organiza campeonatos.")
     fim = func.coalesce(Campeonato.data_fim, Campeonato.data_inicio)
-    cons = select(Campeonato, fim.label("fim")).where(Campeonato.status == C_ENCERRADO)
+    cons = select(Campeonato, fim.label("fim"))
+    if situacao != "todos":
+        cons = cons.where(Campeonato.status == (situacao if situacao in (C_ABERTO, C_ANDAMENTO, C_CANCELADO) else C_ENCERRADO))
     if not usuario.admin:
         minhas_arenas = [a.id for a in usuario.arenas]
         meu = Campeonato.organizador_id == usuario.id
@@ -121,11 +125,11 @@ def encerrados(
         {
             "id": c.id, "nome": c.nome, "modalidade": c.modalidade.nome, "icone": c.modalidade.icone, "categoria": c.categoria,
             "organizador": c.organizador.arroba, "arena": c.arena.nome if c.arena is not None else None, "local": c.local_nome,
-            "data_inicio": c.data_inicio.isoformat(), "data_fim": f.isoformat(), "equipes": int(equipes.get(c.id, 0)), "formato": c.formato,
+            "data_inicio": c.data_inicio.isoformat(), "data_fim": f.isoformat(), "status": c.status, "equipes": int(equipes.get(c.id, 0)), "formato": c.formato,
         }
         for c, f in linhas
     ]
-    return {"itens": itens, "todos": usuario.admin, "total": len(itens)}
+    return {"itens": itens, "todos": usuario.admin, "total": len(itens), "situacao": situacao}
 
 
 def equipes_ativas(s: SessaoORM, c: Campeonato) -> int:

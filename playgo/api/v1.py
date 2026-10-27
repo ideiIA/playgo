@@ -488,8 +488,8 @@ def criar_campeonato(corpo: CampeonatoIn, u: AtualApi, s: Sessao):
 
 
 @router.get("/campeonatos/encerrados")
-def campeonatos_encerrados(u: AtualApi, s: Sessao, q: str = "", de: date | None = None, ate: date | None = None, organizador: str = ""):
-    return campeonatos.encerrados(s, u, q, de, ate, organizador)
+def campeonatos_encerrados(u: AtualApi, s: Sessao, q: str = "", de: date | None = None, ate: date | None = None, organizador: str = "", situacao: str = "encerrado"):
+    return campeonatos.encerrados(s, u, q, de, ate, organizador, situacao=situacao)
 
 
 @router.get("/campeonatos/{campeonato_id}/book")

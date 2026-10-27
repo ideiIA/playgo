@@ -54,6 +54,7 @@ _COLUNAS_NOVAS: tuple[str, ...] = (
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS diferenca_set integer",
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS grupos_qtd integer",
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS classificam integer",
+    "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS classificam_geral integer",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS fase varchar(10)",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS grupo varchar(2)",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS equipe_a2_id integer REFERENCES equipes(id) ON DELETE SET NULL",

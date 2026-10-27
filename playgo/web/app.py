@@ -513,8 +513,8 @@ def listar_campeonatos(request: Request, s: Sessao, usuario: Atual, modalidades:
     enc = None
     if planos.permissoes(s, usuario)["campeonato"]:
         p = request.query_params
-        enc = campeonatos.encerrados(s, usuario, p.get("enc_q", ""), _data_ou_none(p.get("enc_de")), _data_ou_none(p.get("enc_ate")), p.get("enc_org", ""))
-        enc["filtros"] = {"q": p.get("enc_q", ""), "de": p.get("enc_de", ""), "ate": p.get("enc_ate", ""), "org": p.get("enc_org", "")}
+        enc = campeonatos.encerrados(s, usuario, p.get("enc_q", ""), _data_ou_none(p.get("enc_de")), _data_ou_none(p.get("enc_ate")), p.get("enc_org", ""), situacao=p.get("enc_st", "todos"))
+        enc["filtros"] = {"q": p.get("enc_q", ""), "de": p.get("enc_de", ""), "ate": p.get("enc_ate", ""), "org": p.get("enc_org", ""), "st": p.get("enc_st", "todos")}
     return pagina(request, s, usuario, "campeonatos.html", "campeonatos", f=f, lista=descoberta.buscar_campeonatos(s, la, ln, f), enc=enc)
 
 

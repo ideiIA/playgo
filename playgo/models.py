@@ -463,6 +463,7 @@ class Campeonato(Base):
     sorteio_semente: Mapped[int | None] = mapped_column(BigInteger)
     grupos_qtd: Mapped[int | None] = mapped_column(Integer)  # formato "grupos": quantos grupos
     classificam: Mapped[int | None] = mapped_column(Integer)  # formato "grupos": quantas equipes de cada grupo vão ao mata-mata
+    classificam_geral: Mapped[int | None] = mapped_column(Integer)  # formato "grupos": as N melhores no geral (tabela única) avançam, cruzando 1ºxN, 2ºx(N-1)…
     duracao_jogo_min: Mapped[int | None] = mapped_column(Integer)  # última duração usada na agenda em lote (preenche o formulário)
     # A organização libera o cadastro do elenco (nome e RG dos componentes e o técnico, com o capitão marcado) por equipe
     cadastro_elenco: Mapped[bool] = mapped_column(Boolean, default=False)

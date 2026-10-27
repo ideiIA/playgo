@@ -520,8 +520,8 @@
     carregando();
     try {
       const r = await api('/explorar?' + comPos({ raio: 0, tipos: 'campeonato' }));
-      const encerrados = pode('campeonato') ? `<div class="secao"><h2>🏁 Encerrados</h2></div>
-        <form class="filtros-enc" id="f-enc"><input name="q" placeholder="Buscar por nome"><div style="display:flex;gap:6px"><input type="date" name="de" aria-label="De"><input type="date" name="ate" aria-label="Até"></div>
+      const encerrados = pode('campeonato') ? `<div class="secao"><h2>🗂 Gestão de campeonatos</h2></div>
+        <form class="filtros-enc" id="f-enc"><input name="q" placeholder="Buscar por nome"><select name="situacao"><option value="todos">Todos</option><option value="em_andamento">Em andamento</option><option value="aberto">Abertos / sem encerrar</option><option value="encerrado">Encerrados</option><option value="cancelado">Cancelados</option></select><div style="display:flex;gap:6px"><input type="date" name="de" aria-label="De"><input type="date" name="ate" aria-label="Até"></div>
         ${estado.usuario.admin ? '<input name="organizador" placeholder="Organizador (@usuario)">' : ''}<button class="btn roxo pequeno">Filtrar</button></form><div id="lista-enc"><p class="suave">Carregando…</p></div>` : '';
       montar(`<div class="secao" style="margin-top:0"><h1>Campeonatos 🏆</h1>${pode('campeonato') ? '<a class="btn roxo pequeno" href="#/novo-campeonato">+ Criar</a>' : ''}</div>${lista(r.campeonatos, (c) => cardCamp(c), 'Nenhum campeonato por perto no momento.')}${encerrados}`, () => {
         const f = $('#f-enc');
@@ -531,7 +531,7 @@
           const qs = new URLSearchParams(Object.entries(d).filter(([, v]) => v)).toString();
           try {
             const e = await api('/campeonatos/encerrados' + (qs ? '?' + qs : ''));
-            $('#lista-enc').innerHTML = e.itens.length ? e.itens.map((x) => `<a class="card" href="#/campeonato/${x.id}"><span class="tag">${esc(x.icone)} ${esc(x.modalidade)}</span><h3>${esc(x.nome)}</h3><div class="meta">Encerrou em ${esc(x.data_fim.slice(8))}/${esc(x.data_fim.slice(5, 7))}/${esc(x.data_fim.slice(0, 4))} • ${x.equipes} equipe(s)${e.todos ? ' • ' + esc(x.organizador) : ''}<br>${esc(x.arena || x.local)}</div></a>`).join('') : '<p class="vazio">Nenhum campeonato encerrado com esses filtros.</p>';
+            $('#lista-enc').innerHTML = e.itens.length ? e.itens.map((x) => `<a class="card" href="#/campeonato/${x.id}"><span class="tag">${esc(x.icone)} ${esc(x.modalidade)}</span><h3>${esc(x.nome)}</h3><div class="meta">${esc(({ aberto: 'Aberto', em_andamento: 'Em andamento', encerrado: 'Encerrado', cancelado: 'Cancelado' })[x.status] || x.status)} • ${esc(x.data_fim.slice(8))}/${esc(x.data_fim.slice(5, 7))}/${esc(x.data_fim.slice(0, 4))} • ${x.equipes} equipe(s)${e.todos ? ' • ' + esc(x.organizador) : ''}<br>${esc(x.arena || x.local)}</div></a>`).join('') : '<p class="vazio">Nenhum campeonato com esses filtros.</p>';
           } catch (err) { $('#lista-enc').innerHTML = `<p class="vazio">${esc(err.message)}</p>`; }
         };
         f.addEventListener('submit', (ev) => { ev.preventDefault(); carregar(); });

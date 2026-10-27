@@ -814,3 +814,82 @@ def test_ao_vivo_guarda_o_resultado_de_cada_game_e_a_correcao_desfaz(s, fabrica)
     assert [g["numero"] for g in chaves.jogo_dict(s.get(Jogo, j.id))["games"]] == [1]
     sets = _sets_deste(s, j)
     assert (sets[0].pontos_a, sets[0].pontos_b) == (1, 0)
+
+
+def test_grupos_com_os_8_melhores_no_geral_cruzam_1x8_2x7_3x6_4x5(s, fabrica):
+    from playgo.models import ChaveEquipe
+
+    c, org, _ = _torneio(s, fabrica, 9)
+    with pytest.raises(ErroNegocio, match="no geral"):
+        chaves.sortear(s, c.id, org, "grupos", grupos=3, classificam_geral=10)
+    chaves.sortear(s, c.id, org, "grupos", grupos=3, classificam_geral=8)
+    assert c.classificam_geral == 8 and c.classificam is None
+    jogos = _jogos(s, c)
+    # vitórias diferentes por jogo para a tabela geral ter ordem própria: lado A ganha por 2x0 (3 pts) em todos
+    for j in jogos:
+        _disputar(s, c, org, j, 2, 0)
+    d = chaves.chaveamento(s, c, org)
+    geral = d["classificacao_geral"]
+    assert len(geral) == 9 and [L["classifica"] for L in geral] == [True] * 8 + [False]
+    ordem = [L["equipe"]["id"] for L in geral[:8]]
+    mata = [x for x in _jogos(s, c) if x.fase == "mata_mata" and x.rodada == 1]
+    assert len(mata) == 4
+    pares = {frozenset((x.equipe_a_id, x.equipe_b_id)) for x in mata}
+    assert pares == {frozenset((ordem[0], ordem[7])), frozenset((ordem[1], ordem[6])), frozenset((ordem[2], ordem[5])), frozenset((ordem[3], ordem[4]))}
+    # semifinais: vencedor de 1x8 contra vencedor de 4x5; vencedor de 2x7 contra vencedor de 3x6
+    por_pos = {x.posicao: x for x in mata}
+    assert {por_pos[0].equipe_a_id, por_pos[0].equipe_b_id} == {ordem[0], ordem[7]} and {por_pos[1].equipe_a_id, por_pos[1].equipe_b_id} == {ordem[3], ordem[4]}
+    assert por_pos[0].proximo_id == por_pos[1].proximo_id
+    # a equipe de fora não joga o mata-mata, e as linhas dos grupos marcam só as 8 do geral
+    fora = geral[8]["equipe"]["id"]
+    assert fora not in {e for x in mata for e in (x.equipe_a_id, x.equipe_b_id)}
+    assert sum(1 for g in d["grupos"] for L in g["classificacao"] if L["classifica"]) == 8
+    assert s.scalar(select(ChaveEquipe.grupo).where(ChaveEquipe.equipe_id == fora)) in ("A", "B", "C")
+
+
+def test_trocar_equipes_de_grupo_antes_dos_jogos_e_travar_depois(s, fabrica):
+    from playgo.models import ChaveEquipe
+
+    c, org, donos = _torneio(s, fabrica, 6)
+    chaves.sortear(s, c.id, org, "grupos", grupos=2, classificam=2)
+    grupo_de = lambda i: s.scalar(select(ChaveEquipe.grupo).where(ChaveEquipe.equipe_id == i))  # noqa: E731
+    a_id = next(m.equipe_id for m in s.scalars(select(ChaveEquipe).where(ChaveEquipe.campeonato_id == c.id)) if m.grupo == "A")
+    b_id = next(m.equipe_id for m in s.scalars(select(ChaveEquipe).where(ChaveEquipe.campeonato_id == c.id)) if m.grupo == "B")
+    with pytest.raises(SemPermissao):
+        chaves.trocar_equipes(s, c.id, donos[0], a_id, b_id)
+    with pytest.raises(ErroNegocio, match="diferentes"):
+        chaves.trocar_equipes(s, c.id, org, a_id, a_id)
+    chaves.trocar_equipes(s, c.id, org, a_id, b_id)
+    assert grupo_de(a_id) == "B" and grupo_de(b_id) == "A"
+    for j in _jogos(s, c):
+        assert j.grupo == ("A" if b_id in (j.equipe_a_id, j.equipe_b_id) else "B") or a_id not in (j.equipe_a_id, j.equipe_b_id) and b_id not in (j.equipe_a_id, j.equipe_b_id)
+    d = chaves.chaveamento(s, c, org)
+    assert {L["equipe"]["id"] for g in d["grupos"] if g["grupo"] == "B" for L in g["classificacao"]} >= {a_id}
+    # depois que um jogo da equipe começa, não dá mais para trocar
+    jogo = next(j for j in _jogos(s, c) if a_id in (j.equipe_a_id, j.equipe_b_id))
+    chaves.iniciar(s, c.id, jogo.id, org)
+    with pytest.raises(ErroNegocio, match="já tem jogo"):
+        chaves.trocar_equipes(s, c.id, org, a_id, b_id)
+
+
+def test_trocar_equipe_do_sorteio_por_outra_confirmada_que_ficou_de_fora(s, fabrica):
+    c, org, _ = _torneio(s, fabrica, 4)
+    novo = campeonatos.inscrever_equipe(s, c.id, fabrica.atleta("CapNovo"), "Equipe Nova")  # ainda pendente na hora do sorteio
+    chaves.sortear(s, c.id, org, "eliminatoria")
+    campeonatos.decidir_equipe(s, novo.id, org, True)
+    dentro = _jogos(s, c)[0].equipe_a_id
+    chaves.trocar_equipes(s, c.id, org, novo.id, dentro)
+    ids = {e for j in _jogos(s, c) for e in (j.equipe_a_id, j.equipe_b_id)}
+    assert novo.id in ids and dentro not in ids
+    assert {e["id"]: e["no_sorteio"] for e in chaves.chaveamento(s, c, org)["equipes_lugar"]}[novo.id] is True
+
+
+def test_gestao_lista_campeonatos_em_qualquer_situacao_e_encerrados_continua_o_padrao(s, fabrica):
+    c, org, _ = _torneio(s, fabrica, 2)  # criado e nunca encerrado
+    adm = fabrica.atleta("AdminListagem")
+    adm.admin = True
+    s.flush()
+    todos = campeonatos.encerrados(s, adm, situacao="todos", limite=500)
+    assert c.id in {x["id"] for x in todos["itens"]} and all("status" in x for x in todos["itens"])
+    assert c.id not in {x["id"] for x in campeonatos.encerrados(s, adm, limite=500)["itens"]}  # o padrão segue só encerrados
+    assert c.id in {x["id"] for x in campeonatos.encerrados(s, adm, situacao=c.status, limite=500)["itens"]}

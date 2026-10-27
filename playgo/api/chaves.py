@@ -16,6 +16,7 @@ class SorteioIn(BaseModel):
     formato: str
     grupos: int | None = None  # fase de grupos: quantos grupos
     classificam: int | None = None  # fase de grupos: quantos de cada grupo vão ao mata-mata
+    classificam_geral: int | None = None  # fase de grupos: as N melhores no geral (1ºxN, 2ºx(N-1)…), no lugar de "por grupo"
     cabecas: list[int] = []  # ids das equipes cabeças de chave, em ordem (a 1ª é a nº 1)
 
 
@@ -76,7 +77,18 @@ def ver_chaves(campeonato_id: int, u: AtualApi, s: Sessao):
 
 @router.post("/{campeonato_id}/sorteio")
 def sortear(campeonato_id: int, corpo: SorteioIn, u: AtualApi, s: Sessao):
-    chaves.sortear(s, campeonato_id, u, corpo.formato, corpo.grupos, corpo.classificam, corpo.cabecas)
+    chaves.sortear(s, campeonato_id, u, corpo.formato, corpo.grupos, corpo.classificam, corpo.cabecas, corpo.classificam_geral)
+    return chaves.chaveamento(s, campeonatos.obter(s, campeonato_id), u)
+
+
+class TrocaIn(BaseModel):
+    equipe_a: int
+    equipe_b: int
+
+
+@router.post("/{campeonato_id}/chaves/trocar")
+def trocar_equipes(campeonato_id: int, corpo: TrocaIn, u: AtualApi, s: Sessao):
+    chaves.trocar_equipes(s, campeonato_id, u, corpo.equipe_a, corpo.equipe_b)
     return chaves.chaveamento(s, campeonatos.obter(s, campeonato_id), u)
 
 
