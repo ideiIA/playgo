@@ -11,6 +11,7 @@ from playgo import contas, descoberta, ensino_busca, ofertas, planos, profission
 from playgo.db import Session, agora
 from playgo.descoberta import Filtros
 from playgo.models import Usuario
+from playgo.api import ensino as api_ensino
 from playgo.web.app import app
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"0" * 64
@@ -82,7 +83,7 @@ def test_busca_so_mostra_aprovado_com_plano_e_respeita_filtros(s, fabrica):
     assert busca(preco_max=100) == {fut}
     assert busca(q="crianças") == {fut}
     assert ensino_busca.buscar_ofertas(s, -20.9, -54.0, Filtros(raio_km=5)) == []  # longe: nada
-    res = descoberta.aulas(s, u1, PERTO[0], PERTO[1], Filtros(raio_km=5, tipos=("profissional", "oferta"), q=suf.strip()))
+    res = descoberta.aulas(s, admin, PERTO[0], PERTO[1], Filtros(raio_km=5, tipos=("profissional", "oferta"), q=suf.strip()))
     assert [o["titulo"] for o in res["secoes"]["turmas"]] == [vol] and [o["titulo"] for o in res["secoes"]["experimentais"]] == [fut]
     assert {p["tipo"] for p in res["pontos"]} == {"profissional", "oferta"} and all(p["icone"] and p["cor"] for p in res["pontos"])  # pinos próprios
     ofertas.pausar(s, u1, o1.id)
@@ -94,7 +95,27 @@ def _conta(cli, nome):
     return {"Authorization": "Bearer " + r.json()["token"]}, r.json()["usuario"]["id"]
 
 
+def test_ensino_fechado_para_quem_nao_e_admin(banco):
+    with TestClient(app) as cli:
+        h, _ = _conta(cli, "Comum")
+        assert cli.get("/api/v1/aulas", headers=h).status_code == 404
+        assert cli.get("/api/v1/ensino/meu", headers=h).status_code == 404
+        me = cli.get("/api/v1/me", headers=h).json()
+        assert me["permissoes"]["ensino_menu"] is False
+        assert cli.get("/api/v1/planos", headers=h).json()["profissional"] is None
+        explorar = cli.get("/api/v1/explorar", headers=h, params={"lat": PERTO[0], "lng": PERTO[1], "tipos": "profissional,oferta"})
+        assert explorar.status_code == 200 and explorar.json()["profissionais"] == [] and explorar.json()["ofertas"] == []
+
+
 def test_api_do_profissional_documentos_privados_aprovacao_e_central(banco):
+    app.dependency_overrides[api_ensino._so_admin] = lambda: None  # o fluxo abaixo testa as regras do módulo; a trava de admin tem teste próprio
+    try:
+        _fluxo_api_do_profissional()
+    finally:
+        app.dependency_overrides.pop(api_ensino._so_admin, None)
+
+
+def _fluxo_api_do_profissional():
     with TestClient(app) as cli:
         prof, _ = _conta(cli, "Instrutora")
         aluno, _ = _conta(cli, "Aluno")
@@ -129,7 +150,7 @@ def test_api_do_profissional_documentos_privados_aprovacao_e_central(banco):
         assert cli.get(f"/api/v1/ofertas/{oid}", headers=aluno).status_code == 404  # rascunho: só o dono vê
         assert cli.post(f"/api/v1/ensino/ofertas/{oid}/publicar", headers=aluno).status_code == 403
         assert cli.post(f"/api/v1/ensino/ofertas/{oid}/publicar", headers=prof).json()["status"] == "publicada"
-        central = cli.get("/api/v1/aulas", headers=aluno, params={"lat": PERTO[0], "lng": PERTO[1], "raio": 10}).json()
+        central = cli.get("/api/v1/aulas", headers=adm, params={"lat": PERTO[0], "lng": PERTO[1], "raio": 10}).json()
         assert "Turma de futebol" in [x["titulo"] for x in central["ofertas"]] and "Prof. Carla" in [x["nome"] for x in central["profissionais"]]  # o banco de teste é compartilhado: pode haver outros
         pub = cli.get(f"/api/v1/profissionais/{perfil_id}", headers=aluno).json()
         assert pub["verificado"] is True and "documentos" not in pub and "status" not in pub and pub["ofertas"][0]["preco_texto"] == "R$ 120,00/mês"

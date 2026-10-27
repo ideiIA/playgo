@@ -322,7 +322,7 @@ def resumo(s: SessaoORM, u: Usuario) -> dict:
         **{k: (v.isoformat() if isinstance(v, date) else v) for k, v in sit.items()},
         "regras": _dict(r), "planos": [_dict(x) for x in todas(s)],
         "acesso_basico": acesso_basico(s, u), "atividades_abertas": _abertas(s, u), "teste_dias": settings.teste_dias, "tolerancia_dias": settings.tolerancia_dias,
-        "cobrancas": cobrancas(s, u), "profissional": resumo_prof(s, u),
+        "cobrancas": cobrancas(s, u), "profissional": resumo_prof(s, u) if u.admin else None,  # seção "Para quem dá aulas" só para admin por enquanto
     }
 
 
@@ -330,7 +330,7 @@ def permissoes(s: SessaoORM, u: Usuario) -> dict:
     """O que o plano da pessoa libera na tela: organizar atividade, criar campeonato e cadastrar/gerir arena.
     A tela esconde o que não vale; a regra de verdade continua em `exigir` dentro dos serviços."""
     if u.admin:
-        return {"atividade": True, "campeonato": True, "arena": True, "grupo": True, "comunidade": True, "ensino": True, "perfil_prof": True}
+        return {"atividade": True, "campeonato": True, "arena": True, "grupo": True, "comunidade": True, "ensino": True, "perfil_prof": True, "ensino_menu": True}
     r = regras(s, situacao(s, u)["plano"])
     ensino = _ensino_liberado(s, u)
     return {
@@ -339,6 +339,7 @@ def permissoes(s: SessaoORM, u: Usuario) -> dict:
         "comunidade": bool(r.pode_campeonato or r.pode_arena or ensino),  # comunidades: Organizador, Arena e profissionais/escolinhas; os demais participam
         "ensino": ensino,  # perfil profissional aprovado + plano de profissional vigente
         "perfil_prof": perfil_profissional_de(s, u) is not None,  # já abriu o cadastro (qualquer status): mostra "Minhas aulas"
+        "ensino_menu": False,  # Aulas/Personal/Escolinhas ocultas: só admin enxerga por enquanto (menus, rotas e API)
     }
 
 

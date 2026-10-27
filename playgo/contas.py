@@ -243,7 +243,7 @@ def _permissoes(u: Usuario) -> dict:
 
     s = object_session(u)
     if s is None:
-        return {"atividade": False, "campeonato": False, "arena": False, "grupo": False, "comunidade": False, "ensino": False, "perfil_prof": False}
+        return {"atividade": False, "campeonato": False, "arena": False, "grupo": False, "comunidade": False, "ensino": False, "perfil_prof": False, "ensino_menu": False}
     return planos.permissoes(s, u)
 
 

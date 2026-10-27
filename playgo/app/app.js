@@ -247,7 +247,7 @@
   // Menu da conta (foto ao lado do sino): todas as opções do antigo menu do perfil, num menu suspenso
   function itensMenuEu(u) {
     return [
-      ['#/perfil', 'user-round', 'Meu perfil'], ['#/campeonatos', 'trophy', 'Campeonatos'], ['#/aulas', 'graduation-cap', 'Aulas e Treinamentos'], ['#/ensino', 'clipboard-list', (u.permissoes && u.permissoes.perfil_prof) ? 'Minhas aulas' : 'Dar aulas'], ['#/planos', 'credit-card', 'Meu plano'], ['#/tutoriais', 'book-open', 'Tutoriais'],
+      ['#/perfil', 'user-round', 'Meu perfil'], ['#/campeonatos', 'trophy', 'Campeonatos'], ...((u.permissoes && u.permissoes.ensino_menu) ? [['#/aulas', 'graduation-cap', 'Aulas e Treinamentos'], ['#/ensino', 'clipboard-list', u.permissoes.perfil_prof ? 'Minhas aulas' : 'Dar aulas']] : []), ['#/planos', 'credit-card', 'Meu plano'], ['#/tutoriais', 'book-open', 'Tutoriais'],
       ['#/notificacoes', 'bell', 'Notificações'], ['#/comunidades', 'users-round', 'Comunidades'], ['#/convites', 'mail', 'Convites'],
       ...(pode('arena') ? [['#/gestao', 'building-2', 'Minha Arena']] : []),
       ...(u.equipe_moderacao ? [['#/moderacao', 'shield-check', 'Moderação']] : []),

@@ -2,10 +2,16 @@
 O conteúdo é montado por `static/ensino.js` (o mesmo módulo do app) a partir da API."""
 
 from fastapi import Request
+from fastapi.responses import RedirectResponse
 
 from .. import modalidades
 from ..deps import Atual, Sessao
 from .app import app, pagina
+
+
+def _fechado(usuario) -> bool:
+    """Ensino oculto: só admin enquanto as funcionalidades são definidas."""
+    return usuario is None or not usuario.admin
 
 
 def _mods(s) -> list[dict]:
@@ -14,19 +20,27 @@ def _mods(s) -> list[dict]:
 
 @app.get("/aulas")
 def central_aulas(request: Request, s: Sessao, usuario: Atual):
+    if _fechado(usuario):
+        return RedirectResponse("/", status_code=303)
     return pagina(request, s, usuario, "aulas.html", "aulas", mods=_mods(s))
 
 
 @app.get("/profissionais/{perfil_id}")
 def pagina_profissional(perfil_id: int, request: Request, s: Sessao, usuario: Atual):
+    if _fechado(usuario):
+        return RedirectResponse("/", status_code=303)
     return pagina(request, s, usuario, "aulas_detalhe.html", "aulas", mods=_mods(s), tela="profissional", oid=perfil_id)
 
 
 @app.get("/ofertas/{oferta_id}")
 def pagina_oferta(oferta_id: int, request: Request, s: Sessao, usuario: Atual):
+    if _fechado(usuario):
+        return RedirectResponse("/", status_code=303)
     return pagina(request, s, usuario, "aulas_detalhe.html", "aulas", mods=_mods(s), tela="oferta", oid=oferta_id)
 
 
 @app.get("/ensino")
 def minhas_aulas(request: Request, s: Sessao, usuario: Atual):
+    if _fechado(usuario):
+        return RedirectResponse("/", status_code=303)
     return pagina(request, s, usuario, "ensino.html", "ensino", mods=_mods(s))

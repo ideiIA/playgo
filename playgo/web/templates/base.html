@@ -42,14 +42,14 @@
 <aside class="sidebar">
   <a class="logo" href="/"><img class="logo-ico" src="/static/marca/icone.svg" alt="" width="34" height="34">Play<span>Go</span></a>
   <nav class="nav">
-    {% for chave, url, icone, nome in itens_do_menu if chave != 'criar' or pode.atividade %}
+    {% for chave, url, icone, nome in itens_do_menu if (chave != 'criar' or pode.atividade) and (chave != 'aulas' or pode.ensino_menu) %}
     <a href="{{ url }}" class="{{ 'active' if aba == chave }}"><span class="ico">{{ ic(icone) }}</span><span class="t">{{ nome }}</span></a>
     {% endfor %}
     <div class="manager"><small>Gestão</small></div>
     {% if pode.arena %}
     <a href="/gestao" class="{{ 'active' if aba == 'gestao' }}"><span class="ico">{{ ic('building-2') }}</span><span class="t">Minha Arena</span></a>
     {% endif %}
-    <a href="/ensino" class="{{ 'active' if aba == 'ensino' }}"><span class="ico">{{ ic('clipboard-list') }}</span><span class="t">{{ 'Minhas aulas' if pode.perfil_prof else 'Dar aulas' }}</span></a>
+    {% if pode.ensino_menu %}<a href="/ensino" class="{{ 'active' if aba == 'ensino' }}"><span class="ico">{{ ic('clipboard-list') }}</span><span class="t">{{ 'Minhas aulas' if pode.perfil_prof else 'Dar aulas' }}</span></a>{% endif %}
     <a href="/planos" class="{{ 'active' if aba == 'planos' }}"><span class="ico">{{ ic('credit-card') }}</span><span class="t">Meu plano</span></a>
     <details class="submenu {{ 'active' if aba == 'tutorial' }}" {{ 'open' if aba == 'tutorial' }}>
       <summary><span class="ico">{{ ic('book-open') }}</span><span class="t">Tutoriais</span></summary>

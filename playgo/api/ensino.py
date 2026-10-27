@@ -2,7 +2,7 @@
 
 from datetime import date
 
-from fastapi import APIRouter, File, Form, Query, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile
 from pydantic import BaseModel
 from sqlalchemy import select
 
@@ -11,7 +11,13 @@ from ..deps import AtualApi, Sessao
 from ..erros import NaoEncontrado
 from ..models import OF_PUBLICADA, PP_APROVADO, Modalidade
 
-router = APIRouter(prefix="/api/v1")
+def _so_admin(u: AtualApi) -> None:
+    """Ensino oculto: por enquanto só o admin enxerga (some para os demais perfis)."""
+    if not u.admin:
+        raise NaoEncontrado("Recurso não disponível.")
+
+
+router = APIRouter(prefix="/api/v1", dependencies=[Depends(_so_admin)])
 
 
 # ---------------------------------------------------------------- entradas

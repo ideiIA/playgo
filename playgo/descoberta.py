@@ -232,9 +232,9 @@ def explorar(s: SessaoORM, usuario: Usuario | None, lat: float | None = None, ln
         saida["horarios"] = buscar_horarios(s, la, ln, f)
     if "local" in f.tipos:
         saida["locais"] = srv_locais.listar(s, la, ln, f.raio_km, f.q, None, f.modalidades)
-    if "profissional" in f.tipos:
+    if "profissional" in f.tipos and usuario is not None and usuario.admin:
         saida["profissionais"] = ensino_busca.buscar_profissionais(s, la, ln, f)
-    if "oferta" in f.tipos:
+    if "oferta" in f.tipos and usuario is not None and usuario.admin:
         saida["ofertas"] = ensino_busca.buscar_ofertas(s, la, ln, f)
     saida["pontos"] = pontos_do_mapa(saida)
     saida["total"] = sum(len(saida[k]) for k in ("atividades", "campeonatos", "arenas", "grupos", "horarios", "locais", "profissionais", "ofertas"))
