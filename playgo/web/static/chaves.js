@@ -304,7 +304,8 @@
         '<div><b>' + nomeB + '</b><div><button class="ch-btn grande" data-j="marcar" data-lado="b" data-d="1">+1</button><button class="ch-btn suave" data-j="marcar" data-lado="b" data-d="-1">−1</button></div></div></div>' +
         '<div class="jv-agenda"><input id="jv-lance" maxlength="200" placeholder="Escreva um lance (ex.: cartão amarelo, pausa técnica)"><button class="ch-btn suave" data-j="lance">Publicar lance</button></div>' +
         (empate && d.mata_mata ? '<div class="jv-agenda"><select id="jv-venc"><option value="">Empate: quem venceu no desempate?</option><option value="' + d.a.id + '">' + nomeA + '</option><option value="' + d.b.id + '">' + nomeB + '</option></select></div>' : '') +
-        '<button class="ch-btn perigo" data-j="encerrar">🏁 Encerrar jogo</button></div>';
+        '<button class="ch-btn perigo" data-j="encerrar">🏁 Encerrar jogo</button>' +
+        '<button class="ch-btn suave" data-j="desfazer-inicio">↩ Desfazer início (voltar para a fila)</button></div>';
     }
     return d.pode_gerir ? '<div class="jv-ctrl"><button class="ch-btn suave" data-j="reabrir">Reabrir jogo (corrigir)</button></div>' : '';
   }
@@ -340,6 +341,7 @@
         corpo = { vencedor_id: v && v.value ? Number(v.value) : null };
       }
       if (acao === 'reabrir' && !confirm('Reabrir este jogo para corrigir o resultado?')) return;
+      if (acao === 'desfazer-inicio' && !confirm('Voltar este jogo para "agendado"? O placar, os sets e os lances serão apagados.')) return;
       if (acao === 'agendar') { const i = el.querySelector('#jv-inicio').value; corpo = { inicio: i || null, local: el.querySelector('#jv-local').value }; }
       ocupado = true; b.disabled = true;
       try { mostrar(await post(base + '/' + acao, corpo)); if (acao === 'lance') el.querySelector('#jv-lance').value = ''; if (acao === 'agendar' && toast) toast('Horário salvo.'); }

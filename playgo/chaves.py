@@ -12,7 +12,7 @@ import random
 import secrets
 from datetime import datetime, time, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session as SessaoORM
 
 from . import auditoria, campeonatos, notificacoes
@@ -730,6 +730,26 @@ def iniciar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> Jog
     auditoria.registrar(s, por.id, "jogo_iniciar", "jogo", j.id)
     _avisar_equipes(s, c, _ids_do_jogo(j), f"🔴 Ao vivo: {_nome_lado(j, 'a')} x {_nome_lado(j, 'b')}", f"{c.nome} — acompanhe o placar.", f"jogo-vivo:{j.id}")
     s.commit()
+    return j
+
+
+def desfazer_inicio(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> Jogo:
+    """Volta um jogo iniciado por engano para "agendado": zera placar, sets, games e a linha do tempo. Quem conduz o jogo pode."""
+    c, j = _travar(s, campeonato_id, jogo_id)
+    _exigir_pontuar(s, c, por)
+    if j.status != J_AO_VIVO:
+        raise ErroNegocio("Só dá para desfazer o início de um jogo que está ao vivo.")
+    if j.yt_estado == "ao_vivo":
+        raise ErroNegocio("A transmissão deste jogo está no ar: encerre a transmissão antes de desfazer o início.")
+    for modelo in (JogoSet, JogoGame, JogoEvento):
+        s.execute(delete(modelo).where(modelo.jogo_id == j.id))
+    j.status, j.iniciado_em = J_AGENDADO, None
+    j.placar_a = j.placar_b = 0
+    j.ponto_a = j.ponto_b = 0
+    j.vencedor_id, j.desempate, j.encerrado_em = None, False, None
+    auditoria.registrar(s, por.id, "jogo_desfazer_inicio", "jogo", j.id)
+    s.commit()
+    s.refresh(j)
     return j
 
 

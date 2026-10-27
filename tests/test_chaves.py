@@ -184,6 +184,24 @@ def test_reabrir_desfaz_o_avanco_se_a_proxima_rodada_nao_comecou(s, fabrica):
     assert _disputar_de_novo.status == "encerrado"
 
 
+def test_desfazer_inicio_volta_o_jogo_para_a_fila(s, fabrica):
+    c, org, donos = _torneio(s, fabrica, 4)
+    chaves.sortear(s, c.id, org, "eliminatoria")
+    j = _jogos(s, c)[0]
+    with pytest.raises(ErroNegocio, match="ao vivo"):
+        chaves.desfazer_inicio(s, c.id, j.id, org)  # ainda agendado
+    chaves.iniciar(s, c.id, j.id, org)
+    chaves.marcar(s, c.id, j.id, org, "a", 1)
+    chaves.lance(s, c.id, j.id, org, "cartão amarelo")
+    with pytest.raises(SemPermissao):
+        chaves.desfazer_inicio(s, c.id, j.id, donos[0])
+    chaves.desfazer_inicio(s, c.id, j.id, org)
+    s.refresh(j)
+    assert j.status == "agendado" and (j.placar_a, j.placar_b) == (0, 0) and j.iniciado_em is None and not j.eventos
+    chaves.iniciar(s, c.id, j.id, org)  # dá para iniciar de novo
+    assert j.status == "ao_vivo"
+
+
 def test_nao_sorteia_de_novo_depois_que_um_jogo_comecou(s, fabrica):
     c, org, _ = _torneio(s, fabrica, 4)
     chaves.sortear(s, c.id, org, "eliminatoria")
