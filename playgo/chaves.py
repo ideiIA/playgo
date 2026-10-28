@@ -321,7 +321,7 @@ def _distribuir(por_id: dict[int, Equipe], cabecas: list[int], resto: list[Equip
     return lista
 
 
-def _montar_eliminatoria(s: SessaoORM, c: Campeonato, equipes: list[Equipe], fase: str | None = None) -> None:
+def _montar_eliminatoria(s: SessaoORM, c: Campeonato, equipes: list[Equipe], fase: str | None = None, ordem_por_colocacao: bool = False) -> None:
     """`equipes` já vem na ordem de cabeça de chave (a 1ª é a nº 1); quem sobra de vaga (folga) são os melhores colocados."""
     n = len(equipes)
     tamanho = 1 << math.ceil(math.log2(n))
@@ -333,15 +333,24 @@ def _montar_eliminatoria(s: SessaoORM, c: Campeonato, equipes: list[Equipe], fas
         s.add_all(jogos)
         por_rodada.append(jogos)
     ordem = _semeadura(tamanho)
+    pares = [(ordem[2 * p], ordem[2 * p + 1]) for p in range(tamanho // 2)]  # na ordem da chave: 1x8, 4x5, 2x7, 3x6
+    if ordem_por_colocacao and rodadas > 1:
+        # jogos listados 1x8, 2x7, 3x6, 4x5 (como nas tabelas dos regulamentos); quem avança segue a mesma chave (vencedor do 1x8 x vencedor do 4x5)
+        lugar = {pr: i for i, pr in enumerate(pares)}
+        pares = sorted(pares, key=lambda pr: min(pr))
+        destino = [lugar[pr] for pr in pares]
+    else:
+        destino = list(range(len(pares)))
     for p, j in enumerate(por_rodada[0]):
-        a, b = ordem[2 * p], ordem[2 * p + 1]
+        a, b = pares[p]
         j.equipe_a_id = equipes[a - 1].id if a <= n else None
         j.equipe_b_id = equipes[b - 1].id if b <= n else None
     s.flush()
     for r, jogos in enumerate(por_rodada[:-1]):
         for p, j in enumerate(jogos):
-            prox = por_rodada[r + 1][p // 2]
-            j.proximo_id, j.proximo_lado = prox.id, "a" if p % 2 == 0 else "b"
+            slot = destino[p] if r == 0 else p
+            prox = por_rodada[r + 1][slot // 2]
+            j.proximo_id, j.proximo_lado = prox.id, "a" if slot % 2 == 0 else "b"
     s.flush()
     for j in por_rodada[0]:  # folga: quem não tem adversário já passa para a rodada seguinte
         if (j.equipe_a_id is None) != (j.equipe_b_id is None):
@@ -1107,7 +1116,7 @@ def _gerar_mata_mata_se_pronto(s: SessaoORM, c: Campeonato) -> None:
     if not grupos or any(j.fase == "mata_mata" for j in jogos) or any(j.status != J_ENCERRADO for j in grupos):
         return
     classificados = _classificados(s, c, grupos)
-    _montar_eliminatoria(s, c, classificados, "mata_mata")
+    _montar_eliminatoria(s, c, classificados, "mata_mata", ordem_por_colocacao=bool(c.classificam_geral))
     _avisar_equipes(s, c, [e.id for e in classificados], f"➡️ Mata-mata de {c.nome} definido", "Sua equipe se classificou. Veja o cruzamento nas chaves.", f"mata:{c.id}")
 
 

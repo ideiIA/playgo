@@ -854,10 +854,16 @@ def test_grupos_com_os_8_melhores_no_geral_cruzam_1x8_2x7_3x6_4x5(s, fabrica):
     assert len(mata) == 4
     pares = {frozenset((x.equipe_a_id, x.equipe_b_id)) for x in mata}
     assert pares == {frozenset((ordem[0], ordem[7])), frozenset((ordem[1], ordem[6])), frozenset((ordem[2], ordem[5])), frozenset((ordem[3], ordem[4]))}
-    # semifinais: vencedor de 1x8 contra vencedor de 4x5; vencedor de 2x7 contra vencedor de 3x6
+    # jogos na ordem do regulamento: 1x8, 2x7, 3x6, 4x5 (jogos 13 a 16)
     por_pos = {x.posicao: x for x in mata}
-    assert {por_pos[0].equipe_a_id, por_pos[0].equipe_b_id} == {ordem[0], ordem[7]} and {por_pos[1].equipe_a_id, por_pos[1].equipe_b_id} == {ordem[3], ordem[4]}
-    assert por_pos[0].proximo_id == por_pos[1].proximo_id
+    assert [{por_pos[i].equipe_a_id, por_pos[i].equipe_b_id} for i in range(4)] == [{ordem[0], ordem[7]}, {ordem[1], ordem[6]}, {ordem[2], ordem[5]}, {ordem[3], ordem[4]}]
+    # semifinais: vencedor do jogo 13 (1x8) x vencedor do 16 (4x5); vencedor do 14 (2x7) x vencedor do 15 (3x6)
+    assert por_pos[0].proximo_id == por_pos[3].proximo_id and por_pos[1].proximo_id == por_pos[2].proximo_id and por_pos[0].proximo_id != por_pos[1].proximo_id
+    assert (por_pos[0].proximo_lado, por_pos[3].proximo_lado) == ("a", "b")
+    for i, vencedor in ((0, ordem[0]), (1, ordem[1]), (2, ordem[2]), (3, ordem[3])):
+        _disputar(s, c, org, por_pos[i], 2, 0)
+    semis = [x for x in _jogos(s, c) if x.fase == "mata_mata" and x.rodada == 2]
+    assert [{x.equipe_a_id, x.equipe_b_id} for x in semis] == [{ordem[0], ordem[3]}, {ordem[1], ordem[2]}]
     # a equipe de fora não joga o mata-mata, e as linhas dos grupos marcam só as 8 do geral
     fora = geral[8]["equipe"]["id"]
     assert fora not in {e for x in mata for e in (x.equipe_a_id, x.equipe_b_id)}
