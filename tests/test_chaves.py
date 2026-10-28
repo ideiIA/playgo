@@ -911,3 +911,38 @@ def test_gestao_lista_campeonatos_em_qualquer_situacao_e_encerrados_continua_o_p
     assert c.id in {x["id"] for x in todos["itens"]} and all("status" in x for x in todos["itens"])
     assert c.id not in {x["id"] for x in campeonatos.encerrados(s, adm, limite=500)["itens"]}  # o padrão segue só encerrados
     assert c.id in {x["id"] for x in campeonatos.encerrados(s, adm, situacao=c.status, limite=500)["itens"]}
+
+
+def _grupos_de_nove(s, fabrica):
+    c, org, _ = _torneio(s, fabrica, 9)
+    chaves.sortear(s, c.id, org, "grupos", grupos=3, classificam=3)  # por engano: as 9 avançam
+    return c, org
+
+
+def test_classificacao_geral_aparece_sempre_e_da_para_trocar_quem_avanca(s, fabrica):
+    c, org = _grupos_de_nove(s, fabrica)
+    d = chaves.chaveamento(s, c, org)
+    assert len(d["classificacao_geral"]) == 9 and d["pode_mudar_classificacao"]
+    for j in [j for j in _jogos(s, c) if j.fase == "grupos"]:
+        _disputar(s, c, org, j, 2, 0)
+    assert {j.rodada_nome for j in _jogos(s, c) if j.fase == "mata_mata"} >= {"Oitavas de final"} or any(j.fase == "mata_mata" for j in _jogos(s, c))
+    chaves.definir_classificacao(s, c.id, org, None, 8)
+    mata = [j for j in _jogos(s, c) if j.fase == "mata_mata"]
+    assert {j.rodada_nome for j in mata if j.rodada == min(x.rodada for x in mata)} == {"Quartas de final"}
+    d = chaves.chaveamento(s, c, org)
+    assert sum(1 for L in d["classificacao_geral"] if L["classifica"]) == 8
+    with pytest.raises(SemPermissao):
+        chaves.definir_classificacao(s, c.id, fabrica.atleta("Intruso"), None, 8)
+    chaves.iniciar(s, c.id, next(j for j in mata if j.equipe_a_id and j.equipe_b_id).id, org)
+    with pytest.raises(ErroNegocio, match="já começou"):
+        chaves.definir_classificacao(s, c.id, org, None, 6)
+
+
+def test_telao_mostra_classificacao_so_quando_ligado(s, fabrica):
+    from playgo import telao
+
+    c, org = _grupos_de_nove(s, fabrica)
+    assert telao.painel(s, c, org)["tem_classificacao"] and telao._montar(s, c)["classificacao"] is None
+    telao.mostrar_classificacao(s, c.id, org, True)
+    cl = telao._montar(s, c)["classificacao"]
+    assert cl["titulo"] == "Classificação geral" and len(cl["linhas"]) == 9

@@ -22,6 +22,12 @@
 
   const linhaMini = (j, fim) => '<div class="tl-linha"><span>' + esc(j.a.nome) + ' × ' + esc(j.b.nome) + '</span><em>' + (fim ? esc(j.placar_a) + ' × ' + esc(j.placar_b) : esc(quando(j.inicio_previsto))) + '</em></div>';
 
+  function classificacaoHtml(cl) {
+    return '<div class="tl-class"><h3>' + esc(cl.titulo) + '</h3><table><thead><tr><th>#</th><th class="eq">Equipe</th><th>Pts</th><th>J</th><th>V</th><th>' + (cl.sets ? 'SS' : 'SG') + '</th></tr></thead><tbody>' +
+      cl.linhas.map((l) => '<tr class="' + (l.classifica ? 'vai' : '') + '"><td>' + l.posicao + '</td><td class="eq">' + esc(l.nome) + (l.grupo ? ' <span class="suave">· ' + esc(l.grupo) + '</span>' : '') + '</td><td><b>' + l.pontos + '</b></td><td>' + l.jogos + '</td><td>' + l.vitorias + '</td><td>' + (l.saldo > 0 ? '+' : '') + l.saldo + '</td></tr>').join('') +
+      '</tbody></table>' + (cl.avancam ? '<p class="suave">Em destaque: as ' + cl.avancam + ' melhores avançam ao mata-mata.</p>' : '') + '</div>';
+  }
+
   function montarAcompanhar(el, o) {
     const { get, id } = o;
     el.innerHTML = '<div class="tl" data-tl>' +
@@ -34,7 +40,7 @@
       '<p class="tl-conexao" data-t="conexao"></p></div>';
     const raiz = el.querySelector('[data-tl]');
     const t = (n) => el.querySelector('[data-t="' + n + '"]');
-    let D = null, idx = 0, ultimaTroca = Date.now(), escolhido = '', videoAtual = null, luz = null;
+    let D = null, idx = 0, ultimaTroca = Date.now(), escolhido = '', videoAtual = null, luz = null, telaClass = false, ultimaClass = Date.now();
 
     function desenhar() {
       if (!D) return;
@@ -57,7 +63,7 @@
         t('video').innerHTML = v ? '<iframe src="https://www.youtube.com/embed/' + encodeURIComponent(v) + '?autoplay=1&mute=1&rel=0&playsinline=1" allow="autoplay; encrypted-media; fullscreen" allowfullscreen title="Transmissão ao vivo"></iframe>' : '';
       }
       const p = D.proximos[0];
-      t('principal').innerHTML = j ? placarHtml(j, !!v)
+      t('principal').innerHTML = D.classificacao && (!j || telaClass) ? classificacaoHtml(D.classificacao) : j ? placarHtml(j, !!v)
         : '<div class="tl-espera"><h3>' + (D.ultimos.length || D.proximos.length ? 'Intervalo entre os jogos' : 'Em breve, o placar ao vivo') + '</h3><p>' + esc(c.nome) + '</p>' +
           (p ? '<div class="tl-proximo">Próximo jogo<br><b>' + esc(p.a.nome) + ' × ' + esc(p.b.nome) + '</b><small>' + esc([p.rodada_nome, p.local, quando(p.inicio_previsto)].filter(Boolean).join(' · ')) + '</small></div>' : '') + '</div>';
       t('pontos').innerHTML = jogos.length > 1 ? jogos.map((_, i) => '<b class="' + (i === idx ? 'on' : '') + '"></b>').join('') : '';
@@ -83,12 +89,15 @@
     }
     const tAtualiza = setInterval(atualizar, 3000);
     // vários jogos ao vivo no modo automático: alterna a cada poucos segundos
+    const tClass = setInterval(() => {
+      if (D && D.classificacao && D.jogos.length && Date.now() - ultimaClass >= D.rotacao_s * 1000) { telaClass = !telaClass; ultimaClass = Date.now(); desenhar(); }
+    }, 1000);
     const tRotaciona = setInterval(() => {
       if (D && D.modo === 'auto' && D.jogos.length > 1 && Date.now() - ultimaTroca >= D.rotacao_s * 1000) { idx = (idx + 1) % D.jogos.length; ultimaTroca = Date.now(); desenhar(); }
     }, 1000);
     async function acender() { try { if (navigator.wakeLock && !document.hidden) luz = await navigator.wakeLock.request('screen'); } catch (e) { /* sem suporte */ } }
     const aoVoltar = () => { if (!document.hidden) { acender(); atualizar(); } };
-    function parar() { clearInterval(tAtualiza); clearInterval(tRotaciona); document.removeEventListener('visibilitychange', aoVoltar); try { if (luz) luz.release(); } catch (e) { /* já liberada */ } }
+    function parar() { clearInterval(tAtualiza); clearInterval(tRotaciona); clearInterval(tClass); document.removeEventListener('visibilitychange', aoVoltar); try { if (luz) luz.release(); } catch (e) { /* já liberada */ } }
     document.addEventListener('visibilitychange', aoVoltar);
     acender();
 
@@ -150,6 +159,7 @@
       '<a class="btn suave pequeno" href="' + esc(o.hrefAcompanhar || '#') + '">👁 Ver como espectador</a><button class="btn perigo pequeno" type="button" data-t="renovar">Gerar novo link</button></div>' +
       '<p class="suave" style="margin-top:8px">Qualquer pessoa com o link vê o placar. Os demais usuários logados acompanham pela aba <b>📺 Telão</b> do campeonato, sem poder de transmitir. Se o link vazar ou o evento terminar, use <b>Gerar novo link</b>: o antigo para de funcionar.</p></div>' +
       '<form class="painel" data-t="f-jogo"><h3>2 · Escolha o que aparece</h3>' +
+      (p.tem_classificacao ? '<label class="tl-op"><input type="checkbox" data-t="mostrar-class"' + (p.mostrar_classificacao ? ' checked' : '') + '><span><b>📊 Mostrar a classificação geral no telão</b> <span class="suave">· alterna com o placar</span></span></label>' : '') +
       '<p class="suave" style="margin:6px 0 10px">No <b>automático</b> o telão mostra o jogo que estiver ao vivo (e alterna entre eles se houver mais de um). Ou fixe um jogo específico, mesmo antes de começar.</p>' +
       '<label class="tl-op"><input type="radio" name="jogo" value=""' + (p.escolhido ? '' : ' checked') + '><span><b>🤖 Automático</b> — o jogo ao vivo</span></label>' +
       grupo('🔴 Ao vivo agora', p.ao_vivo) + grupo('⏭ Próximos jogos', p.proximos) + grupo('🏁 Últimos resultados', p.encerrados) +
@@ -171,7 +181,7 @@
       ev.preventDefault();
       const marcado = el.querySelector('input[name="jogo"]:checked');
       const v = marcado ? marcado.value : '';
-      try { await post('/campeonatos/' + id + '/telao/jogo', { jogo_id: v ? Number(v) : null }); avisar(v ? 'Jogo fixado no telão.' : 'Telão no automático.'); } catch (e) { avisar(e.message); }
+      try { if (t('mostrar-class')) await post('/campeonatos/' + id + '/telao/classificacao', { mostrar: t('mostrar-class').checked }); await post('/campeonatos/' + id + '/telao/jogo', { jogo_id: v ? Number(v) : null }); avisar(v ? 'Jogo fixado no telão.' : 'Telão no automático.'); } catch (e) { avisar(e.message); }
     };
 
     // ---- transmissão

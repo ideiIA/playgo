@@ -994,6 +994,84 @@ def _classificacao_geral(jogos: list[Jogo], por_grupo: dict[str, list[Equipe]], 
     return classificacao([j for j in jogos if j.fase == "grupos"], [e for eqs in por_grupo.values() for e in eqs], c)
 
 
+def _tabela_geral(c: Campeonato, de_grupo: list[Jogo], confirmadas: list[Equipe], marcas: dict[int, ChaveEquipe]) -> list[dict]:
+    """Tabela única entre os grupos (só quando há mais de um grupo), cada linha com o grupo da equipe."""
+    if c.formato != "grupos":
+        return []
+    por_g: dict[str, list[Equipe]] = {}
+    for e in confirmadas:
+        if e.id in marcas and marcas[e.id].grupo:
+            por_g.setdefault(marcas[e.id].grupo, []).append(e)
+    if len(por_g) < 2:
+        return []
+    geral = _classificacao_geral(de_grupo, por_g, c)
+    for L in geral:
+        L["grupo"] = marcas[L["equipe"]["id"]].grupo
+        L["classifica"] = False
+    return geral
+
+
+def classificacao_resumo(s: SessaoORM, c: Campeonato) -> dict | None:
+    """A classificação que o telão mostra: a geral (fase de grupos) ou a de pontos corridos. Só o que o campeonato já mostra a todos."""
+    if c.formato not in ("grupos", "pontos_corridos"):
+        return None
+    jogos = list(s.scalars(select(Jogo).where(Jogo.campeonato_id == c.id).execution_options(populate_existing=True)))
+    confirmadas = list(s.scalars(select(Equipe).where(Equipe.campeonato_id == c.id, Equipe.status == E_CONFIRMADA).order_by(Equipe.id)))
+    if c.formato == "pontos_corridos":
+        tabela, titulo = classificacao([j for j in jogos if j.fase != "grupos"], confirmadas, c), "Classificação"
+        avancam = 0
+    else:
+        marcas = {k.equipe_id: k for k in s.scalars(select(ChaveEquipe).where(ChaveEquipe.campeonato_id == c.id))}
+        tabela, titulo = _tabela_geral(c, [j for j in jogos if j.fase == "grupos"], confirmadas, marcas), "Classificação geral"
+        avancam = c.classificam_geral or 0
+    if not tabela:
+        return None
+    return {
+        "titulo": titulo, "sets": modo_sets(c),
+        "linhas": [{"posicao": L["posicao"], "nome": L["equipe"]["nome"], "grupo": L.get("grupo"), "jogos": L["jogos"], "vitorias": L["vitorias"], "pontos": L["pontos"], "saldo": L["saldo"], "pts_saldo": L["pts_saldo"], "classifica": bool(avancam) and L["posicao"] <= avancam} for L in tabela],
+        "avancam": avancam,
+    }
+
+
+def definir_classificacao(s: SessaoORM, campeonato_id: int, por: Usuario, classificam: int | None, classificam_geral: int | None) -> dict:
+    """Muda quem avança ao mata-mata (os melhores de cada grupo ou os N melhores no geral) depois do sorteio. Se o mata-mata já foi
+    montado, ele é refeito com os novos classificados, desde que nenhum jogo dele tenha começado."""
+    c = campeonatos.obter(s, campeonato_id)
+    campeonatos.exigir_gestao(c, por)
+    if c.formato != "grupos":
+        raise ErroNegocio("Só a fase de grupos tem mata-mata para ajustar.")
+    jogos = list(s.scalars(select(Jogo).where(Jogo.campeonato_id == c.id).with_for_update(of=Jogo).execution_options(populate_existing=True)))
+    mata = [j for j in jogos if j.fase == "mata_mata"]
+    if any(j.status != J_AGENDADO and not j.folga for j in mata):
+        raise ErroNegocio("O mata-mata já começou: não dá mais para mudar quem avança.")
+    marcas = list(s.scalars(select(ChaveEquipe).where(ChaveEquipe.campeonato_id == c.id, ChaveEquipe.grupo.is_not(None))))
+    n = len(marcas)
+    grupos = len({m.grupo for m in marcas})
+    if classificam_geral:
+        if not 2 <= classificam_geral <= n:
+            raise ErroNegocio(f"Classificam de 2 a {n} equipes no geral.")
+        c.classificam, c.classificam_geral = None, classificam_geral
+    else:
+        q = classificam or 2
+        if not 1 <= q <= max(1, n // max(grupos, 1)) or grupos * q < 2:
+            raise ErroNegocio("Quantidade inválida de classificados por grupo.")
+        c.classificam, c.classificam_geral = q, None
+    for x in mata:
+        x.proximo_id = None
+    s.flush()
+    for x in mata:
+        s.delete(x)
+    s.flush()
+    if c.status == C_ENCERRADO:
+        c.status = C_ANDAMENTO
+    auditoria.registrar(s, por.id, "chave_classificacao", "campeonato", c.id, geral=c.classificam_geral, por_grupo=c.classificam)
+    s.flush()
+    _gerar_mata_mata_se_pronto(s, c)  # só monta se a fase de grupos já terminou; senão nasce quando terminar
+    s.commit()
+    s.expire_all()
+    return {"classificam": c.classificam, "classificam_geral": c.classificam_geral}
+
+
 def _evitar_revanche(ordem: list[Equipe], nivel: list[int], grupo_de: dict[int, str]) -> None:
     """Troca equipes da mesma colocação entre confrontos para que, na 1ª rodada do mata-mata, ninguém reencontre o próprio grupo."""
     n = len(ordem)
@@ -1232,17 +1310,8 @@ def chaveamento(s: SessaoORM, c: Campeonato, u: Usuario) -> dict:
     confirmadas = list(s.scalars(select(Equipe).where(Equipe.campeonato_id == c.id, Equipe.status == E_CONFIRMADA).order_by(Equipe.id)))
     marcas = {k.equipe_id: k for k in s.scalars(select(ChaveEquipe).where(ChaveEquipe.campeonato_id == c.id))}
     grupos_out: list[dict] = []
-    geral: list[dict] = []
-    if c.classificam_geral and c.formato == "grupos":
-        por_g: dict[str, list[Equipe]] = {}
-        for e in confirmadas:
-            if e.id in marcas and marcas[e.id].grupo:
-                por_g.setdefault(marcas[e.id].grupo, []).append(e)
-        geral = _classificacao_geral(de_grupo, por_g, c)
-        for L in geral:
-            L["classifica"] = L["posicao"] <= c.classificam_geral
-            L["grupo"] = marcas[L["equipe"]["id"]].grupo
-    geral_ids = {L["equipe"]["id"] for L in geral if L["classifica"]}
+    geral = _tabela_geral(c, de_grupo, confirmadas, marcas)  # sempre que há grupos: serve de apoio mesmo quando avançam os melhores de cada grupo
+    geral_ids = {L["equipe"]["id"] for L in geral[: c.classificam_geral]} if c.classificam_geral else set()
     for letra in sorted({k.grupo for k in marcas.values() if k.grupo} if c.formato != "super8" else ()):
         eqs = [e for e in confirmadas if e.id in marcas and marcas[e.id].grupo == letra]
         js = [j for j in de_grupo if j.grupo == letra]
@@ -1256,6 +1325,10 @@ def chaveamento(s: SessaoORM, c: Campeonato, u: Usuario) -> dict:
             L["classifica"] = L["equipe"]["id"] in geral_ids if c.classificam_geral else L["posicao"] <= (c.classificam or 0)
             L["cabeca"] = marcas[L["equipe"]["id"]].cabeca
         grupos_out.append({"grupo": letra, "classificacao": tabela, "rodadas": rod})
+    if geral:
+        ids = geral_ids if c.classificam_geral else {L["equipe"]["id"] for g in grupos_out for L in g["classificacao"] if L["classifica"]}
+        for L in geral:
+            L["classifica"] = L["equipe"]["id"] in ids
     cabecas = sorted(({"ordem": k.cabeca, "equipe": _eq(next((e for e in confirmadas if e.id == k.equipe_id), None))} for k in marcas.values() if k.cabeca), key=lambda x: x["ordem"])
     campeao = None
     if c.formato in ("eliminatoria", "grupos") and chave:
@@ -1284,6 +1357,7 @@ def chaveamento(s: SessaoORM, c: Campeonato, u: Usuario) -> dict:
         "equipes_confirmadas": len(confirmadas), "equipes_pendentes": pendentes,
         "pode_gerir": campeonatos.pode_gerir(c, u), "pode_pontuar": pode_pontuar(s, c, u),
         "pode_sortear_de_novo": all(j.status == J_AGENDADO or j.folga for j in jogos),
+        "pode_mudar_classificacao": c.formato == "grupos" and not any(j.fase == "mata_mata" and j.status != J_AGENDADO and not j.folga for j in jogos),
         "mesarios": mesarios(s, c) if campeonatos.pode_gerir(c, u) else [],
     }
 

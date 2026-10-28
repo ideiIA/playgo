@@ -93,6 +93,7 @@ _COLUNAS_NOVAS: tuple[str, ...] = (
     "ALTER TABLE assinaturas ADD COLUMN IF NOT EXISTS ciclo varchar(6) DEFAULT 'mensal'",
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS telao_token varchar(40)",
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS telao_jogo_id integer",
+    "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS telao_classificacao boolean NOT NULL DEFAULT false",
     "CREATE UNIQUE INDEX IF NOT EXISTS ix_campeonatos_telao_token ON campeonatos (telao_token)",
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS capa varchar(60)",
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS book_publicado boolean NOT NULL DEFAULT false",

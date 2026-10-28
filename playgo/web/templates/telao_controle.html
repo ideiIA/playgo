@@ -33,6 +33,7 @@
       {% endfor %}{% endif %}
     {% endfor %}
     {% if not (p.ao_vivo or p.proximos or p.encerrados) %}<p class="vazio">Ainda não há jogos. Faça o sorteio na aba Sorteio.</p>{% endif %}
+    {% if p.tem_classificacao %}<label class="opcao" style="margin-top:14px"><input type="checkbox" id="mostrar-class" {{ 'checked' if p.mostrar_classificacao }}> <span><b>📊 Mostrar a classificação geral no telão</b> <span class="suave">· alterna com o placar a cada poucos segundos (e aparece sozinha entre os jogos)</span></span></label>{% endif %}
     <p style="margin-top:14px"><button class="btn purple" type="submit">Aplicar no telão</button> <span class="suave" id="msg"></span></p>
   </form>
 </div>
@@ -102,7 +103,7 @@
   document.getElementById('f-jogo').onsubmit = async (ev) => {
     ev.preventDefault();
     const v = new FormData(ev.target).get('jogo');
-    try { await webApi('/campeonatos/' + id + '/telao/jogo', { metodo: 'POST', corpo: { jogo_id: v ? Number(v) : null } }); document.getElementById('msg').textContent = v ? 'Jogo fixado no telão.' : 'Telão no automático.'; } catch (e) { toast(e.message); }
+    try { const mc = document.getElementById('mostrar-class'); if (mc) await webApi('/campeonatos/' + id + '/telao/classificacao', { metodo: 'POST', corpo: { mostrar: mc.checked } }); await webApi('/campeonatos/' + id + '/telao/jogo', { metodo: 'POST', corpo: { jogo_id: v ? Number(v) : null } }); document.getElementById('msg').textContent = v ? 'Jogo fixado no telão.' : 'Telão no automático.'; } catch (e) { toast(e.message); }
   };
   // ---- transmissão ao vivo (YouTube)
   const cartao = document.getElementById('cartao-yt');

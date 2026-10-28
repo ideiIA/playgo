@@ -80,6 +80,7 @@ def painel(s: SessaoORM, c: Campeonato, u: Usuario) -> dict:
                       "placar": f"{j.placar_a} × {j.placar_b}", "inicio_previsto": j.inicio_previsto.isoformat(timespec="minutes") if j.inicio_previsto else None, "local": j.local}
     return {
         "link": f"/telao/{token}", "escolhido": c.telao_jogo_id,
+        "mostrar_classificacao": bool(c.telao_classificacao), "tem_classificacao": chaves.classificacao_resumo(s, c) is not None,
         "ao_vivo": [leve(j) for j in jogos if j.status == J_AO_VIVO],
         "proximos": [leve(j) for j in jogos if j.status == J_AGENDADO][:20],
         "encerrados": [leve(j) for j in reversed(jogos) if j.status == J_ENCERRADO][:10],
@@ -95,6 +96,15 @@ def escolher_jogo(s: SessaoORM, campeonato_id: int, por: Usuario, jogo_id: int |
         if j is None or j.campeonato_id != c.id or j.folga or not (j.equipe_a_id and j.equipe_b_id):
             raise ErroNegocio("Esse jogo não está disponível para o telão.")
     c.telao_jogo_id = jogo_id
+    s.commit()
+    return painel(s, c, por)
+
+
+def mostrar_classificacao(s: SessaoORM, campeonato_id: int, por: Usuario, mostrar: bool) -> dict:
+    """Liga/desliga a classificação geral no telão (alterna com o placar; sozinha quando não há jogo no ar)."""
+    c = campeonatos.obter(s, campeonato_id)
+    _exigir_conduzir(s, c, por)
+    c.telao_classificacao = bool(mostrar)
     s.commit()
     return painel(s, c, por)
 
@@ -143,6 +153,7 @@ def _montar(s: SessaoORM, c: Campeonato, jogo_id: int | None = None, com_opcoes:
         ] if com_opcoes else [],
         "jogos": [_jogo(j, c) for j in ([escolhido] if escolhido else ao_vivo)],
         "proximos": [_jogo(j, c) for j in proximos], "ultimos": [_jogo(j, c) for j in ultimos],
+        "classificacao": chaves.classificacao_resumo(s, c) if c.telao_classificacao else None,
         "atualizado": agora().isoformat(timespec="seconds"),
     }
 

@@ -50,6 +50,15 @@
     .proximo { margin-top: clamp(10px, 2vh, 40px); background: rgba(255, 255, 255, .1); border: 1px solid rgba(255, 255, 255, .22); border-radius: 26px; padding: clamp(14px, 2vw, 32px) clamp(20px, 3vw, 52px); font-size: clamp(18px, min(3.2vw, 6vh), 52px); font-weight: 800; }
     .proximo small { display: block; font-size: .5em; opacity: .75; font-weight: 700; margin-top: 6px; }
 
+    .classif { width: 100%; max-width: 1400px; text-align: left; }
+    .classif h2 { margin: 0 0 clamp(6px, 1.2vw, 18px); font-size: clamp(20px, min(3.4vw, 6vh), 56px); text-align: center; }
+    .classif table { width: 100%; border-collapse: collapse; font-size: clamp(13px, min(2.1vw, 4.2vh), 34px); font-weight: 700; }
+    .classif th { opacity: .65; font-size: .6em; text-transform: uppercase; letter-spacing: 1px; text-align: center; padding: 2px 8px; } .classif th.eq { text-align: left; }
+    .classif td { padding: clamp(3px, .6vh, 9px) 10px; text-align: center; background: rgba(255, 255, 255, .08); font-variant-numeric: tabular-nums; }
+    .classif td.eq { text-align: left; border-radius: 12px 0 0 12px; } .classif td:last-child { border-radius: 0 12px 12px 0; }
+    .classif tr.vai td { background: rgba(183, 243, 75, .22); } .classif tr.vai td.pos { color: var(--lima); }
+    .classif tr + tr td { border-top: 3px solid transparent; background-clip: padding-box; }
+    .classif small { display: block; text-align: center; opacity: .7; margin-top: 8px; font-size: .55em; }
     footer { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(8px, 2vw, 32px); font-size: clamp(11px, min(1.5vw, 2.4vh), 24px); max-height: 26vh; overflow: hidden; }
     footer h3 { margin: 0 0 6px; font-size: .8em; text-transform: uppercase; letter-spacing: 1.5px; opacity: .65; }
     footer .linha { display: flex; gap: 12px; justify-content: space-between; background: rgba(255, 255, 255, .08); border-radius: 12px; padding: 6px 14px; margin-bottom: 6px; font-weight: 700; }
@@ -120,6 +129,14 @@
         (p ? `<div class="proximo">Próximo jogo<br>${esc(p.a.nome)} × ${esc(p.b.nome)}<small>${esc([p.rodada_nome, p.local, quando(p)].filter(Boolean).join(' · '))}</small></div>` : '');
     }
 
+    let telaClass = false, ultimaClass = Date.now();
+    function classificacaoHtml(cl) {
+      const sets = cl.sets ? 'SS' : 'SG';
+      return `<div class="classif"><h2>${esc(cl.titulo)}</h2><table><thead><tr><th>#</th><th class="eq">Equipe</th><th>Pts</th><th>J</th><th>V</th><th>${sets}</th></tr></thead><tbody>` +
+        cl.linhas.map((l) => `<tr class="${l.classifica ? 'vai' : ''}"><td class="pos">${l.posicao}</td><td class="eq">${esc(l.nome)}${l.grupo ? ' <span style="opacity:.55">· ' + esc(l.grupo) + '</span>' : ''}</td><td><b>${l.pontos}</b></td><td>${l.jogos}</td><td>${l.vitorias}</td><td>${l.saldo > 0 ? '+' : ''}${l.saldo}</td></tr>`).join('') +
+        `</tbody></table>${cl.avancam ? `<small>Em destaque: as ${cl.avancam} melhores avançam ao mata-mata</small>` : ''}</div>`;
+    }
+
     function desenhar() {
       if (!D) return;
       const c = D.campeonato, jogos = D.jogos;
@@ -133,7 +150,8 @@
       $('vivo').classList.toggle('parado', !aoVivo);
       $('vivo-txt').textContent = aoVivo ? 'AO VIVO' : (jogos.length ? 'EM BREVE' : 'AGUARDANDO');
       if (idx >= jogos.length) idx = 0;
-      $('principal').innerHTML = jogos.length ? jogoGrande(jogos[idx]) : espera();
+      const verClass = !!D.classificacao && (!jogos.length || telaClass);
+      $('principal').innerHTML = verClass ? classificacaoHtml(D.classificacao) : (jogos.length ? jogoGrande(jogos[idx]) : espera());
       $('pontos').innerHTML = jogos.length > 1 ? jogos.map((_, i) => `<b class="${i === idx ? 'on' : ''}"></b>`).join('') : '';
       $('rodape').innerHTML =
         `<div><h3>Próximos jogos</h3>${D.proximos.slice(0, 3).map((j) => linhaMini(j, false)).join('') || '<div class="linha"><span>—</span></div>'}</div>` +
@@ -161,6 +179,8 @@
     atualizar();
     setInterval(atualizar, 3000);
     // vários jogos ao vivo no modo automático: alterna a cada poucos segundos
+    // classificação ligada pela organização: alterna com o placar quando há jogo (sozinha quando não há)
+    setInterval(() => { if (D && D.classificacao && D.jogos.length && Date.now() - ultimaClass >= D.rotacao_s * 1000) { telaClass = !telaClass; ultimaClass = Date.now(); desenhar(); } }, 1000);
     setInterval(() => { if (D && D.modo === 'auto' && D.jogos.length > 1 && Date.now() - ultimaTroca >= D.rotacao_s * 1000) { idx = (idx + 1) % D.jogos.length; ultimaTroca = Date.now(); desenhar(); } }, 1000);
 
     // tela cheia, tela sempre acesa e cursor escondido (TV)

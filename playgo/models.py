@@ -433,6 +433,7 @@ class Campeonato(Base):
     book_publicado: Mapped[bool] = mapped_column(Boolean, default=False)  # o book fica visível para todos os usuários
     telao_token: Mapped[str | None] = mapped_column(String(40), unique=True)  # link secreto do telão (placar em TV/tablet, sem login)
     telao_jogo_id: Mapped[int | None] = mapped_column(Integer)  # jogo fixado no telão; vazio = automático (o que estiver ao vivo)
+    telao_classificacao: Mapped[bool] = mapped_column(Boolean, default=False)  # o telão alterna o placar com a classificação geral
     transmissao_permitida: Mapped[bool] = mapped_column(Boolean, default=False)  # a organização liberou filmar/transmitir no YouTube do PlayGo
     transmissao_aceite_por_id: Mapped[int | None] = mapped_column(Integer)  # quem declarou a ciência dos participantes
     transmissao_aceite_em: Mapped[datetime | None] = mapped_column(DateTime)

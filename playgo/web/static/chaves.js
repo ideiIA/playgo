@@ -66,7 +66,7 @@
     h += d.grupos.map((g) => '<div class="ch-grupo"><h4>Grupo ' + esc(g.grupo) + '</h4>' + tabelaGrupo(g.classificacao, d.regras_placar && d.regras_placar.modo === 'sets') +
       g.rodadas.map((r) => '<div class="ch-sub" style="margin:8px 0 4px">' + esc(r.nome) + '</div><div class="ch-grade pequeno">' + r.jogos.map((j) => cartao(j, href)).join('') + '</div>').join('') + '</div>').join('');
     h += '</div>';
-    if (d.classificam_geral && (d.classificacao_geral || []).length) h += '<h3 class="ch-tit">Classificação geral</h3><div class="ch-grupo">' + tabelaGrupo(d.classificacao_geral, sets) + '</div>';
+    if ((d.classificacao_geral || []).length) h += '<h3 class="ch-tit">Classificação geral</h3><p class="ch-sub">Todas as equipes dos grupos numa tabela só (pontos, saldo de sets e saldo de pontos).' + (d.classificam_geral ? '' : ' Só como apoio: avançam os melhores de cada grupo.') + '</p><div class="ch-grupo">' + tabelaGrupo(d.classificacao_geral, sets) + '</div>';
     if (d.rodadas.length) h += '<h3 class="ch-tit">Mata-mata</h3><div class="ch-chave">' + d.rodadas.map((r) => '<div class="ch-coluna"><h4>' + esc(r.nome) + '</h4><div class="ch-col-jogos">' + r.jogos.map((j) => cartao(j, href)).join('') + '</div></div>').join('') + '</div>';
     else h += '<div class="ch-aviso" style="margin-top:14px">O mata-mata é montado automaticamente quando terminar o último jogo da fase de grupos' + (d.jogos_grupos_restantes ? ' (faltam ' + d.jogos_grupos_restantes + ' jogo' + (d.jogos_grupos_restantes !== 1 ? 's' : '') + ').' : '.') + '</div>';
     return h;
@@ -392,6 +392,18 @@
 
   const opcoes = (de, ate, padrao) => Array.from({ length: ate - de + 1 }, (_, i) => de + i).map((n) => '<option value="' + n + '"' + (n === padrao ? ' selected' : '') + '>' + n + '</option>').join('');
 
+  function painelClassif(d) {
+    if (!d.pode_gerir || d.formato !== 'grupos') return '';
+    if (!d.pode_mudar_classificacao) return '<div class="ch-painel"><h3>🎯 Quem avança ao mata-mata</h3><p class="ch-sub">O mata-mata já começou: não dá mais para mudar quem avança.</p></div>';
+    const geral = !!d.classificam_geral;
+    const op = (de, ate, sel) => { let o = ''; for (let i = de; i <= ate; i++) o += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>' + i + '</option>'; return o; };
+    return '<div class="ch-painel"><h3>🎯 Quem avança ao mata-mata</h3><p class="ch-sub">Mude o critério sem refazer o sorteio. Se o mata-mata já foi montado, ele é refeito com os novos classificados (enquanto nenhum jogo dele tiver começado). Com os melhores no geral, o cruzamento é 1º × último, 2º × penúltimo…</p>' +
+      '<div class="ch-campo ch-agenda"><label>Critério<select id="cl-modo"><option value="grupo"' + (geral ? '' : ' selected') + '>Os melhores de cada grupo</option><option value="geral"' + (geral ? ' selected' : '') + '>Os melhores no geral (tabela única)</option></select></label>' +
+      '<label id="cl-w-grupo"' + (geral ? ' hidden' : '') + '>Por grupo<select id="cl-n-grupo">' + op(1, 4, d.classificam || 2) + '</select></label>' +
+      '<label id="cl-w-geral"' + (geral ? '' : ' hidden') + '>No geral<select id="cl-n-geral">' + op(2, Math.max(2, d.equipes_confirmadas), d.classificam_geral || Math.min(8, Math.max(2, d.equipes_confirmadas))) + '</select></label></div>' +
+      '<button class="ch-btn" id="bt-classif">Aplicar</button></div>';
+  }
+
   function painelTroca(d) {
     const rotulo = (e) => esc(e.nome) + (e.grupo ? ' (grupo ' + esc(e.grupo) + ')' : '') + (e.no_sorteio ? '' : ' — fora do sorteio');
     const opts = (d.equipes_lugar || []).map((e) => '<option value="' + e.id + '">' + rotulo(e) + '</option>').join('');
@@ -423,7 +435,7 @@
           '<div class="ch-cabecas">' + d.equipes.map((e) => '<label class="ch-cab"><input type="number" min="1" max="' + d.equipes.length + '" data-cabeca="' + e.id + '" placeholder="–"> ' + esc(e.nome) + '</label>').join('') + '</div></div>' +
           '<button class="ch-btn grande" id="bt-sortear" ' + (d.equipes_confirmadas < 2 ? 'disabled' : '') + '>' + (jaTem ? '🔁 Sortear de novo' : '🎲 Sortear agora') + '</button>' : '') +
         '<p class="ch-sub">O sorteio é aleatório (fora os cabeças de chave), fica registrado e as equipes são avisadas.</p></div>' +
-        (jaTem && d.formato !== 'super8' ? painelTroca(d) : '') +
+        (jaTem && d.formato !== 'super8' ? painelTroca(d) : '') + (jaTem ? painelClassif(d) : '') +
         painelRegras(d) + (jaTem ? painelHorarios(d) : '') +
         '<div class="ch-painel"><h3>📋 Mesários</h3><p class="ch-sub">Pessoas autorizadas a iniciar jogos, marcar o placar e encerrar. Todos os demais só acompanham.</p>' +
         '<div id="mesarios">' + (d.mesarios.length ? d.mesarios.map((m) => '<span class="ch-chip">' + esc(m.arroba) + ' <button data-rm="' + m.usuario_id + '" title="Remover">×</button></span>').join('') : '<span class="ch-sub">Nenhum mesário além de você.</span>') + '</div>' +
@@ -466,6 +478,21 @@
             if (toast) toast('Equipes trocadas de lugar.');
             if (o.aoSortear) o.aoSortear(); else desenhar(await get('/campeonatos/' + id + '/chaves'));
           } catch (e) { if (toast) toast(e.message); btTroca.disabled = false; }
+        };
+      }
+      const btClassif = el.querySelector('#bt-classif');
+      if (btClassif) {
+        const modo = el.querySelector('#cl-modo');
+        modo.onchange = () => { const g = modo.value === 'geral'; el.querySelector('#cl-w-grupo').hidden = g; el.querySelector('#cl-w-geral').hidden = !g; };
+        btClassif.onclick = async () => {
+          const g = modo.value === 'geral';
+          if (!confirm('Mudar quem avança? Se o mata-mata já existe, ele será refeito.')) return;
+          btClassif.disabled = true;
+          try {
+            await post('/campeonatos/' + id + '/chaves/classificacao', g ? { classificam_geral: Number(el.querySelector('#cl-n-geral').value) } : { classificam: Number(el.querySelector('#cl-n-grupo').value) });
+            if (toast) toast('Critério atualizado.');
+            if (o.aoSortear) o.aoSortear(); else desenhar(await get('/campeonatos/' + id + '/chaves'));
+          } catch (e) { if (toast) toast(e.message); btClassif.disabled = false; }
         };
       }
       const rgModo = el.querySelector('#rg-modo');

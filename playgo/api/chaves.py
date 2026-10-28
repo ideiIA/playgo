@@ -135,6 +135,26 @@ def escolher_jogo_telao(campeonato_id: int, corpo: TelaoJogoIn, u: AtualApi, s: 
     return telao.escolher_jogo(s, campeonato_id, u, corpo.jogo_id)
 
 
+class TelaoClassificacaoIn(BaseModel):
+    mostrar: bool
+
+
+@router.post("/{campeonato_id}/telao/classificacao")
+def classificacao_telao(campeonato_id: int, corpo: TelaoClassificacaoIn, u: AtualApi, s: Sessao):
+    return telao.mostrar_classificacao(s, campeonato_id, u, corpo.mostrar)
+
+
+class ClassificamIn(BaseModel):
+    classificam: int | None = None
+    classificam_geral: int | None = None
+
+
+@router.post("/{campeonato_id}/chaves/classificacao")
+def definir_classificacao(campeonato_id: int, corpo: ClassificamIn, u: AtualApi, s: Sessao):
+    chaves.definir_classificacao(s, campeonato_id, u, corpo.classificam, corpo.classificam_geral)
+    return chaves.chaveamento(s, campeonatos.obter(s, campeonato_id), u)
+
+
 @router.post("/{campeonato_id}/telao/renovar")
 def renovar_telao(campeonato_id: int, u: AtualApi, s: Sessao):
     return telao.renovar_link(s, campeonato_id, u)
