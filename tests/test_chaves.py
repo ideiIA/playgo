@@ -946,3 +946,12 @@ def test_telao_mostra_classificacao_so_quando_ligado(s, fabrica):
     telao.mostrar_classificacao(s, c.id, org, True)
     cl = telao._montar(s, c)["classificacao"]
     assert cl["titulo"] == "Classificação geral" and len(cl["linhas"]) == 9
+
+
+def test_telao_classificacao_traz_pontos_pro_contra_e_saldo(s, fabrica):
+    from playgo import telao
+
+    c, org = _grupos_de_nove(s, fabrica)
+    telao.mostrar_classificacao(s, c.id, org, True)
+    L = telao._montar(s, c)["classificacao"]["linhas"][0]
+    assert {"derrotas", "pts_pro", "pts_contra", "pts_saldo", "saldo"} <= set(L)

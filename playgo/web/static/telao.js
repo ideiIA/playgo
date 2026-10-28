@@ -23,8 +23,9 @@
   const linhaMini = (j, fim) => '<div class="tl-linha"><span>' + esc(j.a.nome) + ' × ' + esc(j.b.nome) + '</span><em>' + (fim ? esc(j.placar_a) + ' × ' + esc(j.placar_b) : esc(quando(j.inicio_previsto))) + '</em></div>';
 
   function classificacaoHtml(cl) {
-    return '<div class="tl-class"><h3>' + esc(cl.titulo) + '</h3><table><thead><tr><th>#</th><th class="eq">Equipe</th><th>Pts</th><th>J</th><th>V</th><th>' + (cl.sets ? 'SS' : 'SG') + '</th></tr></thead><tbody>' +
-      cl.linhas.map((l) => '<tr class="' + (l.classifica ? 'vai' : '') + '"><td>' + l.posicao + '</td><td class="eq">' + esc(l.nome) + (l.grupo ? ' <span class="suave">· ' + esc(l.grupo) + '</span>' : '') + '</td><td><b>' + l.pontos + '</b></td><td>' + l.jogos + '</td><td>' + l.vitorias + '</td><td>' + (l.saldo > 0 ? '+' : '') + l.saldo + '</td></tr>').join('') +
+    const sg = (v) => (v > 0 ? '+' : '') + v;
+    return '<div class="tl-class"><h3>' + esc(cl.titulo) + '</h3><table><thead><tr><th>#</th><th class="eq">Equipe</th><th>J</th><th>V</th><th>D</th><th>Pts</th>' + (cl.sets ? '<th>Saldo set</th><th>Pontos pró</th><th>Pontos neg</th><th>Saldo pts</th>' : '<th>Pró</th><th>Contra</th><th>Saldo</th>') + '</tr></thead><tbody>' +
+      cl.linhas.map((l) => '<tr class="' + (l.classifica ? 'vai' : '') + '"><td>' + l.posicao + '</td><td class="eq">' + esc(l.nome) + (l.grupo ? ' <span class="suave">· ' + esc(l.grupo) + '</span>' : '') + '</td><td>' + l.jogos + '</td><td>' + l.vitorias + '</td><td>' + l.derrotas + '</td><td><b>' + l.pontos + '</b></td>' + (cl.sets ? '<td>' + sg(l.saldo) + '</td><td>' + l.pts_pro + '</td><td>' + l.pts_contra + '</td><td>' + sg(l.pts_saldo) + '</td>' : '<td>' + l.pro + '</td><td>' + l.contra + '</td><td>' + sg(l.saldo) + '</td>') + '</tr>').join('') +
       '</tbody></table>' + (cl.avancam ? '<p class="suave">Em destaque: as ' + cl.avancam + ' melhores avançam ao mata-mata.</p>' : '') + '</div>';
   }
 

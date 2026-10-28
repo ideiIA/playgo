@@ -53,6 +53,15 @@
       '</tbody></table></div><p class="ch-sub">' + (total ? 'Ranking individual: cada game que a dupla faz vale 1 ponto para cada atleta (todos os games de cada jogo são disputados). Desempate: vitórias e saldo de games.' : 'Ranking individual: mais vitórias; desempate por saldo de games e depois games feitos.') + ' Cada atleta joga uma vez com cada outro como parceiro.</p>';
   }
 
+  function tabelaGeral(g, sets) {
+    const n = (v) => (v > 0 ? '+' : '') + v;
+    const cab = sets ? '<th>Saldo set</th><th>Pontos pró</th><th>Pontos neg</th><th>Saldo pts</th>' : '<th>Pró</th><th>Contra</th><th>Saldo</th>';
+    return '<div class="ch-tabela-wrap"><table class="ch-tabela"><thead><tr><th>#</th><th>Equipe</th><th>Jogo</th><th>Vit</th><th>Der</th><th>Pts</th>' + cab + '</tr></thead><tbody>' +
+      g.map((l) => '<tr class="' + (l.classifica ? 'ch-classif' : '') + '"><td>' + l.posicao + '</td><td class="ch-eq">' + esc(l.equipe.nome) + (l.grupo ? ' <span class="ch-cabeca" title="Grupo">' + esc(l.grupo) + '</span>' : '') + '</td><td>' + l.jogos + '</td><td>' + l.vitorias + '</td><td>' + l.derrotas + '</td><td><b>' + l.pontos + '</b></td>' +
+        (sets ? '<td>' + n(l.saldo) + '</td><td>' + l.pts_pro + '</td><td>' + l.pts_contra + '</td><td>' + n(l.pts_saldo) + '</td>' : '<td>' + l.pro + '</td><td>' + l.contra + '</td><td>' + n(l.saldo) + '</td>') + '</tr>').join('') +
+      '</tbody></table></div>';
+  }
+
   function tabelaGrupo(g, sets) {
     return '<div class="ch-tabela-wrap"><table class="ch-tabela"><thead><tr><th>#</th><th>Equipe</th><th>P</th><th>J</th><th>' + (sets ? 'SS' : 'SG') + '</th></tr></thead><tbody>' +
       g.map((l) => '<tr class="' + (l.classifica ? 'ch-classif' : '') + '"><td>' + l.posicao + '</td><td class="ch-eq">' + esc(l.equipe.nome) + (l.cabeca ? ' <span class="ch-cabeca" title="Cabeça de chave">C' + l.cabeca + '</span>' : '') + '</td><td><b>' + l.pontos + '</b></td><td>' + l.jogos + '</td><td>' + (l.saldo > 0 ? '+' : '') + l.saldo + '</td></tr>').join('') +
@@ -66,7 +75,7 @@
     h += d.grupos.map((g) => '<div class="ch-grupo"><h4>Grupo ' + esc(g.grupo) + '</h4>' + tabelaGrupo(g.classificacao, d.regras_placar && d.regras_placar.modo === 'sets') +
       g.rodadas.map((r) => '<div class="ch-sub" style="margin:8px 0 4px">' + esc(r.nome) + '</div><div class="ch-grade pequeno">' + r.jogos.map((j) => cartao(j, href)).join('') + '</div>').join('') + '</div>').join('');
     h += '</div>';
-    if ((d.classificacao_geral || []).length) h += '<h3 class="ch-tit">Classificação geral</h3><p class="ch-sub">Todas as equipes dos grupos numa tabela só (pontos, saldo de sets e saldo de pontos).' + (d.classificam_geral ? '' : ' Só como apoio: avançam os melhores de cada grupo.') + '</p><div class="ch-grupo">' + tabelaGrupo(d.classificacao_geral, sets) + '</div>';
+    if ((d.classificacao_geral || []).length) h += '<h3 class="ch-tit">Classificação geral</h3><p class="ch-sub">Todas as equipes dos grupos numa tabela só (pontos, saldo de sets e saldo de pontos).' + (d.classificam_geral ? '' : ' Só como apoio: avançam os melhores de cada grupo.') + '</p><div class="ch-grupo">' + tabelaGeral(d.classificacao_geral, sets) + '</div>';
     if (d.rodadas.length) h += '<h3 class="ch-tit">Mata-mata</h3><div class="ch-chave">' + d.rodadas.map((r) => '<div class="ch-coluna"><h4>' + esc(r.nome) + '</h4><div class="ch-col-jogos">' + r.jogos.map((j) => cartao(j, href)).join('') + '</div></div>').join('') + '</div>';
     else h += '<div class="ch-aviso" style="margin-top:14px">O mata-mata é montado automaticamente quando terminar o último jogo da fase de grupos' + (d.jogos_grupos_restantes ? ' (faltam ' + d.jogos_grupos_restantes + ' jogo' + (d.jogos_grupos_restantes !== 1 ? 's' : '') + ').' : '.') + '</div>';
     return h;

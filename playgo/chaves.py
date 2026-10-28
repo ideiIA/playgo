@@ -1028,7 +1028,7 @@ def classificacao_resumo(s: SessaoORM, c: Campeonato) -> dict | None:
         return None
     return {
         "titulo": titulo, "sets": modo_sets(c),
-        "linhas": [{"posicao": L["posicao"], "nome": L["equipe"]["nome"], "grupo": L.get("grupo"), "jogos": L["jogos"], "vitorias": L["vitorias"], "pontos": L["pontos"], "saldo": L["saldo"], "pts_saldo": L["pts_saldo"], "classifica": bool(avancam) and L["posicao"] <= avancam} for L in tabela],
+        "linhas": [{"posicao": L["posicao"], "nome": L["equipe"]["nome"], "grupo": L.get("grupo"), "jogos": L["jogos"], "vitorias": L["vitorias"], "derrotas": L["derrotas"], "pontos": L["pontos"], "saldo": L["saldo"], "pro": L["pro"], "contra": L["contra"], "pts_pro": L["pts_pro"], "pts_contra": L["pts_contra"], "pts_saldo": L["pts_saldo"], "classifica": bool(avancam) and L["posicao"] <= avancam} for L in tabela],
         "avancam": avancam,
     }
 
