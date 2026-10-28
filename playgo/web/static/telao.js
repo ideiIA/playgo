@@ -65,7 +65,7 @@
         t('video').innerHTML = v ? '<iframe src="https://www.youtube.com/embed/' + encodeURIComponent(v) + '?autoplay=1&mute=1&rel=0&playsinline=1" allow="autoplay; encrypted-media; fullscreen" allowfullscreen title="Transmissão ao vivo"></iframe>' : '';
       }
       const p = D.proximos[0];
-      t('principal').innerHTML = D.classificacao && (modoEfetivo() === 'so' || (modoEfetivo() === 'alterna' && (!j || telaClass))) ? classificacaoHtml(D.classificacao) : j ? placarHtml(j, !!v)
+      t('principal').innerHTML = D.classificacao && (modoEfetivo() === 'so' || (modoEfetivo() === 'alterna' && telaClass)) ? classificacaoHtml(D.classificacao) : j ? placarHtml(j, !!v)
         : '<div class="tl-espera"><h3>' + (D.ultimos.length || D.proximos.length ? 'Intervalo entre os jogos' : 'Em breve, o placar ao vivo') + '</h3><p>' + esc(c.nome) + '</p>' +
           (p ? '<div class="tl-proximo">Próximo jogo<br><b>' + esc(p.a.nome) + ' × ' + esc(p.b.nome) + '</b><small>' + esc([p.rodada_nome, p.local, quando(p.inicio_previsto)].filter(Boolean).join(' · ')) + '</small></div>' : '') + '</div>';
       t('pontos').innerHTML = jogos.length > 1 ? jogos.map((_, i) => '<b class="' + (i === idx ? 'on' : '') + '"></b>').join('') : '';
@@ -93,7 +93,7 @@
     const tAtualiza = setInterval(atualizar, 3000);
     // vários jogos ao vivo no modo automático: alterna a cada poucos segundos
     const tClass = setInterval(() => {
-      if (D && D.classificacao && modoEfetivo() === 'alterna' && D.jogos.length && Date.now() - ultimaClass >= D.rotacao_s * 1000) { telaClass = !telaClass; ultimaClass = Date.now(); desenhar(); }
+      if (D && D.classificacao && modoEfetivo() === 'alterna' && Date.now() - ultimaClass >= D.rotacao_s * 1000) { telaClass = !telaClass; ultimaClass = Date.now(); desenhar(); }
     }, 1000);
     const tRotaciona = setInterval(() => {
       if (D && D.modo === 'auto' && D.jogos.length > 1 && Date.now() - ultimaTroca >= D.rotacao_s * 1000) { idx = (idx + 1) % D.jogos.length; ultimaTroca = Date.now(); desenhar(); }

@@ -153,7 +153,7 @@
       $('vivo-txt').textContent = aoVivo ? 'AO VIVO' : (jogos.length ? 'EM BREVE' : 'AGUARDANDO');
       if (idx >= jogos.length) idx = 0;
       const eff = modoEfetivo();
-      const verClass = !!D.classificacao && (eff === 'so' || (eff === 'alterna' && (!jogos.length || telaClass)));
+      const verClass = !!D.classificacao && (eff === 'so' || (eff === 'alterna' && telaClass));
       $('principal').innerHTML = verClass ? classificacaoHtml(D.classificacao) : (jogos.length ? jogoGrande(jogos[idx]) : espera());
       $('pontos').innerHTML = jogos.length > 1 ? jogos.map((_, i) => `<b class="${i === idx ? 'on' : ''}"></b>`).join('') : '';
       $('rodape').innerHTML =
@@ -183,7 +183,7 @@
     setInterval(atualizar, 3000);
     // vários jogos ao vivo no modo automático: alterna a cada poucos segundos
     // classificação ligada pela organização: alterna com o placar quando há jogo (sozinha quando não há)
-    setInterval(() => { if (D && D.classificacao && modoEfetivo() === 'alterna' && D.jogos.length && Date.now() - ultimaClass >= D.rotacao_s * 1000) { telaClass = !telaClass; ultimaClass = Date.now(); desenhar(); } }, 1000);
+    setInterval(() => { if (D && D.classificacao && modoEfetivo() === 'alterna' && Date.now() - ultimaClass >= D.rotacao_s * 1000) { telaClass = !telaClass; ultimaClass = Date.now(); desenhar(); } }, 1000);
     setInterval(() => { if (D && D.modo === 'auto' && D.jogos.length > 1 && Date.now() - ultimaTroca >= D.rotacao_s * 1000) { idx = (idx + 1) % D.jogos.length; ultimaTroca = Date.now(); desenhar(); } }, 1000);
 
     // tela cheia, tela sempre acesa e cursor escondido (TV)
