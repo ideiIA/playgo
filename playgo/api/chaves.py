@@ -18,6 +18,7 @@ class SorteioIn(BaseModel):
     classificam: int | None = None  # fase de grupos: quantos de cada grupo vão ao mata-mata
     classificam_geral: int | None = None  # fase de grupos: as N melhores no geral (1ºxN, 2ºx(N-1)…), no lugar de "por grupo"
     cabecas: list[int] = []  # ids das equipes cabeças de chave, em ordem (a 1ª é a nº 1)
+    grupos_manual: list[list[int]] | None = None  # fase de grupos montada à mão: ids das equipes de cada grupo (A, B, C…)
 
 
 class MarcarIn(BaseModel):
@@ -77,7 +78,7 @@ def ver_chaves(campeonato_id: int, u: AtualApi, s: Sessao):
 
 @router.post("/{campeonato_id}/sorteio")
 def sortear(campeonato_id: int, corpo: SorteioIn, u: AtualApi, s: Sessao):
-    chaves.sortear(s, campeonato_id, u, corpo.formato, corpo.grupos, corpo.classificam, corpo.cabecas, corpo.classificam_geral)
+    chaves.sortear(s, campeonato_id, u, corpo.formato, corpo.grupos, corpo.classificam, corpo.cabecas, corpo.classificam_geral, corpo.grupos_manual)
     return chaves.chaveamento(s, campeonatos.obter(s, campeonato_id), u)
 
 
@@ -147,6 +148,16 @@ def classificacao_telao(campeonato_id: int, corpo: TelaoClassificacaoIn, u: Atua
 class ClassificamIn(BaseModel):
     classificam: int | None = None
     classificam_geral: int | None = None
+
+
+class ChaveManualIn(BaseModel):
+    texto: str = ""  # uma linha por jogo: "13: 1 x 8", "17: V13 x V16"
+
+
+@router.post("/{campeonato_id}/chaves/manual")
+def chave_manual(campeonato_id: int, corpo: ChaveManualIn, u: AtualApi, s: Sessao):
+    chaves.definir_chave_manual(s, campeonato_id, u, corpo.texto)
+    return chaves.chaveamento(s, campeonatos.obter(s, campeonato_id), u)
 
 
 @router.post("/{campeonato_id}/chaves/classificacao")

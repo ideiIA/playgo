@@ -993,3 +993,70 @@ def test_telao_classificacao_do_super8(s, fabrica):
     chaves.sortear(s, c.id, org, "super8")
     cl = chaves.classificacao_resumo(s, c)
     assert cl["titulo"] == "Ranking" and len(cl["linhas"]) == 8
+
+
+def test_grupos_montados_a_mao(s, fabrica):
+    from playgo.models import ChaveEquipe
+
+    c, org, _ = _torneio(s, fabrica, 6)
+    eq = _equipes_confirmadas(s, c)
+    ids = [e.id for e in eq]
+    with pytest.raises(ErroNegocio, match="pelo menos 2"):
+        chaves.sortear(s, c.id, org, "grupos", grupos_manual=[ids[:4], [ids[4]]])
+    with pytest.raises(ErroNegocio, match="único grupo"):
+        chaves.sortear(s, c.id, org, "grupos", grupos_manual=[ids[:3], ids[2:5]])
+    chaves.sortear(s, c.id, org, "grupos", classificam=2, grupos_manual=[[ids[5], ids[0], ids[3]], [ids[1], ids[2]]])  # a equipe 5 fica de fora
+    marcas = {m.equipe_id: m.grupo for m in s.scalars(select(ChaveEquipe).where(ChaveEquipe.campeonato_id == c.id))}
+    assert marcas == {ids[5]: "A", ids[0]: "A", ids[3]: "A", ids[1]: "B", ids[2]: "B"} and ids[4] not in marcas
+    assert len(_jogos(s, c)) == 3 + 1
+
+
+def test_chave_manual_define_quem_joga_com_quem_e_preenche_os_colocados(s, fabrica):
+    c, org, _ = _torneio(s, fabrica, 9)
+    ids = [e.id for e in _equipes_confirmadas(s, c)]
+    chaves.sortear(s, c.id, org, "grupos", classificam_geral=8, grupos_manual=[ids[0:3], ids[3:6], ids[6:9]])
+    texto = "13: 1 x 8\n14: 2 x 7\n15: 3 x 6\n16: 4 x 5\n17: V13 x V16\n18: V14 x V15\n19: V17 x V18"
+    for ruim, msg in [("13: 1 x 8\n13: 2 x 7", "mesmo número"), ("1: 1 x 1\n2: V1 x 2", "mais de uma vez"), ("1: 1 x 2\n2: 3 x 4", "única final"), ("1: V9 x 2", "não existe"), ("1: 1 x 20", "colocado geral"), ("sem formato", "Linha 1"), ("1: Fantasma x 2", "não é uma equipe")]:
+        with pytest.raises(ErroNegocio, match=msg):
+            chaves.definir_chave_manual(s, c.id, org, ruim)
+    with pytest.raises(SemPermissao):
+        chaves.definir_chave_manual(s, c.id, fabrica.atleta("Intruso"), texto)
+    chaves.definir_chave_manual(s, c.id, org, texto)
+    mata = {j.numero: j for j in _jogos(s, c) if j.fase == "mata_mata"}
+    assert sorted(mata) == [13, 14, 15, 16, 17, 18, 19]
+    assert [mata[n].rodada_nome for n in (13, 17, 19)] == ["Quartas de final", "Semifinal", "Final"]
+    assert mata[13].origem_a == "1º colocado geral" and mata[13].origem_b == "8º colocado geral" and mata[17].origem_a == "Vencedor do jogo 13"
+    assert mata[13].equipe_a_id is None  # ainda não há colocados
+    assert (mata[13].proximo_id, mata[13].proximo_lado) == (mata[17].id, "a") and (mata[16].proximo_id, mata[16].proximo_lado) == (mata[17].id, "b")
+    assert (mata[14].proximo_id, mata[15].proximo_id) == (mata[18].id, mata[18].id) and mata[17].proximo_id == mata[19].id
+    d = chaves.chaveamento(s, c, org)
+    assert d["tem_chave_manual"] and d["chave_manual"] == texto and [r["nome"] for r in d["rodadas"]] == ["Quartas de final", "Semifinal", "Final"]
+    assert d["rodadas"][0]["jogos"][0]["numero"] == 13 and d["jogos_grupos_restantes"] == 9
+
+    for j in [x for x in _jogos(s, c) if x.fase == "grupos"]:
+        _disputar(s, c, org, j, 2, 0)
+    ordem = [L["equipe"]["id"] for L in chaves.chaveamento(s, c, org)["classificacao_geral"]]
+    mata = {j.numero: j for j in _jogos(s, c) if j.fase == "mata_mata"}
+    assert [(mata[n].equipe_a_id, mata[n].equipe_b_id) for n in (13, 14, 15, 16)] == [(ordem[0], ordem[7]), (ordem[1], ordem[6]), (ordem[2], ordem[5]), (ordem[3], ordem[4])]
+    for n in (13, 14, 15, 16, 17, 18, 19):
+        j = next(x for x in _jogos(s, c) if x.numero == n)
+        _disputar(s, c, org, j, 3, 1)
+    s.refresh(c)
+    final = next(x for x in _jogos(s, c) if x.numero == 19)
+    semi = {x.numero: x for x in _jogos(s, c)}
+    assert semi[17].equipe_a_id == semi[13].vencedor_id and semi[17].equipe_b_id == semi[16].vencedor_id and c.status == "encerrado"
+    assert chaves.chaveamento(s, c, org)["campeao"]["id"] == final.vencedor_id
+    # texto vazio volta ao cruzamento automático (os grupos já acabaram, então o mata-mata automático nasce)
+    with pytest.raises(ErroNegocio, match="já começou"):
+        chaves.definir_chave_manual(s, c.id, org, "")
+
+
+def test_chave_manual_na_eliminatoria_por_nome_de_equipe(s, fabrica):
+    c, org, _ = _torneio(s, fabrica, 4)
+    chaves.sortear(s, c.id, org, "eliminatoria")
+    chaves.definir_chave_manual(s, c.id, org, "1: Equipe 1 x Equipe 4\n2: equipe 2 x EQUIPE 3\n3: V1 x V2")
+    jogos = _jogos(s, c)
+    assert [(j.numero, j.rodada_nome) for j in jogos] == [(1, "Semifinal"), (2, "Semifinal"), (3, "Final")]
+    assert {j.equipe_a.nome for j in jogos[:2]} == {"Equipe 1", "Equipe 2"}
+    with pytest.raises(ErroNegocio, match="só existe na fase de grupos"):
+        chaves.definir_chave_manual(s, c.id, org, "1: 1 x 2")

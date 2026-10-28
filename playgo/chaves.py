@@ -9,7 +9,9 @@ uma linha do tempo (`JogoEvento`). No Vercel não há conexão aberta: quem acom
 
 import math
 import random
+import re
 import secrets
+import unicodedata
 from datetime import datetime, time, timedelta
 
 from sqlalchemy import delete, func, select
@@ -146,10 +148,12 @@ def _avisar_equipes(s: SessaoORM, c: Campeonato, equipes: list[int | None], titu
 
 def sortear(
     s: SessaoORM, campeonato_id: int, por: Usuario, formato: str, grupos: int | None = None, classificam: int | None = None, cabecas: list[int] | None = None,
-    classificam_geral: int | None = None,
+    classificam_geral: int | None = None, grupos_manual: list[list[int]] | None = None,
 ) -> dict:
     """`cabecas` = ids das equipes cabeças de chave, em ordem (o primeiro é o nº 1). Na eliminatória ocupam as melhores posições da chave
-    (e as folgas); na fase de grupos cada grupo recebe no máximo um. As demais equipes são sorteadas."""
+    (e as folgas); na fase de grupos cada grupo recebe no máximo um. As demais equipes são sorteadas.
+    `grupos_manual` (só fase de grupos): a organização monta os grupos à mão, uma lista de ids por grupo (A, B, C…); só as equipes
+    colocadas entram, e a ordem na lista define os confrontos."""
     c = campeonatos.obter(s, campeonato_id)
     campeonatos.exigir_gestao(c, por)
     if formato not in FORMATOS:
@@ -164,8 +168,18 @@ def sortear(
     if len(set(cabecas)) != len(cabecas) or any(i not in por_id for i in cabecas):
         raise ErroNegocio("Os cabeças de chave precisam ser equipes confirmadas, sem repetir.")
     q = None
+    manual: list[list[Equipe]] = []
     if formato == "grupos":
         n = len(equipes)
+        if grupos_manual:
+            manual = [[por_id[i] for i in g] for g in grupos_manual if g]
+            ids = [i for g in grupos_manual for i in g]
+            if any(i not in por_id for i in ids) or len(set(ids)) != len(ids):
+                raise ErroNegocio("Os grupos montados à mão só aceitam equipes confirmadas, e cada equipe em um único grupo.")
+            if len(manual) < 2 or len(manual) > len(LETRAS) or any(len(g) < 2 for g in manual):
+                raise ErroNegocio("Monte pelo menos 2 grupos, cada um com pelo menos 2 equipes.")
+            n, grupos, cabecas = len(ids), len(manual), []
+            equipes = [e for e in equipes if e.id in set(ids)]
         if n < 4:
             raise ErroNegocio("A fase de grupos precisa de pelo menos 4 equipes confirmadas.")
         if not grupos or not 2 <= grupos <= n // 2:
@@ -178,8 +192,9 @@ def sortear(
             q = None
         else:
             q = classificam or 2
-            if not 1 <= q <= n // grupos:
-                raise ErroNegocio(f"Classificam de 1 a {n // grupos} equipes por grupo.")
+            menor = min(len(g) for g in manual) if manual else n // grupos
+            if not 1 <= q <= menor:
+                raise ErroNegocio(f"Classificam de 1 a {menor} equipes por grupo.")
             if grupos * q < 2:
                 raise ErroNegocio("O mata-mata precisa de pelo menos 2 classificados.")
     elif formato == "pontos_corridos":
@@ -213,7 +228,7 @@ def sortear(
         _montar_eliminatoria(s, c, [por_id[i] for i in cabecas] + resto)  # a ordem é a de cabeça de chave
         s.add_all(ChaveEquipe(campeonato_id=c.id, equipe_id=i, cabeca=n_ + 1) for n_, i in enumerate(cabecas))
     elif formato == "grupos":
-        for g, lista in enumerate(_distribuir(por_id, cabecas, resto, grupos)):
+        for g, lista in enumerate(manual or _distribuir(por_id, cabecas, resto, grupos)):
             _montar_pontos_corridos(s, c, lista, grupo=LETRAS[g], fase="grupos")
             for e in lista:
                 s.add(ChaveEquipe(campeonato_id=c.id, equipe_id=e.id, grupo=LETRAS[g], cabeca=cabecas.index(e.id) + 1 if e.id in cabecas else None))
@@ -233,9 +248,11 @@ def sortear(
     c.grupos_qtd, c.classificam = (grupos, q) if formato == "grupos" else (None, None)
     c.classificam_geral = classificam_geral if formato == "grupos" and classificam_geral else None
     c.formato, c.sorteado_em, c.sorteio_semente = formato, agora(), semente
+    s.flush()
+    _refazer_chave_manual_apos_sorteio(s, c)
     if c.status != C_ENCERRADO:
         c.status = C_ANDAMENTO
-    auditoria.registrar(s, por.id, "campeonato_sorteio", "campeonato", c.id, formato=formato, equipes=len(equipes), semente=semente, grupos=grupos, cabecas=cabecas, classificam_geral=c.classificam_geral)
+    auditoria.registrar(s, por.id, "campeonato_sorteio", "campeonato", c.id, formato=formato, equipes=len(equipes), semente=semente, grupos=grupos, cabecas=cabecas, classificam_geral=c.classificam_geral, grupos_manual=bool(manual))
     s.flush()
     _avisar_equipes(s, c, [e.id for e in equipes], f"🎲 Sorteio feito: {c.nome}", "Veja seus jogos nas chaves do campeonato.", f"sorteio:{c.id}:{semente}", excluir=por.id)
     s.commit()
@@ -1081,6 +1098,9 @@ def definir_classificacao(s: SessaoORM, campeonato_id: int, por: Usuario, classi
         if not 1 <= q <= max(1, n // max(grupos, 1)) or grupos * q < 2:
             raise ErroNegocio("Quantidade inválida de classificados por grupo.")
         c.classificam, c.classificam_geral = q, None
+    if c.chave_manual:  # quem joga com quem vem da chave manual: aqui só muda o destaque nas tabelas
+        s.commit()
+        return {"classificam": c.classificam, "classificam_geral": c.classificam_geral}
     for x in mata:
         x.proximo_id = None
     s.flush()
@@ -1129,6 +1149,11 @@ def _gerar_mata_mata_se_pronto(s: SessaoORM, c: Campeonato) -> None:
         return
     jogos = list(s.scalars(select(Jogo).where(Jogo.campeonato_id == c.id)))
     grupos = [j for j in jogos if j.fase == "grupos"]
+    if c.chave_manual:  # a chave já existe (montada à mão): só falta preencher os colocados quando os grupos acabam
+        colocados = _preencher_colocados(s, c, jogos)
+        if colocados:
+            _avisar_equipes(s, c, colocados, f"➡️ Mata-mata de {c.nome} definido", "Sua equipe se classificou. Veja o cruzamento nas chaves.", f"mata:{c.id}")
+        return
     if not grupos or any(j.fase == "mata_mata" for j in jogos) or any(j.status != J_ENCERRADO for j in grupos):
         return
     classificados = _classificados(s, c, grupos)
@@ -1165,12 +1190,15 @@ def reabrir(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> Jog
         mata = list(s.scalars(select(Jogo).where(Jogo.campeonato_id == c.id, Jogo.fase == "mata_mata")))
         if any(x.status != J_AGENDADO and not x.folga for x in mata):
             raise ErroNegocio("O mata-mata já começou; não dá mais para reabrir jogos da fase de grupos.")
-        for x in mata:
-            x.proximo_id = None
-        s.flush()
-        for x in mata:
-            s.delete(x)
-        s.flush()
+        if c.chave_manual:  # a chave fica; só esvazia quem entrou por colocação
+            _limpar_colocados(c, mata)
+        else:
+            for x in mata:
+                x.proximo_id = None
+            s.flush()
+            for x in mata:
+                s.delete(x)
+            s.flush()
     if j.proximo_id:
         prox = s.get(Jogo, j.proximo_id)
         if prox.status != J_AGENDADO:
@@ -1186,6 +1214,260 @@ def reabrir(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> Jog
     auditoria.registrar(s, por.id, "jogo_reabrir", "jogo", j.id)
     s.commit()
     return j
+
+
+# ---------------------------------------------------------------- chave manual (a organização diz quem joga com quem)
+
+_RE_LINHA = re.compile(r"^\s*(?:jogo\s*)?(\d+)\s*[:\-–.)]\s*(.+?)\s*$", re.I)
+_RE_VS = re.compile(r"\s+(?:x|×|vs\.?)\s+", re.I)
+_RE_VENC = re.compile(r"^(?:v|venc\w*\.?)\s*(?:do\s+)?(?:jogo\s*)?(\d+)$", re.I)
+_RE_GRUPO = re.compile(r"^(\d+)\s*[º°]?\s*(?:colocad[oa]\s+)?(?:d[oa]\s+)?(?:grupo\s+)?([A-Za-z])$", re.I)
+_RE_GERAL = re.compile(r"^(\d+)\s*[º°]?(?:\s*colocad[oa])?(?:\s*geral)?$", re.I)
+NOMES_FASE = {0: "Final", 1: "Semifinal", 2: "Quartas de final", 3: "Oitavas de final"}
+
+
+def _norm(texto: str) -> str:
+    return "".join(ch for ch in unicodedata.normalize("NFD", texto.casefold()) if unicodedata.category(ch) != "Mn").strip()
+
+
+def _ler_lado(texto: str) -> dict:
+    t = texto.strip()
+    if m := _RE_VENC.match(t):
+        return {"t": "venc", "jogo": int(m[1])}
+    if m := _RE_GRUPO.match(t):
+        return {"t": "grupo", "n": int(m[1]), "g": m[2].upper()}
+    if m := _RE_GERAL.match(t):
+        return {"t": "geral", "n": int(m[1])}
+    return {"t": "equipe", "nome": t}
+
+
+def _texto_lado(tok: dict) -> str:
+    """Como a pessoa escreve (o que volta para a caixa de edição)."""
+    if tok["t"] == "venc":
+        return f"V{tok['jogo']}"
+    if tok["t"] == "grupo":
+        return f"{tok['n']}{tok['g']}"
+    if tok["t"] == "geral":
+        return str(tok["n"])
+    return tok.get("nome", "")
+
+
+def _rotulo_lado(tok: dict) -> str:
+    """Como o chaveamento mostra enquanto o lado ainda não tem equipe."""
+    if tok["t"] == "venc":
+        return f"Vencedor do jogo {tok['jogo']}"
+    if tok["t"] == "grupo":
+        return f"{tok['n']}º do grupo {tok['g']}"
+    if tok["t"] == "geral":
+        return f"{tok['n']}º colocado geral"
+    return tok.get("nome", "")[:60]
+
+
+def ler_chave_manual(texto: str) -> list[dict]:
+    """Uma linha por jogo: `13: 1 x 8` (1º colocado geral × 8º), `14: 2A x 1B` (2º do grupo A × 1º do B), `17: V13 x V16` (vencedor do jogo 13
+    × vencedor do jogo 16) ou `20: UFMS x NEVMATEC` (nomes de equipes confirmadas)."""
+    spec: list[dict] = []
+    for n, bruta in enumerate((texto or "").splitlines(), 1):
+        if not bruta.strip():
+            continue
+        m = _RE_LINHA.match(bruta)
+        partes = _RE_VS.split(m[2]) if m else []
+        if not m or len(partes) != 2 or not all(p.strip() for p in partes):
+            raise ErroNegocio(f"Linha {n}: use o formato \"13: 1 x 8\" (número do jogo, dois pontos, lado A, x, lado B).")
+        spec.append({"numero": int(m[1]), "a": _ler_lado(partes[0]), "b": _ler_lado(partes[1])})
+    return spec
+
+
+def chave_manual_texto(c: Campeonato) -> str:
+    return "\n".join(f"{x['numero']}: {_texto_lado(x['a'])} x {_texto_lado(x['b'])}" for x in (c.chave_manual or []))
+
+
+def _validar_chave_manual(s: SessaoORM, c: Campeonato, spec: list[dict]) -> tuple[dict[int, int], dict[str, Equipe]]:
+    """Confere a chave e devolve a profundidade de cada jogo (0 = final) e as equipes confirmadas por nome."""
+    if not spec:
+        raise ErroNegocio("Informe pelo menos um jogo, por exemplo \"1: 1 x 2\".")
+    confirmadas = list(s.scalars(select(Equipe).where(Equipe.campeonato_id == c.id, Equipe.status == E_CONFIRMADA)))
+    por_nome = {_norm(e.nome): e for e in confirmadas}
+    tamanhos: dict[str, int] = {}
+    for k in s.scalars(select(ChaveEquipe).where(ChaveEquipe.campeonato_id == c.id, ChaveEquipe.grupo.is_not(None))):
+        tamanhos[k.grupo] = tamanhos.get(k.grupo, 0) + 1
+    numeros = [x["numero"] for x in spec]
+    if len(set(numeros)) != len(numeros):
+        raise ErroNegocio("Há dois jogos com o mesmo número.")
+    usados: set[tuple] = set()
+    pai: dict[int, int] = {}  # jogo -> jogo para onde o vencedor vai
+    for x in spec:
+        for lado in ("a", "b"):
+            tok, chave = x[lado], None
+            if tok["t"] == "venc":
+                if tok["jogo"] not in numeros or tok["jogo"] == x["numero"]:
+                    raise ErroNegocio(f"Jogo {x['numero']}: o vencedor do jogo {tok['jogo']} não existe na chave.")
+                if tok["jogo"] in pai:
+                    raise ErroNegocio(f"O vencedor do jogo {tok['jogo']} só pode seguir para um jogo.")
+                pai[tok["jogo"]] = x["numero"]
+                continue
+            if tok["t"] == "geral":
+                if c.formato != "grupos":
+                    raise ErroNegocio("\"Colocado geral\" só existe na fase de grupos; use o nome das equipes.")
+                if not 1 <= tok["n"] <= sum(tamanhos.values()):
+                    raise ErroNegocio(f"Jogo {x['numero']}: não existe o {tok['n']}º colocado geral.")
+                chave = ("g", tok["n"])
+            elif tok["t"] == "grupo":
+                if tok["g"] not in tamanhos or not 1 <= tok["n"] <= tamanhos[tok["g"]]:
+                    raise ErroNegocio(f"Jogo {x['numero']}: não existe o {tok['n']}º do grupo {tok['g']}.")
+                chave = ("p", tok["g"], tok["n"])
+            else:
+                e = por_nome.get(_norm(tok["nome"]))
+                if e is None:
+                    raise ErroNegocio(f"Jogo {x['numero']}: \"{tok['nome']}\" não é uma equipe confirmada (nem um código como 1, 2A ou V13).")
+                chave = ("e", e.id)
+            if chave in usados:
+                raise ErroNegocio(f"Jogo {x['numero']}: {_rotulo_lado(tok)} aparece mais de uma vez na chave.")
+            usados.add(chave)
+    finais = [n for n in numeros if n not in pai]
+    if len(finais) != 1:
+        raise ErroNegocio("A chave precisa de uma única final (um jogo cujo vencedor não segue adiante); sem seguir adiante: " + ", ".join(f"jogo {n}" for n in finais) + ".")
+    filhos: dict[int, list[int]] = {}
+    for filho, mae in pai.items():
+        filhos.setdefault(mae, []).append(filho)
+    profundidade, fila = {finais[0]: 0}, [finais[0]]
+    while fila:
+        atual = fila.pop()
+        for f in filhos.get(atual, []):
+            profundidade[f] = profundidade[atual] + 1
+            fila.append(f)
+    if len(profundidade) != len(numeros):
+        raise ErroNegocio("A chave tem jogos que não levam à final (conferir os \"V…\").")
+    return profundidade, por_nome
+
+
+def _criar_jogos_manual(s: SessaoORM, c: Campeonato, spec: list[dict], fase: str | None) -> list[Jogo]:
+    """Cria os jogos da chave definida à mão. Os lados por colocação ficam vazios (com o rótulo "1º colocado geral") até a fase de
+    grupos terminar; quem é citado por nome já entra. Rodadas e nomes (Quartas, Semifinal, Final) saem da distância até a final."""
+    profundidade, por_nome = _validar_chave_manual(s, c, spec)
+    maior = max(profundidade.values())
+    por_numero: dict[int, Jogo] = {}
+    contagem: dict[int, int] = {}
+    for x in sorted(spec, key=lambda x: (-profundidade[x["numero"]], x["numero"])):
+        d = profundidade[x["numero"]]
+        r = maior - d + 1
+        contagem[r] = contagem.get(r, -1) + 1
+        j = Jogo(campeonato_id=c.id, rodada=r, posicao=contagem[r], rodada_nome=NOMES_FASE.get(d, f"Fase {r}"), fase=fase, numero=x["numero"],
+                 origem_a=_rotulo_lado(x["a"]), origem_b=_rotulo_lado(x["b"]))
+        for lado in ("a", "b"):
+            if x[lado]["t"] == "equipe":
+                setattr(j, f"equipe_{lado}_id", por_nome[_norm(x[lado]["nome"])].id)
+        s.add(j)
+        por_numero[x["numero"]] = j
+    s.flush()
+    for x in spec:
+        for lado in ("a", "b"):
+            if x[lado]["t"] == "venc":
+                filho = por_numero[x[lado]["jogo"]]
+                filho.proximo_id, filho.proximo_lado = por_numero[x["numero"]].id, lado
+    s.flush()
+    return list(por_numero.values())
+
+
+def _refazer_chave_manual_apos_sorteio(s: SessaoORM, c: Campeonato) -> None:
+    """O sorteio apagou os jogos; a chave manual da fase de grupos continua valendo se ainda cabe nos novos grupos."""
+    if not c.chave_manual:
+        return
+    if c.formato != "grupos":
+        c.chave_manual = None
+        return
+    try:
+        _criar_jogos_manual(s, c, c.chave_manual, "mata_mata")
+    except ErroNegocio:
+        c.chave_manual = None
+
+
+def _preencher_colocados(s: SessaoORM, c: Campeonato, jogos: list[Jogo]) -> list[int]:
+    """Terminada a fase de grupos, põe nos jogos da chave manual quem ficou em cada colocação. Devolve os ids das equipes colocadas agora."""
+    de_grupo = [j for j in jogos if j.fase == "grupos"]
+    mata = [j for j in jogos if j.fase == "mata_mata"]
+    if not c.chave_manual or not de_grupo or not mata or any(j.status != J_ENCERRADO for j in de_grupo):
+        return []
+    por_grupo: dict[str, list[Equipe]] = {}
+    for k in s.scalars(select(ChaveEquipe).where(ChaveEquipe.campeonato_id == c.id, ChaveEquipe.grupo.is_not(None))):
+        por_grupo.setdefault(k.grupo, []).append(s.get(Equipe, k.equipe_id))
+    geral = [L["equipe"]["id"] for L in _classificacao_geral(de_grupo, por_grupo, c)]
+    tabelas = {g: [L["equipe"]["id"] for L in classificacao([j for j in de_grupo if j.grupo == g], eqs, c)] for g, eqs in por_grupo.items()}
+    spec = {x["numero"]: x for x in c.chave_manual}
+    colocados: list[int] = []
+    for j in mata:
+        x = spec.get(j.numero)
+        if x is None:
+            continue
+        for lado in ("a", "b"):
+            tok = x[lado]
+            if getattr(j, f"equipe_{lado}_id") is not None or tok["t"] not in ("geral", "grupo"):
+                continue
+            lista = geral if tok["t"] == "geral" else tabelas.get(tok["g"], [])
+            if tok["n"] > len(lista):
+                continue
+            e = s.get(Equipe, lista[tok["n"] - 1])
+            setattr(j, f"equipe_{lado}", e)
+            setattr(j, f"equipe_{lado}_id", e.id)
+            colocados.append(e.id)
+    return colocados
+
+
+def _limpar_colocados(c: Campeonato, mata: list[Jogo]) -> None:
+    """Um jogo da fase de grupos foi reaberto: esvazia os lados por colocação (a classificação pode mudar)."""
+    spec = {x["numero"]: x for x in (c.chave_manual or [])}
+    for j in mata:
+        x = spec.get(j.numero)
+        for lado in ("a", "b"):
+            if x is not None and x[lado]["t"] in ("geral", "grupo"):
+                setattr(j, f"equipe_{lado}", None)
+                setattr(j, f"equipe_{lado}_id", None)
+
+
+def definir_chave_manual(s: SessaoORM, campeonato_id: int, por: Usuario, texto: str) -> dict:
+    """A organização escreve quem joga com quem (ver `ler_chave_manual`). Na fase de grupos o mata-mata é montado já, com os lados por
+    colocação em aberto até os grupos acabarem; na eliminatória a chave inteira é refeita. Só enquanto nenhum jogo dela começou.
+    Texto vazio (só fase de grupos) volta ao cruzamento automático."""
+    c = campeonatos.obter(s, campeonato_id)
+    campeonatos.exigir_gestao(c, por)
+    if c.formato not in ("grupos", "eliminatoria"):
+        raise ErroNegocio("Faça o sorteio (fase de grupos ou eliminatória) antes de montar a chave à mão.")
+    spec = ler_chave_manual(texto)
+    if not spec and c.formato != "grupos":
+        raise ErroNegocio("Informe pelo menos um jogo, por exemplo \"1: Equipe A x Equipe B\".")
+    if spec:
+        _validar_chave_manual(s, c, spec)  # antes de apagar qualquer coisa
+    jogos = list(s.scalars(select(Jogo).where(Jogo.campeonato_id == c.id).with_for_update(of=Jogo).execution_options(populate_existing=True)))
+    alvo = [j for j in jogos if j.fase != "grupos"]
+    if any(j.status != J_AGENDADO and not j.folga for j in alvo):
+        raise ErroNegocio("A chave já começou: não dá mais para refazer quem joga com quem.")
+    for j in alvo:
+        j.proximo_id = None
+    s.flush()
+    for j in alvo:
+        s.delete(j)
+    s.flush()
+    c.chave_manual = spec or None
+    if spec:
+        lados = [x[lado] for x in spec for lado in ("a", "b")]
+        if any(g["t"] == "geral" for g in lados) and not any(g["t"] == "grupo" for g in lados):
+            c.classificam_geral, c.classificam = sum(1 for g in lados if g["t"] == "geral"), None
+        elif any(g["t"] == "grupo" for g in lados) and not any(g["t"] == "geral" for g in lados):
+            c.classificam_geral, c.classificam = None, max(g["n"] for g in lados if g["t"] == "grupo")
+        _criar_jogos_manual(s, c, spec, "mata_mata" if c.formato == "grupos" else None)
+    if c.status == C_ENCERRADO:
+        c.status = C_ANDAMENTO
+    auditoria.registrar(s, por.id, "chave_manual", "campeonato", c.id, jogos=len(spec))
+    s.flush()
+    if c.formato == "grupos":
+        novos = list(s.scalars(select(Jogo).where(Jogo.campeonato_id == c.id).execution_options(populate_existing=True)))
+        if spec:
+            _preencher_colocados(s, c, novos)
+        else:
+            _gerar_mata_mata_se_pronto(s, c)
+    s.commit()
+    s.expire_all()
+    return {"jogos": len(spec)}
 
 
 # ---------------------------------------------------------------- leitura (chaves, classificação, jogo)
@@ -1218,7 +1500,7 @@ def canal_youtube(s: SessaoORM, jogos: list[Jogo]) -> dict | None:
 
 def jogo_dict(j: Jogo) -> dict:
     return {
-        "id": j.id, "rodada": j.rodada, "rodada_nome": j.rodada_nome, "fase": j.fase, "grupo": j.grupo, "posicao": j.posicao, "a": _lado(j, "a"), "b": _lado(j, "b"),
+        "id": j.id, "numero": j.numero, "origem_a": j.origem_a, "origem_b": j.origem_b, "rodada": j.rodada, "rodada_nome": j.rodada_nome, "fase": j.fase, "grupo": j.grupo, "posicao": j.posicao, "a": _lado(j, "a"), "b": _lado(j, "b"),
         "placar_a": j.placar_a, "placar_b": j.placar_b, "ponto_a": j.ponto_a or 0, "ponto_b": j.ponto_b or 0, "status": j.status, "vencedor_id": j.vencedor_id, "desempate": j.desempate, "folga": j.folga,
         "inicio_previsto": _dt(j.inicio_previsto), "local": j.local, "iniciado_em": _dt(j.iniciado_em),
         "video": {"id": j.yt_broadcast_id, "estado": j.yt_estado} if j.yt_broadcast_id and j.yt_estado in ("ao_vivo", "encerrada") else None,
@@ -1376,7 +1658,9 @@ def chaveamento(s: SessaoORM, c: Campeonato, u: Usuario) -> dict:
         "campeao": campeao,
         "regras_placar": regras_placar(c), "placar_travado": any(j.status != J_AGENDADO and not j.folga for j in jogos),
         "grupos": grupos_out, "classificam": c.classificam, "classificam_geral": c.classificam_geral, "classificacao_geral": geral, "cabecas": cabecas, "duracao_jogo_min": c.duracao_jogo_min,
-        "jogos_grupos_restantes": sum(1 for j in de_grupo if j.status != J_ENCERRADO) if c.formato == "grupos" and not chave else 0,
+        "jogos_grupos_restantes": sum(1 for j in de_grupo if j.status != J_ENCERRADO) if c.formato == "grupos" and (not chave or c.chave_manual) else 0,
+        "chave_manual": chave_manual_texto(c), "tem_chave_manual": bool(c.chave_manual), "jogos_de_grupo": len(de_grupo),
+        "pode_chave_manual": c.formato in ("grupos", "eliminatoria") and not any(j.fase != "grupos" and j.status != J_AGENDADO and not j.folga for j in jogos),
         "equipes": [_eq(e) for e in confirmadas],
         "equipes_lugar": [{"id": e.id, "nome": e.nome, "grupo": marcas[e.id].grupo if e.id in marcas else None, "no_sorteio": e.id in no_sorteio} for e in confirmadas],
         "equipes_confirmadas": len(confirmadas), "equipes_pendentes": pendentes,

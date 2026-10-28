@@ -465,6 +465,7 @@ class Campeonato(Base):
     grupos_qtd: Mapped[int | None] = mapped_column(Integer)  # formato "grupos": quantos grupos
     classificam: Mapped[int | None] = mapped_column(Integer)  # formato "grupos": quantas equipes de cada grupo vão ao mata-mata
     classificam_geral: Mapped[int | None] = mapped_column(Integer)  # formato "grupos": as N melhores no geral (tabela única) avançam, cruzando 1ºxN, 2ºx(N-1)…
+    chave_manual: Mapped[list | None] = mapped_column(JSONB)  # mata-mata definido pela organização: [{"numero": 13, "a": {"t": "geral", "n": 1}, "b": {...}}]
     duracao_jogo_min: Mapped[int | None] = mapped_column(Integer)  # última duração usada na agenda em lote (preenche o formulário)
     # A organização libera o cadastro do elenco (nome e RG dos componentes e o técnico, com o capitão marcado) por equipe
     cadastro_elenco: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -541,6 +542,9 @@ class Jogo(Base):
     folga: Mapped[bool] = mapped_column(Boolean, default=False)  # classificação direta (sem adversário)
     proximo_id: Mapped[int | None] = mapped_column(ForeignKey("jogos.id", ondelete="SET NULL"))
     proximo_lado: Mapped[str | None] = mapped_column(String(1))  # a | b
+    numero: Mapped[int | None] = mapped_column(Integer)  # número do jogo no regulamento (chave manual: "jogo 13")
+    origem_a: Mapped[str | None] = mapped_column(String(60))  # de onde vem o lado enquanto vazio: "1º colocado geral", "Vencedor do jogo 13"
+    origem_b: Mapped[str | None] = mapped_column(String(60))
     inicio_previsto: Mapped[datetime | None] = mapped_column(DateTime)
     local: Mapped[str | None] = mapped_column(String(120))  # quadra/campo
     iniciado_em: Mapped[datetime | None] = mapped_column(DateTime)

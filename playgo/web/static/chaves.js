@@ -7,7 +7,7 @@
   const dataHora = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '');
   const ROTULO = { agendado: 'Agendado', ao_vivo: 'AO VIVO', encerrado: 'Encerrado' };
 
-  function nomeEq(e) { return e ? esc(e.nome) : '<i class="ch-tbd">a definir</i>'; }
+  function nomeEq(e, origem) { return e ? esc(e.nome) : '<i class="ch-tbd">' + esc(origem || 'a definir') + '</i>'; }
 
   function rodape(j) {
     if (j.status === 'ao_vivo') return '<span class="ch-vivo">● AO VIVO</span>';
@@ -22,10 +22,10 @@
       const venceu = j.status === 'encerrado' && j.vencedor_id && eq && j.vencedor_id === eq.id;
       const pl = lado === 'a' ? j.placar_a : j.placar_b;
       const mostra = j.status !== 'agendado' && !j.folga;
-      return '<div class="ch-linha' + (venceu ? ' venceu' : '') + '"><span class="ch-nome">' + (!eq && j.folga ? '<i class="ch-tbd">folga</i>' : nomeEq(eq)) + '</span><b class="ch-pl">' + (mostra ? pl : '') + '</b></div>';
+      return '<div class="ch-linha' + (venceu ? ' venceu' : '') + '"><span class="ch-nome">' + (!eq && j.folga ? '<i class="ch-tbd">folga</i>' : nomeEq(eq, lado === 'a' ? j.origem_a : j.origem_b)) + '</span><b class="ch-pl">' + (mostra ? pl : '') + '</b></div>';
     };
     const parciais = j.sets && j.sets.length ? '<div class="ch-sets">' + j.sets.map((x) => '<span class="' + (x.encerrado ? '' : 'atual') + '">' + x.a + '–' + x.b + '</span>').join('') + '</div>' : '';
-    return '<a class="ch-jogo ' + j.status + '" href="' + esc(href(j)) + '">' + linha(j.a, 'a') + linha(j.b, 'b') + parciais + '<div class="ch-rod">' + rodape(j) + '</div></a>';
+    return '<a class="ch-jogo ' + j.status + '" href="' + esc(href(j)) + '">' + (j.numero ? '<div class="ch-num">Jogo ' + j.numero + '</div>' : '') + linha(j.a, 'a') + linha(j.b, 'b') + parciais + '<div class="ch-rod">' + rodape(j) + '</div></a>';
   }
 
   // Jogo por sets: o que mostrar de cada lado (pontos do set em andamento, sets ganhos e a lista dos sets)
@@ -413,6 +413,34 @@
       '<button class="ch-btn" id="bt-classif">Aplicar</button></div>';
   }
 
+  // Sugestão de chave para N classificados (potência de 2): 1×N, 2×(N-1)…, e quem avança cruza o primeiro com o último
+  function modeloChave(n, base, nomes) {
+    if (n < 2 || (n & (n - 1))) return '';
+    const linhas = []; let num = base; let atual = [];
+    const lado = (i) => (nomes && nomes[i - 1] ? nomes[i - 1] : String(i));
+    for (let i = 1; i <= n / 2; i++) { linhas.push(num + ': ' + lado(i) + ' x ' + lado(n + 1 - i)); atual.push(num); num++; }
+    while (atual.length > 1) {
+      const prox = [];
+      for (let i = 0; i < atual.length / 2; i++) { linhas.push(num + ': V' + atual[i] + ' x V' + atual[atual.length - 1 - i]); prox.push(num); num++; }
+      atual = prox;
+    }
+    return linhas.join('\n');
+  }
+
+  function painelChave(d) {
+    if (!d.pode_gerir || !d.pode_chave_manual) return '';
+    const grupos = d.formato === 'grupos';
+    const n = grupos ? (d.classificam_geral || (d.grupos || []).length * (d.classificam || 2)) : d.equipes.length;
+    const modelo = modeloChave(n, grupos ? (d.jogos_de_grupo || 0) + 1 : 1, grupos ? null : d.equipes.map((e) => e.nome));
+    return '<div class="ch-painel"><h3>🧩 Montar a chave à mão (quem joga com quem)</h3>' +
+      '<p class="ch-sub">Escreva um jogo por linha: <b>número do jogo: lado A x lado B</b>. Cada lado pode ser:</p>' +
+      '<ul class="ch-sub" style="margin:4px 0 8px 18px"><li><b>1</b>, <b>8</b>… — o 1º, o 8º colocado <b>geral</b> da fase de grupos</li><li><b>2A</b>, <b>1B</b>… — o 2º do grupo A, o 1º do grupo B</li><li><b>V13</b> — o vencedor do jogo 13</li><li>o <b>nome de uma equipe</b> confirmada</li></ul>' +
+      '<p class="ch-sub">Exemplo: <code>13: 1 x 8</code> e <code>17: V13 x V16</code>. A chave aparece já nas telas (“1º colocado geral”, “Vencedor do jogo 13”) e as equipes entram sozinhas quando os grupos terminam. Quartas, semifinal e final são reconhecidas pela ligação entre os jogos. Vale enquanto nenhum jogo da chave começou.</p>' +
+      '<div class="ch-campo"><textarea id="ch-texto" rows="9" style="width:100%;font-family:ui-monospace,Consolas,monospace" placeholder="13: 1 x 8&#10;14: 2 x 7&#10;17: V13 x V14">' + esc(d.chave_manual || modelo) + '</textarea></div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="ch-btn grande" id="bt-chave">💾 Salvar chave</button>' + (d.tem_chave_manual && grupos ? '<button class="ch-btn suave" id="bt-chave-auto">↩ Voltar ao cruzamento automático</button>' : '') + '</div>' +
+      (d.tem_chave_manual ? '' : (modelo ? '<p class="ch-sub">A caixa traz uma sugestão para ' + n + ' classificados: ajuste os números e salve.</p>' : '')) + '</div>';
+  }
+
   function painelTroca(d) {
     const rotulo = (e) => esc(e.nome) + (e.grupo ? ' (grupo ' + esc(e.grupo) + ')' : '') + (e.no_sorteio ? '' : ' — fora do sorteio');
     const opts = (d.equipes_lugar || []).map((e) => '<option value="' + e.id + '">' + rotulo(e) + '</option>').join('');
@@ -439,26 +467,41 @@
           '<label>Quem avança ao mata-mata <select id="modo-classif"><option value="grupo">Os melhores de cada grupo</option><option value="geral">Os melhores no geral (tabela única)</option></select></label>' +
           '<label id="w-classif">Classificam por grupo <select id="n-classif">' + opcoes(1, 4, 2) + '</select></label>' +
           '<label id="w-geral" hidden>Quantos avançam no geral <select id="n-geral">' + opcoes(2, Math.max(2, d.equipes_confirmadas), Math.min(8, Math.max(2, d.equipes_confirmadas))) + '</select></label></div>' +
+          '<label class="ch-check"><input type="checkbox" id="gr-manual"> <b>Montar os grupos manualmente</b> (escolho em qual grupo cada equipe entra)</label>' +
+          '<div id="gr-montagem" hidden><p class="ch-sub">Escolha o grupo de cada equipe; “fora” deixa a equipe de fora da fase de grupos. A ordem das equipes define os confrontos.</p><div class="ch-cabecas" id="gr-lista"></div></div>' +
           '<p class="ch-sub">Cada grupo precisa de pelo menos 2 equipes e recebe no máximo um cabeça de chave. No modo geral, todos os grupos entram numa tabela só e o mata-mata cruza 1º × último, 2º × penúltimo… (ex.: 8 melhores: 1×8, 2×7, 3×6, 4×5).</p></div>' +
           '<div class="ch-campo" id="op-cabecas"><b>Cabeças de chave</b><p class="ch-sub" style="margin:0">Opcional. Numere as equipes mais fortes (1 = principal); elas ficam nas melhores posições e, nos grupos, em grupos diferentes. As demais são sorteadas.</p>' +
           '<div class="ch-cabecas">' + d.equipes.map((e) => '<label class="ch-cab"><input type="number" min="1" max="' + d.equipes.length + '" data-cabeca="' + e.id + '" placeholder="–"> ' + esc(e.nome) + '</label>').join('') + '</div></div>' +
           '<button class="ch-btn grande" id="bt-sortear" ' + (d.equipes_confirmadas < 2 ? 'disabled' : '') + '>' + (jaTem ? '🔁 Sortear de novo' : '🎲 Sortear agora') + '</button>' : '') +
         '<p class="ch-sub">O sorteio é aleatório (fora os cabeças de chave), fica registrado e as equipes são avisadas.</p></div>' +
-        (jaTem && d.formato !== 'super8' ? painelTroca(d) : '') + (jaTem ? painelClassif(d) : '') +
+        (jaTem && d.formato !== 'super8' ? painelTroca(d) : '') + (jaTem ? painelClassif(d) : '') + (jaTem ? painelChave(d) : '') +
         painelRegras(d) + (jaTem ? painelHorarios(d) : '') +
         '<div class="ch-painel"><h3>📋 Mesários</h3><p class="ch-sub">Pessoas autorizadas a iniciar jogos, marcar o placar e encerrar. Todos os demais só acompanham.</p>' +
         '<div id="mesarios">' + (d.mesarios.length ? d.mesarios.map((m) => '<span class="ch-chip">' + esc(m.arroba) + ' <button data-rm="' + m.usuario_id + '" title="Remover">×</button></span>').join('') : '<span class="ch-sub">Nenhum mesário além de você.</span>') + '</div>' +
         '<div class="ch-campo" style="display:flex;gap:6px"><input id="bt-mes" list="dl-mes" placeholder="@usuario" autocomplete="off"><datalist id="dl-mes"></datalist><button class="ch-btn suave" id="bt-add">Adicionar</button></div></div>';
       const bt = el.querySelector('#bt-sortear');
+      const montagemGrupos = () => {
+        const n = Number(el.querySelector('#n-grupos').value);
+        const atual = {};
+        el.querySelectorAll('[data-gr]').forEach((x) => { atual[x.dataset.gr] = x.value; });
+        const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.slice(0, n).split('');
+        el.querySelector('#gr-lista').innerHTML = d.equipes.map((e, i) => {
+          const sel = atual[e.id] !== undefined && (atual[e.id] === '' || letras.includes(atual[e.id])) ? atual[e.id] : letras[i % n];
+          return '<label class="ch-cab"><select data-gr="' + e.id + '"><option value="">fora</option>' + letras.map((l) => '<option value="' + l + '"' + (l === sel ? ' selected' : '') + '>Grupo ' + l + '</option>').join('') + '</select> ' + esc(e.nome) + '</label>';
+        }).join('');
+      };
       const mostrarOpcoes = () => {
         const f = el.querySelector('[name=formato]:checked');
         if (!f) return;
         el.querySelector('#op-grupos').hidden = f.value !== 'grupos';
-        el.querySelector('#op-cabecas').hidden = f.value === 'pontos_corridos' || f.value === 'super8';
+        const manual = !!(el.querySelector('#gr-manual') && el.querySelector('#gr-manual').checked) && f.value === 'grupos';
+        el.querySelector('#op-cabecas').hidden = f.value === 'pontos_corridos' || f.value === 'super8' || manual;
+        if (el.querySelector('#gr-montagem')) { el.querySelector('#gr-montagem').hidden = !manual; if (manual) montagemGrupos(); }
         const geral = el.querySelector('#modo-classif') && el.querySelector('#modo-classif').value === 'geral';
         if (el.querySelector('#w-classif')) { el.querySelector('#w-classif').hidden = geral; el.querySelector('#w-geral').hidden = !geral; }
       };
       if (el.querySelector('#modo-classif')) el.querySelector('#modo-classif').onchange = () => mostrarOpcoes();
+      if (el.querySelector('#gr-manual')) { el.querySelector('#gr-manual').onchange = () => mostrarOpcoes(); el.querySelector('#n-grupos').onchange = () => mostrarOpcoes(); }
       el.querySelectorAll('[name=formato]').forEach((r) => (r.onchange = mostrarOpcoes));
       mostrarOpcoes();
       if (bt) bt.onclick = async () => {
@@ -468,7 +511,13 @@
         bt.disabled = true;
         try {
           const formato = el.querySelector('[name=formato]:checked').value;
-          await post('/campeonatos/' + id + '/sorteio', { formato, grupos: formato === 'grupos' ? Number(el.querySelector('#n-grupos').value) : null, classificam: formato === 'grupos' && el.querySelector('#modo-classif').value === 'grupo' ? Number(el.querySelector('#n-classif').value) : null, classificam_geral: formato === 'grupos' && el.querySelector('#modo-classif').value === 'geral' ? Number(el.querySelector('#n-geral').value) : null, cabecas: formato === 'pontos_corridos' || formato === 'super8' ? [] : marcados.map((m) => m.id) });
+          let gruposManual = null;
+          if (formato === 'grupos' && el.querySelector('#gr-manual').checked) {
+            const letras = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.slice(0, Number(el.querySelector('#n-grupos').value)).split('');
+            gruposManual = letras.map((l) => [...el.querySelectorAll('[data-gr]')].filter((x) => x.value === l).map((x) => Number(x.dataset.gr)));
+            if (gruposManual.some((g) => g.length < 2)) { if (toast) toast('Cada grupo precisa de pelo menos 2 equipes.'); bt.disabled = false; return; }
+          }
+          await post('/campeonatos/' + id + '/sorteio', { grupos_manual: gruposManual, formato, grupos: formato === 'grupos' ? Number(el.querySelector('#n-grupos').value) : null, classificam: formato === 'grupos' && el.querySelector('#modo-classif').value === 'grupo' ? Number(el.querySelector('#n-classif').value) : null, classificam_geral: formato === 'grupos' && el.querySelector('#modo-classif').value === 'geral' ? Number(el.querySelector('#n-geral').value) : null, cabecas: formato === 'pontos_corridos' || formato === 'super8' ? [] : marcados.map((m) => m.id) });
           if (toast) toast('Sorteio feito!');
           if (o.aoSortear) o.aoSortear(); else desenhar(await get('/campeonatos/' + id + '/chaves'));
         } catch (e) { if (toast) toast(e.message); bt.disabled = false; }
@@ -489,6 +538,18 @@
           } catch (e) { if (toast) toast(e.message); btTroca.disabled = false; }
         };
       }
+      const salvarChave = async (btn, texto, ok) => {
+        btn.disabled = true;
+        try {
+          await post('/campeonatos/' + id + '/chaves/manual', { texto });
+          if (toast) toast(ok);
+          if (o.aoSortear) o.aoSortear(); else desenhar(await get('/campeonatos/' + id + '/chaves'));
+        } catch (e) { if (toast) toast(e.message); btn.disabled = false; }
+      };
+      const btChave = el.querySelector('#bt-chave');
+      if (btChave) btChave.onclick = () => salvarChave(btChave, el.querySelector('#ch-texto').value, 'Chave salva.');
+      const btChaveAuto = el.querySelector('#bt-chave-auto');
+      if (btChaveAuto) btChaveAuto.onclick = () => { if (confirm('Voltar ao cruzamento automático? A chave manual será apagada.')) salvarChave(btChaveAuto, '', 'Cruzamento automático restaurado.'); };
       const btClassif = el.querySelector('#bt-classif');
       if (btClassif) {
         const modo = el.querySelector('#cl-modo');
