@@ -95,6 +95,7 @@ _COLUNAS_NOVAS: tuple[str, ...] = (
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS telao_jogo_id integer",
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS telao_classificacao boolean NOT NULL DEFAULT false",
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS chave_manual jsonb",
+    "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS classificam_melhores integer",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS numero integer",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS origem_a varchar(60)",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS origem_b varchar(60)",

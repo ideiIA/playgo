@@ -409,6 +409,7 @@
     return '<div class="ch-painel"><h3>🎯 Quem avança ao mata-mata</h3><p class="ch-sub">Mude o critério sem refazer o sorteio. Se o mata-mata já foi montado, ele é refeito com os novos classificados (enquanto nenhum jogo dele tiver começado). Com os melhores no geral, o cruzamento é 1º × último, 2º × penúltimo…</p>' +
       '<div class="ch-campo ch-agenda"><label>Critério<select id="cl-modo"><option value="grupo"' + (geral ? '' : ' selected') + '>Os melhores de cada grupo</option><option value="geral"' + (geral ? ' selected' : '') + '>Os melhores no geral (tabela única)</option></select></label>' +
       '<label id="cl-w-grupo"' + (geral ? ' hidden' : '') + '>Por grupo<select id="cl-n-grupo">' + op(1, 4, d.classificam || 2) + '</select></label>' +
+      '<label id="cl-w-melhores"' + (geral ? ' hidden' : '') + '>+ melhores do colocado seguinte<select id="cl-n-melhores"><option value="0">nenhum</option>' + op(1, 8, d.classificam_melhores || 0) + '</select></label>' +
       '<label id="cl-w-geral"' + (geral ? '' : ' hidden') + '>No geral<select id="cl-n-geral">' + op(2, Math.max(2, d.equipes_confirmadas), d.classificam_geral || Math.min(8, Math.max(2, d.equipes_confirmadas))) + '</select></label></div>' +
       '<button class="ch-btn" id="bt-classif">Aplicar</button></div>';
   }
@@ -430,11 +431,18 @@
   function painelChave(d) {
     if (!d.pode_gerir || !d.pode_chave_manual) return '';
     const grupos = d.formato === 'grupos';
-    const n = grupos ? (d.classificam_geral || (d.grupos || []).length * (d.classificam || 2)) : d.equipes.length;
-    const modelo = modeloChave(n, grupos ? (d.jogos_de_grupo || 0) + 1 : 1, grupos ? null : d.equipes.map((e) => e.nome));
+    const letras = (d.grupos || []).map((g) => g.grupo);
+    const q = d.classificam || 2;
+    const sementes = [];  // por grupo: todos os 1º, depois os 2º…, depois os melhores do colocado seguinte (ex.: 3T1, 3T2)
+    if (grupos && !d.classificam_geral) {
+      for (let p = 1; p <= q; p++) letras.forEach((l) => sementes.push(p + l));
+      for (let k = 1; k <= (d.classificam_melhores || 0); k++) sementes.push((q + 1) + 'T' + k);
+    }
+    const n = grupos ? (d.classificam_geral || sementes.length) : d.equipes.length;
+    const modelo = modeloChave(n, grupos ? (d.jogos_de_grupo || 0) + 1 : 1, grupos ? (sementes.length ? sementes : null) : d.equipes.map((e) => e.nome));
     return '<div class="ch-painel"><h3>🧩 Montar a chave à mão (quem joga com quem)</h3>' +
       '<p class="ch-sub">Escreva um jogo por linha: <b>número do jogo: lado A x lado B</b>. Cada lado pode ser:</p>' +
-      '<ul class="ch-sub" style="margin:4px 0 8px 18px"><li><b>1</b>, <b>8</b>… — o 1º, o 8º colocado <b>geral</b> da fase de grupos</li><li><b>2A</b>, <b>1B</b>… — o 2º do grupo A, o 1º do grupo B</li><li><b>V13</b> — o vencedor do jogo 13</li><li>o <b>nome de uma equipe</b> confirmada</li></ul>' +
+      '<ul class="ch-sub" style="margin:4px 0 8px 18px"><li><b>1</b>, <b>8</b>… — o 1º, o 8º colocado <b>geral</b> da fase de grupos</li><li><b>2A</b>, <b>1B</b>… — o 2º do grupo A, o 1º do grupo B</li><li><b>3T1</b>, <b>3T2</b>… — o 1º e o 2º melhor 3º colocado (comparando os terceiros de todos os grupos); também vale “1º melhor 3º”</li><li><b>V13</b> — o vencedor do jogo 13</li><li>o <b>nome de uma equipe</b> confirmada</li></ul>' +
       '<p class="ch-sub">Exemplo: <code>13: 1 x 8</code> e <code>17: V13 x V16</code>. A chave aparece já nas telas (“1º colocado geral”, “Vencedor do jogo 13”) e as equipes entram sozinhas quando os grupos terminam. Quartas, semifinal e final são reconhecidas pela ligação entre os jogos. Vale enquanto nenhum jogo da chave começou.</p>' +
       '<div class="ch-campo"><textarea id="ch-texto" rows="9" style="width:100%;font-family:ui-monospace,Consolas,monospace" placeholder="13: 1 x 8&#10;14: 2 x 7&#10;17: V13 x V14">' + esc(d.chave_manual || modelo) + '</textarea></div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="ch-btn grande" id="bt-chave">💾 Salvar chave</button>' + (d.tem_chave_manual && grupos ? '<button class="ch-btn suave" id="bt-chave-auto">↩ Voltar ao cruzamento automático</button>' : '') + '</div>' +
@@ -466,9 +474,11 @@
           '<div class="ch-campo" id="op-grupos" hidden><div style="display:flex;gap:10px;flex-wrap:wrap"><label>Grupos <select id="n-grupos">' + opcoes(2, Math.max(2, Math.floor(d.equipes_confirmadas / 2)), 2) + '</select></label>' +
           '<label>Quem avança ao mata-mata <select id="modo-classif"><option value="grupo">Os melhores de cada grupo</option><option value="geral">Os melhores no geral (tabela única)</option></select></label>' +
           '<label id="w-classif">Classificam por grupo <select id="n-classif">' + opcoes(1, 4, 2) + '</select></label>' +
+          '<label id="w-melhores">+ melhores do colocado seguinte <select id="n-melhores"><option value="0">nenhum</option>' + opcoes(1, 8, 1) + '</select></label>' +
           '<label id="w-geral" hidden>Quantos avançam no geral <select id="n-geral">' + opcoes(2, Math.max(2, d.equipes_confirmadas), Math.min(8, Math.max(2, d.equipes_confirmadas))) + '</select></label></div>' +
           '<label class="ch-check"><input type="checkbox" id="gr-manual"> <b>Montar os grupos manualmente</b> (escolho em qual grupo cada equipe entra)</label>' +
           '<div id="gr-montagem" hidden><p class="ch-sub">Escolha o grupo de cada equipe; “fora” deixa a equipe de fora da fase de grupos. A ordem das equipes define os confrontos.</p><div class="ch-cabecas" id="gr-lista"></div></div>' +
+          '<p class="ch-sub">“+ melhores do colocado seguinte”: além dos classificados de cada grupo, passam os melhores entre os colocados logo depois (ex.: 2 por grupo + os 2 melhores terceiros, pela tabela geral). Os cruzamentos você pode definir à mão em “Montar a chave à mão”.</p>' +
           '<p class="ch-sub">Cada grupo precisa de pelo menos 2 equipes e recebe no máximo um cabeça de chave. No modo geral, todos os grupos entram numa tabela só e o mata-mata cruza 1º × último, 2º × penúltimo… (ex.: 8 melhores: 1×8, 2×7, 3×6, 4×5).</p></div>' +
           '<div class="ch-campo" id="op-cabecas"><b>Cabeças de chave</b><p class="ch-sub" style="margin:0">Opcional. Numere as equipes mais fortes (1 = principal); elas ficam nas melhores posições e, nos grupos, em grupos diferentes. As demais são sorteadas.</p>' +
           '<div class="ch-cabecas">' + d.equipes.map((e) => '<label class="ch-cab"><input type="number" min="1" max="' + d.equipes.length + '" data-cabeca="' + e.id + '" placeholder="–"> ' + esc(e.nome) + '</label>').join('') + '</div></div>' +
@@ -498,7 +508,7 @@
         el.querySelector('#op-cabecas').hidden = f.value === 'pontos_corridos' || f.value === 'super8' || manual;
         if (el.querySelector('#gr-montagem')) { el.querySelector('#gr-montagem').hidden = !manual; if (manual) montagemGrupos(); }
         const geral = el.querySelector('#modo-classif') && el.querySelector('#modo-classif').value === 'geral';
-        if (el.querySelector('#w-classif')) { el.querySelector('#w-classif').hidden = geral; el.querySelector('#w-geral').hidden = !geral; }
+        if (el.querySelector('#w-classif')) { el.querySelector('#w-classif').hidden = geral; el.querySelector('#w-melhores').hidden = geral; el.querySelector('#w-geral').hidden = !geral; }
       };
       if (el.querySelector('#modo-classif')) el.querySelector('#modo-classif').onchange = () => mostrarOpcoes();
       if (el.querySelector('#gr-manual')) { el.querySelector('#gr-manual').onchange = () => mostrarOpcoes(); el.querySelector('#n-grupos').onchange = () => mostrarOpcoes(); }
@@ -517,7 +527,7 @@
             gruposManual = letras.map((l) => [...el.querySelectorAll('[data-gr]')].filter((x) => x.value === l).map((x) => Number(x.dataset.gr)));
             if (gruposManual.some((g) => g.length < 2)) { if (toast) toast('Cada grupo precisa de pelo menos 2 equipes.'); bt.disabled = false; return; }
           }
-          await post('/campeonatos/' + id + '/sorteio', { grupos_manual: gruposManual, formato, grupos: formato === 'grupos' ? Number(el.querySelector('#n-grupos').value) : null, classificam: formato === 'grupos' && el.querySelector('#modo-classif').value === 'grupo' ? Number(el.querySelector('#n-classif').value) : null, classificam_geral: formato === 'grupos' && el.querySelector('#modo-classif').value === 'geral' ? Number(el.querySelector('#n-geral').value) : null, cabecas: formato === 'pontos_corridos' || formato === 'super8' ? [] : marcados.map((m) => m.id) });
+          await post('/campeonatos/' + id + '/sorteio', { grupos_manual: gruposManual, formato, grupos: formato === 'grupos' ? Number(el.querySelector('#n-grupos').value) : null, classificam: formato === 'grupos' && el.querySelector('#modo-classif').value === 'grupo' ? Number(el.querySelector('#n-classif').value) : null, classificam_geral: formato === 'grupos' && el.querySelector('#modo-classif').value === 'geral' ? Number(el.querySelector('#n-geral').value) : null, classificam_melhores: formato === 'grupos' && el.querySelector('#modo-classif').value === 'grupo' && Number(el.querySelector('#n-melhores').value) ? Number(el.querySelector('#n-melhores').value) : null, cabecas: formato === 'pontos_corridos' || formato === 'super8' ? [] : marcados.map((m) => m.id) });
           if (toast) toast('Sorteio feito!');
           if (o.aoSortear) o.aoSortear(); else desenhar(await get('/campeonatos/' + id + '/chaves'));
         } catch (e) { if (toast) toast(e.message); bt.disabled = false; }
@@ -553,13 +563,13 @@
       const btClassif = el.querySelector('#bt-classif');
       if (btClassif) {
         const modo = el.querySelector('#cl-modo');
-        modo.onchange = () => { const g = modo.value === 'geral'; el.querySelector('#cl-w-grupo').hidden = g; el.querySelector('#cl-w-geral').hidden = !g; };
+        modo.onchange = () => { const g = modo.value === 'geral'; el.querySelector('#cl-w-melhores').hidden = g; el.querySelector('#cl-w-grupo').hidden = g; el.querySelector('#cl-w-geral').hidden = !g; };
         btClassif.onclick = async () => {
           const g = modo.value === 'geral';
           if (!confirm('Mudar quem avança? Se o mata-mata já existe, ele será refeito.')) return;
           btClassif.disabled = true;
           try {
-            await post('/campeonatos/' + id + '/chaves/classificacao', g ? { classificam_geral: Number(el.querySelector('#cl-n-geral').value) } : { classificam: Number(el.querySelector('#cl-n-grupo').value) });
+            await post('/campeonatos/' + id + '/chaves/classificacao', g ? { classificam_geral: Number(el.querySelector('#cl-n-geral').value) } : { classificam: Number(el.querySelector('#cl-n-grupo').value), classificam_melhores: Number(el.querySelector('#cl-n-melhores').value) || null });
             if (toast) toast('Critério atualizado.');
             if (o.aoSortear) o.aoSortear(); else desenhar(await get('/campeonatos/' + id + '/chaves'));
           } catch (e) { if (toast) toast(e.message); btClassif.disabled = false; }

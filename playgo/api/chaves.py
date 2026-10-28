@@ -16,6 +16,7 @@ class SorteioIn(BaseModel):
     formato: str
     grupos: int | None = None  # fase de grupos: quantos grupos
     classificam: int | None = None  # fase de grupos: quantos de cada grupo vão ao mata-mata
+    classificam_melhores: int | None = None  # fase de grupos (por grupo): mais os N melhores do colocado seguinte (ex.: 2 melhores terceiros)
     classificam_geral: int | None = None  # fase de grupos: as N melhores no geral (1ºxN, 2ºx(N-1)…), no lugar de "por grupo"
     cabecas: list[int] = []  # ids das equipes cabeças de chave, em ordem (a 1ª é a nº 1)
     grupos_manual: list[list[int]] | None = None  # fase de grupos montada à mão: ids das equipes de cada grupo (A, B, C…)
@@ -78,7 +79,7 @@ def ver_chaves(campeonato_id: int, u: AtualApi, s: Sessao):
 
 @router.post("/{campeonato_id}/sorteio")
 def sortear(campeonato_id: int, corpo: SorteioIn, u: AtualApi, s: Sessao):
-    chaves.sortear(s, campeonato_id, u, corpo.formato, corpo.grupos, corpo.classificam, corpo.cabecas, corpo.classificam_geral, corpo.grupos_manual)
+    chaves.sortear(s, campeonato_id, u, corpo.formato, corpo.grupos, corpo.classificam, corpo.cabecas, corpo.classificam_geral, corpo.grupos_manual, corpo.classificam_melhores)
     return chaves.chaveamento(s, campeonatos.obter(s, campeonato_id), u)
 
 
@@ -147,6 +148,7 @@ def classificacao_telao(campeonato_id: int, corpo: TelaoClassificacaoIn, u: Atua
 
 class ClassificamIn(BaseModel):
     classificam: int | None = None
+    classificam_melhores: int | None = None
     classificam_geral: int | None = None
 
 
@@ -162,7 +164,7 @@ def chave_manual(campeonato_id: int, corpo: ChaveManualIn, u: AtualApi, s: Sessa
 
 @router.post("/{campeonato_id}/chaves/classificacao")
 def definir_classificacao(campeonato_id: int, corpo: ClassificamIn, u: AtualApi, s: Sessao):
-    chaves.definir_classificacao(s, campeonato_id, u, corpo.classificam, corpo.classificam_geral)
+    chaves.definir_classificacao(s, campeonato_id, u, corpo.classificam, corpo.classificam_geral, corpo.classificam_melhores)
     return chaves.chaveamento(s, campeonatos.obter(s, campeonato_id), u)
 
 

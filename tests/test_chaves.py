@@ -1060,3 +1060,36 @@ def test_chave_manual_na_eliminatoria_por_nome_de_equipe(s, fabrica):
     assert {j.equipe_a.nome for j in jogos[:2]} == {"Equipe 1", "Equipe 2"}
     with pytest.raises(ErroNegocio, match="só existe na fase de grupos"):
         chaves.definir_chave_manual(s, c.id, org, "1: 1 x 2")
+
+
+def test_melhores_terceiros_avancam_e_entram_na_chave_manual(s, fabrica):
+    c, org, _ = _torneio(s, fabrica, 12)
+    ids = [e.id for e in _equipes_confirmadas(s, c)]
+    with pytest.raises(ErroNegocio, match="um por grupo"):
+        chaves.sortear(s, c.id, org, "grupos", grupos=3, classificam=2, classificam_melhores=4)
+    chaves.sortear(s, c.id, org, "grupos", classificam=2, classificam_melhores=2, grupos_manual=[ids[0:4], ids[4:8], ids[8:12]])
+    d = chaves.chaveamento(s, c, org)
+    assert d["classificam_melhores"] == 2
+    texto = "13: 1A x 3T2\n14: 1B x 3T1\n15: 1C x 2C\n16: 2A x 2B\n17: V13 x V16\n18: V14 x V15\n19: V17 x V18"
+    chaves.definir_chave_manual(s, c.id, org, texto)
+    c = s.get(type(c), c.id)
+    assert c.classificam == 2 and c.classificam_melhores == 2
+    for j in [x for x in _jogos(s, c) if x.fase == "grupos"]:
+        _disputar(s, c, org, j, 2, 0)
+    d = chaves.chaveamento(s, c, org)
+    terceiros = [L["equipe"]["id"] for L in d["classificacao_geral"] if next(g for g in d["grupos"] if any(x["equipe"]["id"] == L["equipe"]["id"] for x in g["classificacao"]))["classificacao"][2]["equipe"]["id"] == L["equipe"]["id"]]
+    mata = {j.numero: j for j in _jogos(s, c) if j.fase == "mata_mata"}
+    assert mata[13].equipe_b_id == terceiros[1] and mata[14].equipe_b_id == terceiros[0]
+    assert sum(1 for g in d["grupos"] for L in g["classificacao"] if L["classifica"]) == 8  # 6 diretos + 2 melhores terceiros
+    assert sum(1 for L in d["classificacao_geral"] if L["classifica"]) == 8
+    with pytest.raises(ErroNegocio, match="não existe"):
+        chaves.definir_chave_manual(s, c.id, org, "1: 3T9 x 1A")
+
+
+def test_melhores_terceiros_no_mata_mata_automatico(s, fabrica):
+    c, org, _ = _torneio(s, fabrica, 12)
+    chaves.sortear(s, c.id, org, "grupos", grupos=3, classificam=2, classificam_melhores=2)
+    for j in [x for x in _jogos(s, c) if x.fase == "grupos"]:
+        _disputar(s, c, org, j, 2, 0)
+    mata = [j for j in _jogos(s, c) if j.fase == "mata_mata" and j.rodada == 1]
+    assert len(mata) == 4 and len({e for j in mata for e in (j.equipe_a_id, j.equipe_b_id)}) == 8

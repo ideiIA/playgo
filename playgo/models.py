@@ -465,6 +465,7 @@ class Campeonato(Base):
     grupos_qtd: Mapped[int | None] = mapped_column(Integer)  # formato "grupos": quantos grupos
     classificam: Mapped[int | None] = mapped_column(Integer)  # formato "grupos": quantas equipes de cada grupo vão ao mata-mata
     classificam_geral: Mapped[int | None] = mapped_column(Integer)  # formato "grupos": as N melhores no geral (tabela única) avançam, cruzando 1ºxN, 2ºx(N-1)…
+    classificam_melhores: Mapped[int | None] = mapped_column(Integer)  # formato "grupos": além dos `classificam` de cada grupo, os N melhores do colocado seguinte (ex.: 2 melhores terceiros)
     chave_manual: Mapped[list | None] = mapped_column(JSONB)  # mata-mata definido pela organização: [{"numero": 13, "a": {"t": "geral", "n": 1}, "b": {...}}]
     duracao_jogo_min: Mapped[int | None] = mapped_column(Integer)  # última duração usada na agenda em lote (preenche o formulário)
     # A organização libera o cadastro do elenco (nome e RG dos componentes e o técnico, com o capitão marcado) por equipe

@@ -148,7 +148,7 @@ def _avisar_equipes(s: SessaoORM, c: Campeonato, equipes: list[int | None], titu
 
 def sortear(
     s: SessaoORM, campeonato_id: int, por: Usuario, formato: str, grupos: int | None = None, classificam: int | None = None, cabecas: list[int] | None = None,
-    classificam_geral: int | None = None, grupos_manual: list[list[int]] | None = None,
+    classificam_geral: int | None = None, grupos_manual: list[list[int]] | None = None, classificam_melhores: int | None = None,
 ) -> dict:
     """`cabecas` = ids das equipes cabeças de chave, em ordem (o primeiro é o nº 1). Na eliminatória ocupam as melhores posições da chave
     (e as folgas); na fase de grupos cada grupo recebe no máximo um. As demais equipes são sorteadas.
@@ -195,7 +195,12 @@ def sortear(
             menor = min(len(g) for g in manual) if manual else n // grupos
             if not 1 <= q <= menor:
                 raise ErroNegocio(f"Classificam de 1 a {menor} equipes por grupo.")
-            if grupos * q < 2:
+            if classificam_melhores:
+                if not 1 <= classificam_melhores <= grupos:
+                    raise ErroNegocio(f"Os melhores do colocado seguinte vão de 1 a {grupos} (um por grupo).")
+                if q + 1 > menor:
+                    raise ErroNegocio(f"Os grupos têm só {menor} equipes: não há o {q + 1}º colocado em todos.")
+            if grupos * q + (classificam_melhores or 0) < 2:
                 raise ErroNegocio("O mata-mata precisa de pelo menos 2 classificados.")
     elif formato == "pontos_corridos":
         cabecas = []  # todos jogam contra todos: a posição na tabela não depende do sorteio
@@ -247,6 +252,7 @@ def sortear(
         _montar_pontos_corridos(s, c, resto)
     c.grupos_qtd, c.classificam = (grupos, q) if formato == "grupos" else (None, None)
     c.classificam_geral = classificam_geral if formato == "grupos" and classificam_geral else None
+    c.classificam_melhores = classificam_melhores if formato == "grupos" and not classificam_geral and classificam_melhores else None
     c.formato, c.sorteado_em, c.sorteio_semente = formato, agora(), semente
     s.flush()
     _refazer_chave_manual_apos_sorteio(s, c)
@@ -1010,8 +1016,24 @@ def _classificados(s: SessaoORM, c: Campeonato, jogos: list[Jogo]) -> list[Equip
             ordem.append(e)
             nivel.append(pos)
             grupo_de[e.id] = g
+    q = c.classificam or 2
+    for eid in _melhores_do_proximo(jogos, por_grupo, tabelas, c):
+        e = s.get(Equipe, eid)
+        ordem.append(e)
+        nivel.append(q)
+        grupo_de[e.id] = next(g for g, eqs in por_grupo.items() if e in eqs)
     _evitar_revanche(ordem, nivel, grupo_de)
     return ordem
+
+
+def _melhores_do_proximo(jogos: list[Jogo], por_grupo: dict[str, list[Equipe]], tabelas: dict[str, list[dict]], c: Campeonato) -> list[int]:
+    """Ids dos `classificam_melhores` melhores entre os colocados logo depois dos que avançam direto (ex.: melhores 3ºs), pela tabela geral."""
+    if not c.classificam_melhores or c.classificam_geral:
+        return []
+    pos = (c.classificam or 2) + 1
+    candidatos = {t[pos - 1]["equipe"]["id"] for t in tabelas.values() if len(t) >= pos}
+    geral = [L["equipe"]["id"] for L in _classificacao_geral(jogos, por_grupo, c)]
+    return [i for i in geral if i in candidatos][: c.classificam_melhores]
 
 
 def _classificacao_geral(jogos: list[Jogo], por_grupo: dict[str, list[Equipe]], c: Campeonato) -> list[dict]:
@@ -1075,7 +1097,7 @@ def classificacao_resumo(s: SessaoORM, c: Campeonato) -> dict | None:
     }
 
 
-def definir_classificacao(s: SessaoORM, campeonato_id: int, por: Usuario, classificam: int | None, classificam_geral: int | None) -> dict:
+def definir_classificacao(s: SessaoORM, campeonato_id: int, por: Usuario, classificam: int | None, classificam_geral: int | None, classificam_melhores: int | None = None) -> dict:
     """Muda quem avança ao mata-mata (os melhores de cada grupo ou os N melhores no geral) depois do sorteio. Se o mata-mata já foi
     montado, ele é refeito com os novos classificados, desde que nenhum jogo dele tenha começado."""
     c = campeonatos.obter(s, campeonato_id)
@@ -1092,12 +1114,14 @@ def definir_classificacao(s: SessaoORM, campeonato_id: int, por: Usuario, classi
     if classificam_geral:
         if not 2 <= classificam_geral <= n:
             raise ErroNegocio(f"Classificam de 2 a {n} equipes no geral.")
-        c.classificam, c.classificam_geral = None, classificam_geral
+        c.classificam, c.classificam_geral, c.classificam_melhores = None, classificam_geral, None
     else:
         q = classificam or 2
         if not 1 <= q <= max(1, n // max(grupos, 1)) or grupos * q < 2:
             raise ErroNegocio("Quantidade inválida de classificados por grupo.")
-        c.classificam, c.classificam_geral = q, None
+        if classificam_melhores and (not 1 <= classificam_melhores <= grupos or q + 1 > max(1, n // max(grupos, 1))):
+            raise ErroNegocio("Quantidade inválida de melhores do colocado seguinte.")
+        c.classificam, c.classificam_geral, c.classificam_melhores = q, None, classificam_melhores or None
     if c.chave_manual:  # quem joga com quem vem da chave manual: aqui só muda o destaque nas tabelas
         s.commit()
         return {"classificam": c.classificam, "classificam_geral": c.classificam_geral}
@@ -1222,6 +1246,7 @@ _RE_LINHA = re.compile(r"^\s*(?:jogo\s*)?(\d+)\s*[:\-–.)]\s*(.+?)\s*$", re.I)
 _RE_VS = re.compile(r"\s+(?:x|×|vs\.?)\s+", re.I)
 _RE_VENC = re.compile(r"^(?:v|venc\w*\.?)\s*(?:do\s+)?(?:jogo\s*)?(\d+)$", re.I)
 _RE_GRUPO = re.compile(r"^(\d+)\s*[º°]?\s*(?:colocad[oa]\s+)?(?:d[oa]\s+)?(?:grupo\s+)?([A-Za-z])$", re.I)
+_RE_MELHOR = re.compile(r"^(?:(\d+)\s*T\s*(\d+)|(\d+)\s*[º°]?\s*melhor(?:es)?\s*(\d+)\s*[º°]?)$", re.I)
 _RE_GERAL = re.compile(r"^(\d+)\s*[º°]?(?:\s*colocad[oa])?(?:\s*geral)?$", re.I)
 NOMES_FASE = {0: "Final", 1: "Semifinal", 2: "Quartas de final", 3: "Oitavas de final"}
 
@@ -1234,6 +1259,9 @@ def _ler_lado(texto: str) -> dict:
     t = texto.strip()
     if m := _RE_VENC.match(t):
         return {"t": "venc", "jogo": int(m[1])}
+    if m := _RE_MELHOR.match(t):  # "3T1" = o 1º melhor 3º; "1º melhor 3º" também vale
+        pos, rank = (int(m[1]), int(m[2])) if m[1] else (int(m[4]), int(m[3]))
+        return {"t": "melhor", "pos": pos, "n": rank}
     if m := _RE_GRUPO.match(t):
         return {"t": "grupo", "n": int(m[1]), "g": m[2].upper()}
     if m := _RE_GERAL.match(t):
@@ -1249,6 +1277,8 @@ def _texto_lado(tok: dict) -> str:
         return f"{tok['n']}{tok['g']}"
     if tok["t"] == "geral":
         return str(tok["n"])
+    if tok["t"] == "melhor":
+        return f"{tok['pos']}T{tok['n']}"
     return tok.get("nome", "")
 
 
@@ -1260,6 +1290,8 @@ def _rotulo_lado(tok: dict) -> str:
         return f"{tok['n']}º do grupo {tok['g']}"
     if tok["t"] == "geral":
         return f"{tok['n']}º colocado geral"
+    if tok["t"] == "melhor":
+        return f"{tok['n']}º melhor {tok['pos']}º colocado"
     return tok.get("nome", "")[:60]
 
 
@@ -1312,6 +1344,12 @@ def _validar_chave_manual(s: SessaoORM, c: Campeonato, spec: list[dict]) -> tupl
                 if not 1 <= tok["n"] <= sum(tamanhos.values()):
                     raise ErroNegocio(f"Jogo {x['numero']}: não existe o {tok['n']}º colocado geral.")
                 chave = ("g", tok["n"])
+            elif tok["t"] == "melhor":
+                if c.formato != "grupos" or not tamanhos:
+                    raise ErroNegocio("\"Melhor 3º\" e afins só existem na fase de grupos.")
+                if not 1 <= tok["n"] <= len(tamanhos) or not 1 <= tok["pos"] <= min(tamanhos.values()):
+                    raise ErroNegocio(f"Jogo {x['numero']}: não existe o {tok['n']}º melhor {tok['pos']}º colocado.")
+                chave = ("m", tok["pos"], tok["n"])
             elif tok["t"] == "grupo":
                 if tok["g"] not in tamanhos or not 1 <= tok["n"] <= tamanhos[tok["g"]]:
                     raise ErroNegocio(f"Jogo {x['numero']}: não existe o {tok['n']}º do grupo {tok['g']}.")
@@ -1401,9 +1439,13 @@ def _preencher_colocados(s: SessaoORM, c: Campeonato, jogos: list[Jogo]) -> list
             continue
         for lado in ("a", "b"):
             tok = x[lado]
-            if getattr(j, f"equipe_{lado}_id") is not None or tok["t"] not in ("geral", "grupo"):
+            if getattr(j, f"equipe_{lado}_id") is not None or tok["t"] not in ("geral", "grupo", "melhor"):
                 continue
-            lista = geral if tok["t"] == "geral" else tabelas.get(tok["g"], [])
+            if tok["t"] == "melhor":
+                cand = {t[tok["pos"] - 1] for t in tabelas.values() if len(t) >= tok["pos"]}
+                lista = [i for i in geral if i in cand]
+            else:
+                lista = geral if tok["t"] == "geral" else tabelas.get(tok["g"], [])
             if tok["n"] > len(lista):
                 continue
             e = s.get(Equipe, lista[tok["n"] - 1])
@@ -1419,7 +1461,7 @@ def _limpar_colocados(c: Campeonato, mata: list[Jogo]) -> None:
     for j in mata:
         x = spec.get(j.numero)
         for lado in ("a", "b"):
-            if x is not None and x[lado]["t"] in ("geral", "grupo"):
+            if x is not None and x[lado]["t"] in ("geral", "grupo", "melhor"):
                 setattr(j, f"equipe_{lado}", None)
                 setattr(j, f"equipe_{lado}_id", None)
 
@@ -1452,8 +1494,11 @@ def definir_chave_manual(s: SessaoORM, campeonato_id: int, por: Usuario, texto: 
         lados = [x[lado] for x in spec for lado in ("a", "b")]
         if any(g["t"] == "geral" for g in lados) and not any(g["t"] == "grupo" for g in lados):
             c.classificam_geral, c.classificam = sum(1 for g in lados if g["t"] == "geral"), None
-        elif any(g["t"] == "grupo" for g in lados) and not any(g["t"] == "geral" for g in lados):
-            c.classificam_geral, c.classificam = None, max(g["n"] for g in lados if g["t"] == "grupo")
+        elif any(g["t"] in ("grupo", "melhor") for g in lados) and not any(g["t"] == "geral" for g in lados):
+            c.classificam_geral = None
+            if any(g["t"] == "grupo" for g in lados):
+                c.classificam = max(g["n"] for g in lados if g["t"] == "grupo")
+            c.classificam_melhores = sum(1 for g in lados if g["t"] == "melhor") or None
         _criar_jogos_manual(s, c, spec, "mata_mata" if c.formato == "grupos" else None)
     if c.status == C_ENCERRADO:
         c.status = C_ANDAMENTO
@@ -1632,6 +1677,15 @@ def chaveamento(s: SessaoORM, c: Campeonato, u: Usuario) -> dict:
             L["classifica"] = L["equipe"]["id"] in geral_ids if c.classificam_geral else L["posicao"] <= (c.classificam or 0)
             L["cabeca"] = marcas[L["equipe"]["id"]].cabeca
         grupos_out.append({"grupo": letra, "classificacao": tabela, "rodadas": rod})
+    extras: set[int] = set()
+    if c.classificam_melhores and not c.classificam_geral and geral:
+        pos = (c.classificam or 2) + 1
+        cand = {L["equipe"]["id"] for g in grupos_out for L in g["classificacao"] if L["posicao"] == pos}
+        extras = set([L["equipe"]["id"] for L in geral if L["equipe"]["id"] in cand][: c.classificam_melhores])
+        for g in grupos_out:
+            for L in g["classificacao"]:
+                if L["equipe"]["id"] in extras:
+                    L["classifica"] = True
     if geral:
         ids = geral_ids if c.classificam_geral else {L["equipe"]["id"] for g in grupos_out for L in g["classificacao"] if L["classifica"]}
         for L in geral:
@@ -1657,7 +1711,7 @@ def chaveamento(s: SessaoORM, c: Campeonato, u: Usuario) -> dict:
         "ranking_super8": _ranking_super8(s, c, chave) if c.formato == "super8" and chave else [],
         "campeao": campeao,
         "regras_placar": regras_placar(c), "placar_travado": any(j.status != J_AGENDADO and not j.folga for j in jogos),
-        "grupos": grupos_out, "classificam": c.classificam, "classificam_geral": c.classificam_geral, "classificacao_geral": geral, "cabecas": cabecas, "duracao_jogo_min": c.duracao_jogo_min,
+        "grupos": grupos_out, "classificam": c.classificam, "classificam_geral": c.classificam_geral, "classificam_melhores": c.classificam_melhores, "classificacao_geral": geral, "cabecas": cabecas, "duracao_jogo_min": c.duracao_jogo_min,
         "jogos_grupos_restantes": sum(1 for j in de_grupo if j.status != J_ENCERRADO) if c.formato == "grupos" and (not chave or c.chave_manual) else 0,
         "chave_manual": chave_manual_texto(c), "tem_chave_manual": bool(c.chave_manual), "jogos_de_grupo": len(de_grupo),
         "pode_chave_manual": c.formato in ("grupos", "eliminatoria") and not any(j.fase != "grupos" and j.status != J_AGENDADO and not j.folga for j in jogos),
