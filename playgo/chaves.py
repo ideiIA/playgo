@@ -320,7 +320,7 @@ def _limpar_chaves(s: SessaoORM, c: Campeonato) -> None:
     if any(j.status != J_AGENDADO and not j.folga for j in antigos):
         raise ErroNegocio("Já há jogos começados ou encerrados. Não dá para sortear de novo sem perder o placar.")
     for j in antigos:
-        j.proximo_id = None
+        j.proximo_id = j.perdedor_proximo_id = None
     s.flush()
     for j in antigos:
         s.delete(j)
@@ -476,6 +476,19 @@ def _avancar(s: SessaoORM, j: Jogo) -> None:
         prox.equipe_a = vencedor
     else:
         prox.equipe_b = vencedor
+
+
+def _enviar_perdedor(s: SessaoORM, j: Jogo) -> None:
+    """Chave manual: o perdedor segue para a disputa de 3º lugar."""
+    if j.perdedor_proximo_id is None or j.vencedor_id is None or j.folga:
+        return
+    perdedor_id = j.equipe_b_id if j.vencedor_id == j.equipe_a_id else j.equipe_a_id
+    prox = s.get(Jogo, j.perdedor_proximo_id)
+    perdedor = s.get(Equipe, perdedor_id) if perdedor_id else None
+    if j.perdedor_proximo_lado == "a":
+        prox.equipe_a, prox.equipe_a_id = perdedor, perdedor_id
+    else:
+        prox.equipe_b, prox.equipe_b_id = perdedor, perdedor_id
 
 
 # ---------------------------------------------------------------- jogo ao vivo
@@ -985,6 +998,7 @@ def encerrar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario, vence
     _evento(s, j, "fim", por, texto)
     auditoria.registrar(s, por.id, "jogo_encerrar", "jogo", j.id, placar=f"{j.placar_a}x{j.placar_b}", vencedor=j.vencedor_id)
     _avancar(s, j)
+    _enviar_perdedor(s, j)
     s.flush()
     _gerar_mata_mata_se_pronto(s, c)
     _fechar_campeonato_se_acabou(s, c)
@@ -1198,7 +1212,7 @@ def _fechar_campeonato_se_acabou(s: SessaoORM, c: Campeonato) -> None:
                     onde = f" (grupo {r['grupo']})" if r["grupo"] else ""
                     _avisar_equipes(s, c, [lider["id"]], f"🏆 Campeão do Super 8{onde}: {c.nome}!", f"{lider['nome']} terminou em 1º lugar.", f"campeao:{c.id}:{r['grupo'] or ''}")
         if c.formato in ("eliminatoria", "grupos"):
-            final = max((j for j in jogos if j.fase != "grupos"), key=lambda j: j.rodada)
+            final = max((j for j in jogos if j.fase != "grupos"), key=lambda j: (j.rodada, -j.posicao))
             campeao = final.equipe_a if final.vencedor_id == final.equipe_a_id else final.equipe_b
             if campeao is not None:
                 _avisar_equipes(s, c, [campeao.id], f"🏆 Campeões de {c.nome}!", f"{campeao.nome} venceu o campeonato.", f"campeao:{c.id}")
@@ -1231,6 +1245,14 @@ def reabrir(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> Jog
             prox.equipe_a = None
         else:
             prox.equipe_b = None
+    if j.perdedor_proximo_id:
+        terceiro = s.get(Jogo, j.perdedor_proximo_id)
+        if terceiro.status != J_AGENDADO:
+            raise ErroNegocio("A disputa de 3º lugar já começou; não dá mais para reabrir este jogo.")
+        if j.perdedor_proximo_lado == "a":
+            terceiro.equipe_a, terceiro.equipe_a_id = None, None
+        else:
+            terceiro.equipe_b, terceiro.equipe_b_id = None, None
     j.status, j.vencedor_id, j.desempate, j.encerrado_em = J_AO_VIVO, None, False, None
     if c.status == C_ENCERRADO:
         c.status = C_ANDAMENTO
@@ -1246,6 +1268,7 @@ _RE_LINHA = re.compile(r"^\s*(?:jogo\s*)?(\d+)\s*[:\-–.)]\s*(.+?)\s*$", re.I)
 _RE_VS = re.compile(r"\s+(?:x|×|vs\.?)\s+", re.I)
 _RE_VENC = re.compile(r"^(?:v|venc\w*\.?)\s*(?:do\s+)?(?:jogo\s*)?(\d+)$", re.I)
 _RE_GRUPO = re.compile(r"^(\d+)\s*[º°]?\s*(?:colocad[oa]\s+)?(?:d[oa]\s+)?(?:grupo\s+)?([A-Za-z])$", re.I)
+_RE_PERD = re.compile(r"^(?:p|perd\w*\.?)\s*(?:do\s+)?(?:jogo\s*)?(\d+)$", re.I)
 _RE_MELHOR = re.compile(r"^(?:(\d+)\s*T\s*(\d+)|(\d+)\s*[º°]?\s*melhor(?:es)?\s*(\d+)\s*[º°]?)$", re.I)
 _RE_GERAL = re.compile(r"^(\d+)\s*[º°]?(?:\s*colocad[oa])?(?:\s*geral)?$", re.I)
 NOMES_FASE = {0: "Final", 1: "Semifinal", 2: "Quartas de final", 3: "Oitavas de final"}
@@ -1259,6 +1282,8 @@ def _ler_lado(texto: str) -> dict:
     t = texto.strip()
     if m := _RE_VENC.match(t):
         return {"t": "venc", "jogo": int(m[1])}
+    if m := _RE_PERD.match(t):
+        return {"t": "perd", "jogo": int(m[1])}
     if m := _RE_MELHOR.match(t):  # "3T1" = o 1º melhor 3º; "1º melhor 3º" também vale
         pos, rank = (int(m[1]), int(m[2])) if m[1] else (int(m[4]), int(m[3]))
         return {"t": "melhor", "pos": pos, "n": rank}
@@ -1273,6 +1298,8 @@ def _texto_lado(tok: dict) -> str:
     """Como a pessoa escreve (o que volta para a caixa de edição)."""
     if tok["t"] == "venc":
         return f"V{tok['jogo']}"
+    if tok["t"] == "perd":
+        return f"P{tok['jogo']}"
     if tok["t"] == "grupo":
         return f"{tok['n']}{tok['g']}"
     if tok["t"] == "geral":
@@ -1286,6 +1313,8 @@ def _rotulo_lado(tok: dict) -> str:
     """Como o chaveamento mostra enquanto o lado ainda não tem equipe."""
     if tok["t"] == "venc":
         return f"Vencedor do jogo {tok['jogo']}"
+    if tok["t"] == "perd":
+        return f"Perdedor do jogo {tok['jogo']}"
     if tok["t"] == "grupo":
         return f"{tok['n']}º do grupo {tok['g']}"
     if tok["t"] == "geral":
@@ -1328,9 +1357,17 @@ def _validar_chave_manual(s: SessaoORM, c: Campeonato, spec: list[dict]) -> tupl
         raise ErroNegocio("Há dois jogos com o mesmo número.")
     usados: set[tuple] = set()
     pai: dict[int, int] = {}  # jogo -> jogo para onde o vencedor vai
+    perdedores: set[int] = set()  # jogos cujo perdedor já tem destino
     for x in spec:
         for lado in ("a", "b"):
             tok, chave = x[lado], None
+            if tok["t"] == "perd":
+                if tok["jogo"] not in numeros or tok["jogo"] == x["numero"]:
+                    raise ErroNegocio(f"Jogo {x['numero']}: o perdedor do jogo {tok['jogo']} não existe na chave.")
+                if tok["jogo"] in perdedores:
+                    raise ErroNegocio(f"O perdedor do jogo {tok['jogo']} só pode seguir para um jogo.")
+                perdedores.add(tok["jogo"])
+                continue
             if tok["t"] == "venc":
                 if tok["jogo"] not in numeros or tok["jogo"] == x["numero"]:
                     raise ErroNegocio(f"Jogo {x['numero']}: o vencedor do jogo {tok['jogo']} não existe na chave.")
@@ -1362,13 +1399,14 @@ def _validar_chave_manual(s: SessaoORM, c: Campeonato, spec: list[dict]) -> tupl
             if chave in usados:
                 raise ErroNegocio(f"Jogo {x['numero']}: {_rotulo_lado(tok)} aparece mais de uma vez na chave.")
             usados.add(chave)
-    finais = [n for n in numeros if n not in pai]
+    terceiros = {x["numero"] for x in spec if x["a"]["t"] == "perd" and x["b"]["t"] == "perd"}  # disputa de 3º lugar: não segue adiante
+    finais = [n for n in numeros if n not in pai and n not in terceiros]
     if len(finais) != 1:
         raise ErroNegocio("A chave precisa de uma única final (um jogo cujo vencedor não segue adiante); sem seguir adiante: " + ", ".join(f"jogo {n}" for n in finais) + ".")
     filhos: dict[int, list[int]] = {}
     for filho, mae in pai.items():
         filhos.setdefault(mae, []).append(filho)
-    profundidade, fila = {finais[0]: 0}, [finais[0]]
+    profundidade, fila = {finais[0]: 0, **{n: 0 for n in terceiros}}, [finais[0]]
     while fila:
         atual = fila.pop()
         for f in filhos.get(atual, []):
@@ -1386,11 +1424,13 @@ def _criar_jogos_manual(s: SessaoORM, c: Campeonato, spec: list[dict], fase: str
     maior = max(profundidade.values())
     por_numero: dict[int, Jogo] = {}
     contagem: dict[int, int] = {}
-    for x in sorted(spec, key=lambda x: (-profundidade[x["numero"]], x["numero"])):
+    terceiros = {x["numero"] for x in spec if x["a"]["t"] == "perd" and x["b"]["t"] == "perd"}
+    for x in sorted(spec, key=lambda x: (-profundidade[x["numero"]], x["numero"] in terceiros, x["numero"])):  # na última rodada a final vem antes do 3º lugar
         d = profundidade[x["numero"]]
         r = maior - d + 1
         contagem[r] = contagem.get(r, -1) + 1
-        j = Jogo(campeonato_id=c.id, rodada=r, posicao=contagem[r], rodada_nome=NOMES_FASE.get(d, f"Fase {r}"), fase=fase, numero=x["numero"],
+        nome_fase = "Disputa de 3º lugar" if x["numero"] in terceiros else NOMES_FASE.get(d, f"Fase {r}")
+        j = Jogo(campeonato_id=c.id, rodada=r, posicao=contagem[r], rodada_nome=nome_fase, fase=fase, numero=x["numero"],
                  origem_a=_rotulo_lado(x["a"]), origem_b=_rotulo_lado(x["b"]))
         for lado in ("a", "b"):
             if x[lado]["t"] == "equipe":
@@ -1403,6 +1443,9 @@ def _criar_jogos_manual(s: SessaoORM, c: Campeonato, spec: list[dict], fase: str
             if x[lado]["t"] == "venc":
                 filho = por_numero[x[lado]["jogo"]]
                 filho.proximo_id, filho.proximo_lado = por_numero[x["numero"]].id, lado
+            elif x[lado]["t"] == "perd":
+                filho = por_numero[x[lado]["jogo"]]
+                filho.perdedor_proximo_id, filho.perdedor_proximo_lado = por_numero[x["numero"]].id, lado
     s.flush()
     return list(por_numero.values())
 
@@ -1484,7 +1527,7 @@ def definir_chave_manual(s: SessaoORM, campeonato_id: int, por: Usuario, texto: 
     if any(j.status != J_AGENDADO and not j.folga for j in alvo):
         raise ErroNegocio("A chave já começou: não dá mais para refazer quem joga com quem.")
     for j in alvo:
-        j.proximo_id = None
+        j.proximo_id = j.perdedor_proximo_id = None
     s.flush()
     for j in alvo:
         s.delete(j)
@@ -1693,7 +1736,7 @@ def chaveamento(s: SessaoORM, c: Campeonato, u: Usuario) -> dict:
     cabecas = sorted(({"ordem": k.cabeca, "equipe": _eq(next((e for e in confirmadas if e.id == k.equipe_id), None))} for k in marcas.values() if k.cabeca), key=lambda x: x["ordem"])
     campeao = None
     if c.formato in ("eliminatoria", "grupos") and chave:
-        final = max(chave, key=lambda j: j.rodada)
+        final = max(chave, key=lambda j: (j.rodada, -j.posicao))
         if final.status == J_ENCERRADO and final.vencedor_id:
             campeao = _eq(final.equipe_a if final.vencedor_id == final.equipe_a_id else final.equipe_b)
     elif c.formato == "pontos_corridos" and chave and all(j.status == J_ENCERRADO for j in chave):

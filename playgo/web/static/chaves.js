@@ -25,7 +25,7 @@
       return '<div class="ch-linha' + (venceu ? ' venceu' : '') + '"><span class="ch-nome">' + (!eq && j.folga ? '<i class="ch-tbd">folga</i>' : nomeEq(eq, lado === 'a' ? j.origem_a : j.origem_b)) + '</span><b class="ch-pl">' + (mostra ? pl : '') + '</b></div>';
     };
     const parciais = j.sets && j.sets.length ? '<div class="ch-sets">' + j.sets.map((x) => '<span class="' + (x.encerrado ? '' : 'atual') + '">' + x.a + '–' + x.b + '</span>').join('') + '</div>' : '';
-    return '<a class="ch-jogo ' + j.status + '" href="' + esc(href(j)) + '">' + (j.numero ? '<div class="ch-num">Jogo ' + j.numero + '</div>' : '') + linha(j.a, 'a') + linha(j.b, 'b') + parciais + '<div class="ch-rod">' + rodape(j) + '</div></a>';
+    return '<a class="ch-jogo ' + j.status + '" href="' + esc(href(j)) + '">' + (j.numero ? '<div class="ch-num">Jogo ' + j.numero + (j.rodada_nome === 'Disputa de 3º lugar' ? ' · 3º lugar' : '') + '</div>' : '') + linha(j.a, 'a') + linha(j.b, 'b') + parciais + '<div class="ch-rod">' + rodape(j) + '</div></a>';
   }
 
   // Jogo por sets: o que mostrar de cada lado (pontos do set em andamento, sets ganhos e a lista dos sets)
@@ -442,7 +442,7 @@
     const modelo = modeloChave(n, grupos ? (d.jogos_de_grupo || 0) + 1 : 1, grupos ? (sementes.length ? sementes : null) : d.equipes.map((e) => e.nome));
     return '<div class="ch-painel"><h3>🧩 Montar a chave à mão (quem joga com quem)</h3>' +
       '<p class="ch-sub">Escreva um jogo por linha: <b>número do jogo: lado A x lado B</b>. Cada lado pode ser:</p>' +
-      '<ul class="ch-sub" style="margin:4px 0 8px 18px"><li><b>1</b>, <b>8</b>… — o 1º, o 8º colocado <b>geral</b> da fase de grupos</li><li><b>2A</b>, <b>1B</b>… — o 2º do grupo A, o 1º do grupo B</li><li><b>3T1</b>, <b>3T2</b>… — o 1º e o 2º melhor 3º colocado (comparando os terceiros de todos os grupos); também vale “1º melhor 3º”</li><li><b>V13</b> — o vencedor do jogo 13</li><li>o <b>nome de uma equipe</b> confirmada</li></ul>' +
+      '<ul class="ch-sub" style="margin:4px 0 8px 18px"><li><b>1</b>, <b>8</b>… — o 1º, o 8º colocado <b>geral</b> da fase de grupos</li><li><b>2A</b>, <b>1B</b>… — o 2º do grupo A, o 1º do grupo B</li><li><b>3T1</b>, <b>3T2</b>… — o 1º e o 2º melhor 3º colocado (comparando os terceiros de todos os grupos); também vale “1º melhor 3º”</li><li><b>V13</b> — o vencedor do jogo 13 · <b>P23</b> — o <b>perdedor</b> do jogo 23 (dois perdedores se enfrentando = disputa de 3º lugar)</li><li>o <b>nome de uma equipe</b> confirmada</li></ul>' +
       '<p class="ch-sub">Exemplo: <code>13: 1 x 8</code> e <code>17: V13 x V16</code>. A chave aparece já nas telas (“1º colocado geral”, “Vencedor do jogo 13”) e as equipes entram sozinhas quando os grupos terminam. Quartas, semifinal e final são reconhecidas pela ligação entre os jogos. Vale enquanto nenhum jogo da chave começou.</p>' +
       '<div class="ch-campo"><textarea id="ch-texto" rows="9" style="width:100%;font-family:ui-monospace,Consolas,monospace" placeholder="13: 1 x 8&#10;14: 2 x 7&#10;17: V13 x V14">' + esc(d.chave_manual || modelo) + '</textarea></div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="ch-btn grande" id="bt-chave">💾 Salvar chave</button>' + (d.tem_chave_manual && grupos ? '<button class="ch-btn suave" id="bt-chave-auto">↩ Voltar ao cruzamento automático</button>' : '') + '</div>' +

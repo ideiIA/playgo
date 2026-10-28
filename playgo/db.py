@@ -97,6 +97,8 @@ _COLUNAS_NOVAS: tuple[str, ...] = (
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS chave_manual jsonb",
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS classificam_melhores integer",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS numero integer",
+    "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS perdedor_proximo_id integer REFERENCES jogos(id) ON DELETE SET NULL",
+    "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS perdedor_proximo_lado varchar(1)",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS origem_a varchar(60)",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS origem_b varchar(60)",
     "CREATE UNIQUE INDEX IF NOT EXISTS ix_campeonatos_telao_token ON campeonatos (telao_token)",

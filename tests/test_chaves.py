@@ -1093,3 +1093,23 @@ def test_melhores_terceiros_no_mata_mata_automatico(s, fabrica):
         _disputar(s, c, org, j, 2, 0)
     mata = [j for j in _jogos(s, c) if j.fase == "mata_mata" and j.rodada == 1]
     assert len(mata) == 4 and len({e for j in mata for e in (j.equipe_a_id, j.equipe_b_id)}) == 8
+
+
+def test_disputa_de_terceiro_lugar_na_chave_manual(s, fabrica):
+    c, org, _ = _torneio(s, fabrica, 4)
+    chaves.sortear(s, c.id, org, "eliminatoria")
+    with pytest.raises(ErroNegocio, match="só pode seguir"):
+        chaves.definir_chave_manual(s, c.id, org, "1: Equipe 1 x Equipe 4\n2: Equipe 2 x Equipe 3\n3: V1 x V2\n4: P1 x P1")
+    chaves.definir_chave_manual(s, c.id, org, "1: Equipe 1 x Equipe 4\n2: Equipe 2 x Equipe 3\n3: V1 x V2\n4: P1 x P2")
+    j = {x.numero: x for x in _jogos(s, c)}
+    assert j[4].rodada_nome == "Disputa de 3º lugar" and j[4].rodada == j[3].rodada and j[3].posicao < j[4].posicao
+    _disputar(s, c, org, j[1], 3, 1)
+    _disputar(s, c, org, j[2], 0, 2)
+    s.refresh(j[4])
+    assert (j[4].equipe_a_id, j[4].equipe_b_id) == (j[1].equipe_b_id, j[2].equipe_a_id)
+    _disputar(s, c, org, j[3], 2, 1)
+    s.refresh(c)
+    assert c.status == "em_andamento"  # falta o 3º lugar
+    _disputar(s, c, org, j[4], 1, 0)
+    s.refresh(c)
+    assert c.status == "encerrado" and chaves.chaveamento(s, c, org)["campeao"]["id"] == j[3].vencedor_id

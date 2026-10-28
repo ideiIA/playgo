@@ -543,6 +543,8 @@ class Jogo(Base):
     folga: Mapped[bool] = mapped_column(Boolean, default=False)  # classificação direta (sem adversário)
     proximo_id: Mapped[int | None] = mapped_column(ForeignKey("jogos.id", ondelete="SET NULL"))
     proximo_lado: Mapped[str | None] = mapped_column(String(1))  # a | b
+    perdedor_proximo_id: Mapped[int | None] = mapped_column(ForeignKey("jogos.id", ondelete="SET NULL"))  # chave manual: o perdedor vai jogar este (disputa de 3º lugar)
+    perdedor_proximo_lado: Mapped[str | None] = mapped_column(String(1))
     numero: Mapped[int | None] = mapped_column(Integer)  # número do jogo no regulamento (chave manual: "jogo 13")
     origem_a: Mapped[str | None] = mapped_column(String(60))  # de onde vem o lado enquanto vazio: "1º colocado geral", "Vencedor do jogo 13"
     origem_b: Mapped[str | None] = mapped_column(String(60))
