@@ -88,6 +88,7 @@
   <div class="espec" id="espec">
     <a href="{{ voltar }}" title="Voltar ao campeonato">← Campeonato</a>
     <label>Jogo <select id="sel-jogo"><option value="">Automático (o jogo em destaque)</option></select></label>
+    <label id="w-class" hidden>Tela <select id="sel-class"><option value="">Como a organização definiu</option><option value="placar">Só o placar</option><option value="alterna">Placar e classificação</option><option value="so">Só a classificação</option></select></label>
   </div>
   {% endif %}
   <div class="dica" id="dica">Toque ou aperte F para tela cheia</div>
@@ -129,7 +130,8 @@
         (p ? `<div class="proximo">Próximo jogo<br>${esc(p.a.nome)} × ${esc(p.b.nome)}<small>${esc([p.rodada_nome, p.local, quando(p)].filter(Boolean).join(' · '))}</small></div>` : '');
     }
 
-    let telaClass = false, ultimaClass = Date.now();
+    let telaClass = false, ultimaClass = Date.now(), modoClass = '';
+    const modoEfetivo = () => modoClass || (D && D.classificacao_org ? 'alterna' : 'placar');
     function classificacaoHtml(cl) {
       const sg = (v) => (v > 0 ? '+' : '') + v;
       return `<div class="classif"><h2>${esc(cl.titulo)}</h2><table><thead><tr><th>#</th><th class="eq">Equipe</th><th>J</th><th>V</th><th>D</th><th>Pts</th>${cl.sets ? '<th>Saldo set</th><th>Pontos pró</th><th>Pontos neg</th><th>Saldo pts</th>' : '<th>Pró</th><th>Contra</th><th>Saldo</th>'}</tr></thead><tbody>` +
@@ -150,7 +152,8 @@
       $('vivo').classList.toggle('parado', !aoVivo);
       $('vivo-txt').textContent = aoVivo ? 'AO VIVO' : (jogos.length ? 'EM BREVE' : 'AGUARDANDO');
       if (idx >= jogos.length) idx = 0;
-      const verClass = !!D.classificacao && (!jogos.length || telaClass);
+      const eff = modoEfetivo();
+      const verClass = !!D.classificacao && (eff === 'so' || (eff === 'alterna' && (!jogos.length || telaClass)));
       $('principal').innerHTML = verClass ? classificacaoHtml(D.classificacao) : (jogos.length ? jogoGrande(jogos[idx]) : espera());
       $('pontos').innerHTML = jogos.length > 1 ? jogos.map((_, i) => `<b class="${i === idx ? 'on' : ''}"></b>`).join('') : '';
       $('rodape').innerHTML =
@@ -164,14 +167,14 @@
       const antes = jogoEscolhido;
       sel.innerHTML = '<option value="">Automático (o jogo em destaque)</option>' + (D.opcoes || []).map((o) => `<option value="${o.id}" ${String(o.id) === String(antes) ? 'selected' : ''}>${esc(o.rotulo)}</option>`).join('');
     }
-    document.addEventListener('change', (e) => { if (e.target.id === 'sel-jogo') { jogoEscolhido = e.target.value; idx = 0; atualizar(); } });
+    document.addEventListener('change', (e) => { if (e.target.id === 'sel-class') { modoClass = e.target.value; desenhar(); } if (e.target.id === 'sel-jogo') { jogoEscolhido = e.target.value; idx = 0; atualizar(); } });
 
     async function atualizar() {
       try {
         const r = await fetch(FONTE + (ESPECTADOR && jogoEscolhido ? '?jogo=' + encodeURIComponent(jogoEscolhido) : ''), { cache: 'no-store' });
         if (r.status === 404) { $('conexao').textContent = 'Link do telão inválido ou renovado: peça o novo link.'; $('conexao').className = 'conexao erro'; return; }
         D = await r.json();
-        if (ESPECTADOR) preencherOpcoes();
+        if (ESPECTADOR) { preencherOpcoes(); const w = $('w-class'); if (w) w.hidden = !D.classificacao; }
         $('conexao').textContent = ''; $('conexao').className = 'conexao';
         desenhar();
       } catch (e) { $('conexao').textContent = 'Reconectando…'; $('conexao').className = 'conexao erro'; }
@@ -180,7 +183,7 @@
     setInterval(atualizar, 3000);
     // vários jogos ao vivo no modo automático: alterna a cada poucos segundos
     // classificação ligada pela organização: alterna com o placar quando há jogo (sozinha quando não há)
-    setInterval(() => { if (D && D.classificacao && D.jogos.length && Date.now() - ultimaClass >= D.rotacao_s * 1000) { telaClass = !telaClass; ultimaClass = Date.now(); desenhar(); } }, 1000);
+    setInterval(() => { if (D && D.classificacao && modoEfetivo() === 'alterna' && D.jogos.length && Date.now() - ultimaClass >= D.rotacao_s * 1000) { telaClass = !telaClass; ultimaClass = Date.now(); desenhar(); } }, 1000);
     setInterval(() => { if (D && D.modo === 'auto' && D.jogos.length > 1 && Date.now() - ultimaTroca >= D.rotacao_s * 1000) { idx = (idx + 1) % D.jogos.length; ultimaTroca = Date.now(); desenhar(); } }, 1000);
 
     // tela cheia, tela sempre acesa e cursor escondido (TV)

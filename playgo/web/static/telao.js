@@ -37,11 +37,12 @@
       '<div class="tl-principal" data-t="principal"></div>' +
       '<div class="tl-pontos" data-t="pontos"></div>' +
       '<div class="tl-rodape" data-t="rodape"></div>' +
-      '<div class="tl-barra"><label class="tl-escolha">Jogo <select data-t="sel"><option value="">Automático (o jogo em destaque)</option></select></label><button class="btn suave pequeno" type="button" data-t="cheia">⛶ Tela cheia</button></div>' +
+      '<div class="tl-barra"><label class="tl-escolha">Jogo <select data-t="sel"><option value="">Automático (o jogo em destaque)</option></select></label><label class="tl-escolha" data-t="w-class" hidden>Tela <select data-t="sel-class"><option value="">Como a organização definiu</option><option value="placar">Só o placar</option><option value="alterna">Placar e classificação</option><option value="so">Só a classificação</option></select></label><button class="btn suave pequeno" type="button" data-t="cheia">⛶ Tela cheia</button></div>' +
       '<p class="tl-conexao" data-t="conexao"></p></div>';
     const raiz = el.querySelector('[data-tl]');
     const t = (n) => el.querySelector('[data-t="' + n + '"]');
-    let D = null, idx = 0, ultimaTroca = Date.now(), escolhido = '', videoAtual = null, luz = null, telaClass = false, ultimaClass = Date.now();
+    let D = null, idx = 0, ultimaTroca = Date.now(), escolhido = '', videoAtual = null, luz = null, telaClass = false, ultimaClass = Date.now(), modoClass = '';
+    const modoEfetivo = () => modoClass || (D && D.classificacao_org ? 'alterna' : 'placar');
 
     function desenhar() {
       if (!D) return;
@@ -64,12 +65,13 @@
         t('video').innerHTML = v ? '<iframe src="https://www.youtube.com/embed/' + encodeURIComponent(v) + '?autoplay=1&mute=1&rel=0&playsinline=1" allow="autoplay; encrypted-media; fullscreen" allowfullscreen title="Transmissão ao vivo"></iframe>' : '';
       }
       const p = D.proximos[0];
-      t('principal').innerHTML = D.classificacao && (!j || telaClass) ? classificacaoHtml(D.classificacao) : j ? placarHtml(j, !!v)
+      t('principal').innerHTML = D.classificacao && (modoEfetivo() === 'so' || (modoEfetivo() === 'alterna' && (!j || telaClass))) ? classificacaoHtml(D.classificacao) : j ? placarHtml(j, !!v)
         : '<div class="tl-espera"><h3>' + (D.ultimos.length || D.proximos.length ? 'Intervalo entre os jogos' : 'Em breve, o placar ao vivo') + '</h3><p>' + esc(c.nome) + '</p>' +
           (p ? '<div class="tl-proximo">Próximo jogo<br><b>' + esc(p.a.nome) + ' × ' + esc(p.b.nome) + '</b><small>' + esc([p.rodada_nome, p.local, quando(p.inicio_previsto)].filter(Boolean).join(' · ')) + '</small></div>' : '') + '</div>';
       t('pontos').innerHTML = jogos.length > 1 ? jogos.map((_, i) => '<b class="' + (i === idx ? 'on' : '') + '"></b>').join('') : '';
       t('rodape').innerHTML = '<div><h4>Próximos jogos</h4>' + (D.proximos.slice(0, 3).map((x) => linhaMini(x, false)).join('') || '<div class="tl-linha"><span>—</span></div>') + '</div>' +
         '<div><h4>Últimos resultados</h4>' + (D.ultimos.slice(0, 3).map((x) => linhaMini(x, true)).join('') || '<div class="tl-linha"><span>—</span></div>') + '</div>';
+      t('w-class').hidden = !D.classificacao;
       const sel = t('sel');
       if (document.activeElement !== sel) {
         sel.innerHTML = '<option value="">Automático (o jogo em destaque)</option>' + (D.opcoes || []).map((x) => '<option value="' + x.id + '"' + (String(x.id) === String(escolhido) ? ' selected' : '') + '>' + esc(x.rotulo) + '</option>').join('');
@@ -91,7 +93,7 @@
     const tAtualiza = setInterval(atualizar, 3000);
     // vários jogos ao vivo no modo automático: alterna a cada poucos segundos
     const tClass = setInterval(() => {
-      if (D && D.classificacao && D.jogos.length && Date.now() - ultimaClass >= D.rotacao_s * 1000) { telaClass = !telaClass; ultimaClass = Date.now(); desenhar(); }
+      if (D && D.classificacao && modoEfetivo() === 'alterna' && D.jogos.length && Date.now() - ultimaClass >= D.rotacao_s * 1000) { telaClass = !telaClass; ultimaClass = Date.now(); desenhar(); }
     }, 1000);
     const tRotaciona = setInterval(() => {
       if (D && D.modo === 'auto' && D.jogos.length > 1 && Date.now() - ultimaTroca >= D.rotacao_s * 1000) { idx = (idx + 1) % D.jogos.length; ultimaTroca = Date.now(); desenhar(); }
@@ -102,6 +104,7 @@
     document.addEventListener('visibilitychange', aoVoltar);
     acender();
 
+    t('sel-class').addEventListener('change', (ev) => { modoClass = ev.target.value; desenhar(); });
     t('sel').addEventListener('change', (ev) => { escolhido = ev.target.value; idx = 0; atualizar(); });
     t('cheia').addEventListener('click', () => {
       if (document.fullscreenElement) document.exitFullscreen();

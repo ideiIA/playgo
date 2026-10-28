@@ -961,3 +961,12 @@ def test_telao_classificacao_traz_pontos_pro_contra_e_saldo(s, fabrica):
     telao.mostrar_classificacao(s, c.id, org, True)
     L = telao._montar(s, c)["classificacao"]["linhas"][0]
     assert {"derrotas", "pts_pro", "pts_contra", "pts_saldo", "saldo"} <= set(L)
+
+
+def test_espectador_recebe_a_classificacao_mesmo_desligada_no_telao(s, fabrica):
+    from playgo import telao
+
+    c, org = _grupos_de_nove(s, fabrica)
+    assert telao._montar(s, c)["classificacao"] is None  # link da TV: segue a organização
+    d = telao.dados_espectador(s, c)
+    assert d["classificacao"] and d["classificacao_org"] is False

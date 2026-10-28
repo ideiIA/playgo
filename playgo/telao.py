@@ -153,7 +153,8 @@ def _montar(s: SessaoORM, c: Campeonato, jogo_id: int | None = None, com_opcoes:
         ] if com_opcoes else [],
         "jogos": [_jogo(j, c) for j in ([escolhido] if escolhido else ao_vivo)],
         "proximos": [_jogo(j, c) for j in proximos], "ultimos": [_jogo(j, c) for j in ultimos],
-        "classificacao": chaves.classificacao_resumo(s, c) if c.telao_classificacao else None,
+        # quem acompanha pelo app/site (com_opcoes) pode ligar a classificação só para si; o link da TV segue a escolha da organização
+        "classificacao": chaves.classificacao_resumo(s, c) if (c.telao_classificacao or com_opcoes) else None, "classificacao_org": bool(c.telao_classificacao),
         "atualizado": agora().isoformat(timespec="seconds"),
     }
 
