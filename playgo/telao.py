@@ -80,7 +80,7 @@ def painel(s: SessaoORM, c: Campeonato, u: Usuario) -> dict:
                       "placar": f"{j.placar_a} × {j.placar_b}", "inicio_previsto": j.inicio_previsto.isoformat(timespec="minutes") if j.inicio_previsto else None, "local": j.local}
     return {
         "link": f"/telao/{token}", "escolhido": c.telao_jogo_id,
-        "mostrar_classificacao": bool(c.telao_classificacao), "tem_classificacao": chaves.classificacao_resumo(s, c) is not None,
+        "mostrar_classificacao": bool(c.telao_classificacao), "tem_classificacao": True,  # a opção aparece em todo campeonato; a tabela surge assim que houver sorteio
         "ao_vivo": [leve(j) for j in jogos if j.status == J_AO_VIVO],
         "proximos": [leve(j) for j in jogos if j.status == J_AGENDADO][:20],
         "encerrados": [leve(j) for j in reversed(jogos) if j.status == J_ENCERRADO][:10],

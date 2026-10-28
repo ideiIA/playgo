@@ -970,3 +970,26 @@ def test_espectador_recebe_a_classificacao_mesmo_desligada_no_telao(s, fabrica):
     assert telao._montar(s, c)["classificacao"] is None  # link da TV: segue a organização
     d = telao.dados_espectador(s, c)
     assert d["classificacao"] and d["classificacao_org"] is False
+
+
+def test_telao_classificacao_em_qualquer_formato(s, fabrica):
+    from playgo import telao
+
+    c, org, _ = _torneio(s, fabrica, 4)
+    assert telao.painel(s, c, org)["tem_classificacao"] and telao.mostrar_classificacao(s, c.id, org, True)["tem_classificacao"]
+    assert telao._montar(s, c)["classificacao"] is None  # sem sorteio ainda
+    chaves.sortear(s, c.id, org, "eliminatoria")
+    j = _jogos(s, c)[0]
+    _disputar(s, c, org, j, 3, 1)
+    cl = telao._montar(s, c)["classificacao"]
+    assert cl["titulo"] == "Campanha das equipes" and cl["linhas"][0]["vitorias"] == 1 and cl["linhas"][0]["pro"] == 3
+
+
+def test_telao_classificacao_do_super8(s, fabrica):
+    from playgo import telao
+
+    org = fabrica.atleta("Org")
+    c = _campeonato_de(s, fabrica, org, "beach_tennis", 8, atletas_por_equipe=1)
+    chaves.sortear(s, c.id, org, "super8")
+    cl = chaves.classificacao_resumo(s, c)
+    assert cl["titulo"] == "Ranking" and len(cl["linhas"]) == 8

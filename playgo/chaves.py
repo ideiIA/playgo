@@ -1021,18 +1021,34 @@ def _tabela_geral(c: Campeonato, de_grupo: list[Jogo], confirmadas: list[Equipe]
 
 
 def classificacao_resumo(s: SessaoORM, c: Campeonato) -> dict | None:
-    """A classificação que o telão mostra: a geral (fase de grupos) ou a de pontos corridos. Só o que o campeonato já mostra a todos."""
-    if c.formato not in ("grupos", "pontos_corridos"):
+    """A classificação que o telão mostra, qualquer que seja o formato: geral dos grupos, pontos corridos, campanha das equipes no
+    mata-mata ou ranking do Super 8. Só o que o campeonato já mostra a todos; `None` enquanto não há tabela (sem sorteio)."""
+    if not c.formato:
         return None
     jogos = list(s.scalars(select(Jogo).where(Jogo.campeonato_id == c.id).execution_options(populate_existing=True)))
     confirmadas = list(s.scalars(select(Equipe).where(Equipe.campeonato_id == c.id, Equipe.status == E_CONFIRMADA).order_by(Equipe.id)))
+    avancam = 0
     if c.formato == "pontos_corridos":
         tabela, titulo = classificacao([j for j in jogos if j.fase != "grupos"], confirmadas, c), "Classificação"
-        avancam = 0
-    else:
+    elif c.formato == "grupos":
         marcas = {k.equipe_id: k for k in s.scalars(select(ChaveEquipe).where(ChaveEquipe.campeonato_id == c.id))}
-        tabela, titulo = _tabela_geral(c, [j for j in jogos if j.fase == "grupos"], confirmadas, marcas), "Classificação geral"
-        avancam = c.classificam_geral or 0
+        de_grupo = [j for j in jogos if j.fase == "grupos"]
+        tabela, titulo = _tabela_geral(c, de_grupo, confirmadas, marcas), "Classificação geral"
+        if tabela:
+            avancam = c.classificam_geral or 0
+        else:  # um grupo só: a própria tabela do grupo
+            tabela, titulo = classificacao(de_grupo, [e for e in confirmadas if e.id in marcas and marcas[e.id].grupo], c), "Classificação"
+            for L in tabela:
+                L["grupo"] = None
+    elif c.formato == "super8":
+        tabela, titulo = [], "Ranking"
+        for r in _ranking_super8(s, c, jogos):
+            for L in r["classificacao"]:
+                tabela.append(L | {"grupo": r["grupo"]})
+    else:  # eliminatória: campanha de cada equipe (vitórias, derrotas, pontos feitos e sofridos) nos jogos já disputados
+        tabela, titulo = classificacao([j for j in jogos if not j.folga], [e for e in confirmadas if e.id in _equipes_no_sorteio(jogos)], c), "Campanha das equipes"
+        for L in tabela:
+            L["grupo"] = None
     if not tabela:
         return None
     return {
