@@ -330,7 +330,7 @@ def permissoes(s: SessaoORM, u: Usuario) -> dict:
     """O que o plano da pessoa libera na tela: organizar atividade, criar campeonato e cadastrar/gerir arena.
     A tela esconde o que não vale; a regra de verdade continua em `exigir` dentro dos serviços."""
     if u.admin:
-        return {"atividade": True, "campeonato": True, "arena": True, "grupo": True, "comunidade": True, "ensino": True, "perfil_prof": True, "ensino_menu": True}
+        return {"atividade": True, "campeonato": True, "arena": True, "grupo": True, "comunidade": True, "ensino": True, "perfil_prof": True, "ensino_menu": True, "recebimentos": settings.recebimentos_fase != "desligado"}
     r = regras(s, situacao(s, u)["plano"])
     ensino = _ensino_liberado(s, u)
     return {
@@ -340,6 +340,7 @@ def permissoes(s: SessaoORM, u: Usuario) -> dict:
         "ensino": ensino,  # perfil profissional aprovado + plano de profissional vigente
         "perfil_prof": perfil_profissional_de(s, u) is not None,  # já abriu o cadastro (qualquer status): mostra "Minhas aulas"
         "ensino_menu": False,  # Aulas/Personal/Escolinhas ocultas: só admin enxerga por enquanto (menus, rotas e API)
+        "recebimentos": settings.recebimentos_fase != "desligado",  # "Receber pelo app" e "Cobrar" na gestão da arena (recebimentos.py)
     }
 
 

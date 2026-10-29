@@ -185,6 +185,7 @@ class Arena(Base):
     fecha: Mapped[time] = mapped_column(Time, default=time(23, 0))
     tipo_estabelecimento: Mapped[str] = mapped_column(String(12), default="arena")  # arena | academia | clube | escola
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+    recebimento_liberado: Mapped[bool] = mapped_column(Boolean, default=False)  # fase "avaliacao": só Arenas liberadas pelo admin criam subconta
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
 
     gestores: Mapped[list[Usuario]] = relationship(secondary=arena_gestores, back_populates="arenas")
@@ -255,6 +256,12 @@ class Reserva(Base):
     atividade_id: Mapped[int | None] = mapped_column(ForeignKey("atividades.id", ondelete="CASCADE"))
     rotulo: Mapped[str] = mapped_column(String(120), default="")
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
+    # Cobrança pela subconta da Arena (recebimentos.py). Reservas antigas e bloqueios ficam "sem_cobranca".
+    valor: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    comissao: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))  # parte do PlayGo no split, calculada ao criar a cobrança
+    status_pagamento: Mapped[str] = mapped_column(String(14), default="sem_cobranca")  # sem_cobranca | pendente | pago | cancelado | estornado
+    asaas_payment_id: Mapped[str | None] = mapped_column(String(40), unique=True)
+    invoice_url: Mapped[str | None] = mapped_column(String(300))
 
     quadra: Mapped[Quadra] = relationship()
 
@@ -995,6 +1002,85 @@ class CreditoEvento(Base):
     asaas_payment_id: Mapped[str | None] = mapped_column(String(40))
     invoice_url: Mapped[str | None] = mapped_column(String(300))
     pago_em: Mapped[date | None] = mapped_column(Date)
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
+
+
+class Recebedor(Base):
+    """Subconta Asaas (BaaS) de um parceiro, criada e controlada pelo PlayGo. A Arena nunca acessa o painel do Asaas.
+    A apiKey da subconta e a chave Pix de saque ficam **criptografadas** (`recebimentos.cifrar`); o CPF/CNPJ não é guardado, só os 4 últimos dígitos."""
+
+    __tablename__ = "recebedores"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    arena_id: Mapped[int] = mapped_column(ForeignKey("arenas.id", ondelete="CASCADE"), unique=True)
+    asaas_account_id: Mapped[str] = mapped_column(String(60), unique=True)
+    wallet_id: Mapped[str] = mapped_column(String(60))
+    api_key_cripto: Mapped[str] = mapped_column(Text)
+    api_key_id: Mapped[str | None] = mapped_column(String(60))  # id da chave no Asaas (para rotação)
+    modelo: Mapped[str] = mapped_column(String(8), default="baas")
+    ambiente: Mapped[str] = mapped_column(String(8), default="sandbox")  # sandbox | producao (só a produção conta na avaliação)
+    status_kyc: Mapped[str] = mapped_column(String(22), default="criando")  # criando | documentos_pendentes | em_analise | aprovado | recusado
+    documentos_pendentes: Mapped[list | None] = mapped_column(JSONB)  # [{id, tipo, titulo, onboarding_url}]
+    motivo_recusa: Mapped[str | None] = mapped_column(String(300))
+    documento_final: Mapped[str | None] = mapped_column(String(4))  # 4 últimos dígitos do CPF/CNPJ, só para exibir
+    consultar_apos: Mapped[datetime | None] = mapped_column(DateTime)  # o Asaas pede >= 15 s antes de consultar as pendências
+    destino_tipo: Mapped[str | None] = mapped_column(String(8))  # CPF | CNPJ | EMAIL | PHONE | EVP
+    destino_cripto: Mapped[str | None] = mapped_column(Text)
+    destino_mascara: Mapped[str | None] = mapped_column(String(80))
+    destino_confirmado: Mapped[bool] = mapped_column(Boolean, default=False)  # a Arena declarou que a chave é de mesma titularidade da subconta
+    dados_atualizados_em: Mapped[datetime | None] = mapped_column(DateTime)  # atualização anual dos dados cadastrais (exigida pelo Asaas)
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True)
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
+
+    arena: Mapped[Arena] = relationship(lazy="joined")
+
+
+class LancamentoRecebedor(Base):
+    """Livro-razão da subconta (só inserção, com gatilho no Postgres). `valor_liquido` tem sinal: crédito > 0, débito < 0; o saldo interno é a soma.
+    `chave` torna cada fato único (um evento do Asaas reenviado não duplica)."""
+
+    __tablename__ = "lancamentos_recebedor"
+    __table_args__ = (UniqueConstraint("recebedor_id", "chave"), Index("ix_lancamentos_recebedor", "recebedor_id", "id"))
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    recebedor_id: Mapped[int] = mapped_column(ForeignKey("recebedores.id", ondelete="CASCADE"))
+    tipo: Mapped[str] = mapped_column(String(14))  # recebimento | taxa_asaas | comissao | estorno | saque | saque_falho
+    valor_bruto: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    valor_liquido: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    referencia: Mapped[str | None] = mapped_column(String(80))  # asaas_payment_id / transfer_id / reserva:{id}
+    chave: Mapped[str] = mapped_column(String(100))
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
+
+
+class SaqueRecebedor(Base):
+    """Pedido de saque (Pix da subconta para o destino cadastrado). A validação de saque do Asaas confere esta linha antes de liberar a transferência."""
+
+    __tablename__ = "saques_recebedor"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    recebedor_id: Mapped[int] = mapped_column(ForeignKey("recebedores.id", ondelete="CASCADE"), index=True)
+    valor: Mapped[Decimal] = mapped_column(Numeric(12, 2))
+    status: Mapped[str] = mapped_column(String(12), default="solicitado")  # solicitado | enviado | concluido | falhou
+    asaas_transfer_id: Mapped[str | None] = mapped_column(String(60), unique=True)
+    destino_mascara: Mapped[str | None] = mapped_column(String(80))
+    chave_idempotencia: Mapped[str] = mapped_column(String(60), unique=True)
+    motivo: Mapped[str | None] = mapped_column(String(200))
+    destino_selo: Mapped[str | None] = mapped_column(String(64))  # HMAC da chave Pix no momento do pedido (a chave em si não é repetida aqui)
+    validacao: Mapped[str | None] = mapped_column(String(10))  # aprovado | recusado: resposta já dada à validação de saque do Asaas
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
+    concluido_em: Mapped[datetime | None] = mapped_column(DateTime)
+
+
+class EventoRecebimento(Base):
+    """Eventos do Asaas já processados (idempotência dos webhooks de parceiros) e o registro de cada validação de saque (sem dados sensíveis)."""
+
+    __tablename__ = "eventos_recebimento"
+
+    chave: Mapped[str] = mapped_column(String(120), primary_key=True)
+    tipo: Mapped[str | None] = mapped_column(String(20))  # validacao_saque
+    resultado: Mapped[str | None] = mapped_column(String(10))  # aprovado | recusado
+    motivo: Mapped[str | None] = mapped_column(String(200))
+    saque_id: Mapped[int | None] = mapped_column(Integer)
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
 
 

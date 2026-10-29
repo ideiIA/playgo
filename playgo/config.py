@@ -1,4 +1,5 @@
 import os
+from decimal import Decimal
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -68,6 +69,19 @@ class Settings(BaseSettings):
     asaas_api_key: str = ""
     asaas_ambiente: str = "sandbox"  # sandbox | producao
     asaas_webhook_token: str = ""  # o mesmo token cadastrado no webhook do Asaas
+
+    # Recebimentos de parceiros (Arena) por subconta Asaas — BaaS (recebimentos.py, docs/seguranca-recebimentos.md)
+    recebimentos_fase: str = "desligado"  # desligado | avaliacao | baas
+    recebimentos_comissao_percentual: Decimal = Decimal(0)  # parte do PlayGo em cada cobrança (split, % do valor líquido)
+    recebimentos_comissao_fixa: Decimal = Decimal(0)  # ou valor fixo por cobrança (soma com o percentual, se ambos)
+    recebimentos_taxa_por: str = "arena"  # arena | plataforma: quem arca com a taxa do Asaas (registrado no livro-razão)
+    recebimentos_saque_minimo: Decimal = Decimal(10)
+    recebimentos_texto_asaas: str = "Pagamentos processados por Asaas Gestão Financeira Instituição de Pagamento S.A."  # TODO: trocar pelo texto do Playbook do Asaas
+    recebimentos_links_asaas: str = ""  # "Texto|https://url" separados por ponto e vírgula (Termos, Política de privacidade… do Playbook)
+    recebimentos_chave: str = ""  # chave Fernet (base64 de 32 bytes) que cifra a apiKey das subcontas; em branco = derivada da chave de sessão
+    asaas_wallet_id: str = ""  # carteira (walletId) da conta-mãe: recebe a comissão do split e é a única carteira que a validação de saque aceita
+    recebimentos_email_alertas: str = ""  # destinatário dos avisos do webhook das subcontas
+    asaas_webhook_token_parceiros: str = ""  # token (32 a 255 caracteres) do webhook das subcontas e da validação de saque
 
     # Moderação por IA. Provedor: "claude" ou "gemini"; em branco = o que tiver chave preenchida.
     ia_provedor: str = ""

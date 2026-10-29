@@ -96,6 +96,19 @@ _COLUNAS_NOVAS: tuple[str, ...] = (
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS telao_classificacao boolean NOT NULL DEFAULT false",
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS chave_manual jsonb",
     "ALTER TABLE campeonatos ADD COLUMN IF NOT EXISTS classificam_melhores integer",
+    "ALTER TABLE arenas ADD COLUMN IF NOT EXISTS recebimento_liberado boolean NOT NULL DEFAULT false",
+    "ALTER TABLE reservas ADD COLUMN IF NOT EXISTS valor numeric(10,2)",
+    "ALTER TABLE reservas ADD COLUMN IF NOT EXISTS comissao numeric(10,2)",
+    "ALTER TABLE reservas ADD COLUMN IF NOT EXISTS status_pagamento varchar(14) NOT NULL DEFAULT 'sem_cobranca'",
+    "ALTER TABLE reservas ADD COLUMN IF NOT EXISTS asaas_payment_id varchar(40)",
+    "CREATE UNIQUE INDEX IF NOT EXISTS ux_reservas_asaas_payment ON reservas (asaas_payment_id)",
+    "ALTER TABLE reservas ADD COLUMN IF NOT EXISTS invoice_url varchar(300)",
+    "ALTER TABLE saques_recebedor ADD COLUMN IF NOT EXISTS destino_selo varchar(64)",
+    "ALTER TABLE saques_recebedor ADD COLUMN IF NOT EXISTS validacao varchar(10)",
+    "ALTER TABLE eventos_recebimento ADD COLUMN IF NOT EXISTS tipo varchar(20)",
+    "ALTER TABLE eventos_recebimento ADD COLUMN IF NOT EXISTS resultado varchar(10)",
+    "ALTER TABLE eventos_recebimento ADD COLUMN IF NOT EXISTS motivo varchar(200)",
+    "ALTER TABLE eventos_recebimento ADD COLUMN IF NOT EXISTS saque_id integer",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS numero integer",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS perdedor_proximo_id integer REFERENCES jogos(id) ON DELETE SET NULL",
     "ALTER TABLE jogos ADD COLUMN IF NOT EXISTS perdedor_proximo_lado varchar(1)",
@@ -145,6 +158,17 @@ _GATILHO_REGISTROS = (
     "DROP TRIGGER IF EXISTS tg_registros_somente_insercao ON registros",
     """CREATE TRIGGER tg_registros_somente_insercao BEFORE UPDATE OR DELETE ON registros
     FOR EACH ROW EXECUTE FUNCTION registros_somente_insercao()""",
+    # O livro-razão dos recebimentos também só se acrescenta (a exclusão em cascata de uma Arena apagada é a única saída: `playgo.purga`)
+    """CREATE OR REPLACE FUNCTION lancamentos_somente_insercao() RETURNS trigger AS $$
+    BEGIN
+        IF TG_OP = 'DELETE' AND (current_setting('playgo.purga', true) = 'on' OR pg_trigger_depth() > 1) THEN
+            RETURN OLD;
+        END IF;
+        RAISE EXCEPTION 'lancamentos_recebedor: o livro-razão é somente de inserção';
+    END; $$ LANGUAGE plpgsql""",
+    "DROP TRIGGER IF EXISTS tg_lancamentos_somente_insercao ON lancamentos_recebedor",
+    """CREATE TRIGGER tg_lancamentos_somente_insercao BEFORE UPDATE OR DELETE ON lancamentos_recebedor
+    FOR EACH ROW EXECUTE FUNCTION lancamentos_somente_insercao()""",
 )
 
 

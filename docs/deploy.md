@@ -106,6 +106,63 @@ faça uma assinatura de teste no sandbox (Pix/cartão de teste) antes de cobrar 
 
 Depois de atualizar o código, rode `python -m playgo supabase` (com `PLAYGO_ENV_FILE=.env.producao`) para criar as tabelas novas com RLS.
 
+## Recebimentos de parceiros — Arena recebe pelo app (Asaas BaaS, subconta white label)
+
+A Arena cobra as reservas pelo PlayGo e o dinheiro cai na **subconta Asaas dela**, criada e controlada por nós. A Arena **não acessa o painel do Asaas** nem recebe e-mail dele:
+cadastro, pendências de documentos, saldo, extrato, saque e link de cobrança acontecem dentro do PlayGo (site e app). A conta-mãe atual (planos e eventos avulsos, seção acima) não muda.
+Código: `playgo/recebimentos.py`, `playgo/api/recebimentos.py`, `static/recebimentos.js|css`. Controles de segurança: `docs/seguranca-recebimentos.md`.
+
+### Fases (`PLAYGO_RECEBIMENTOS_FASE`)
+
+| Fase | O que vale |
+|---|---|
+| `desligado` (padrão) | Nenhuma rota de recebimento chama o Asaas; as telas e a API respondem "recurso ainda não disponível". Os botões "Receber pelo app" e "Cobrar" não aparecem. |
+| `avaliacao` | Só Arenas **liberadas pelo admin** (Administração → Recebimentos de parceiros) criam subconta. Painel com nº de subcontas (máx. 10), maior total cobrado por subconta (máx. R$ 2.000), data da 1ª subconta de **produção** e dias restantes dos 60. **Bloqueio local preventivo a 80%** de cada limite (8 subcontas, R$ 1.600 por subconta, 48 dias), com mensagem clara. Só subcontas de produção contam (`PLAYGO_ASAAS_AMBIENTE=producao`). |
+| `baas` | Sem os bloqueios locais da avaliação. **Só ligue depois que contrato e Segurança da Informação forem concluídos** com o Asaas. |
+
+### Variáveis (`.env.producao` / `deploy/.env`)
+
+- `PLAYGO_RECEBIMENTOS_FASE` (acima) e `PLAYGO_ASAAS_AMBIENTE` (`sandbox` | `producao`; a chave da conta-mãe segue em `PLAYGO_ASAAS_API_KEY`).
+- `PLAYGO_ASAAS_WEBHOOK_TOKEN_PARCEIROS`: token **próprio** dos parceiros (32 a 255 caracteres; gere um texto longo e secreto). Vale para o webhook das subcontas **e** para a validação de saque.
+- `PLAYGO_URL_PUBLICA` (ex.: `https://playgo.ideiiapp.com.br`): o webhook é cadastrado junto com a subconta usando este endereço.
+- `PLAYGO_ASAAS_WALLET_ID`: `walletId` da **conta-mãe** (recebe a comissão do split; a validação de saque só aceita esta carteira).
+- `PLAYGO_RECEBIMENTOS_COMISSAO_PERCENTUAL` (padrão 0) e `PLAYGO_RECEBIMENTOS_COMISSAO_FIXA` (padrão 0): parte do PlayGo em cada cobrança, por split. **Nada fixo no código**: as condições comerciais com o Asaas ainda não estão definidas.
+- `PLAYGO_RECEBIMENTOS_TAXA_POR` (`arena` | `plataforma`, padrão `arena`): quem arca com a taxa do Asaas; fica registrado no livro-razão (`taxa_asaas`). Com `plataforma` a taxa é registrada sem descontar do saldo da Arena — o repasse real depende das condições comerciais.
+- `PLAYGO_RECEBIMENTOS_SAQUE_MINIMO` (padrão 10).
+- `PLAYGO_RECEBIMENTOS_CHAVE`: chave Fernet (base64 de 32 bytes; `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`) que cifra a apiKey das subcontas e a chave Pix de saque. **Faça backup**: sem ela as credenciais guardadas não abrem. Em branco, é derivada da chave de sessão (trocar a chave de sessão invalidaria as credenciais).
+- `PLAYGO_RECEBIMENTOS_EMAIL_ALERTAS`: destinatário dos avisos do webhook das subcontas.
+- `PLAYGO_RECEBIMENTOS_TEXTO_ASAAS` e `PLAYGO_RECEBIMENTOS_LINKS_ASAAS` (`Texto|https://url;Outro|https://url`): rodapé obrigatório do Asaas (veja abaixo).
+
+Depois de atualizar o código, rode `python -m playgo supabase` (com `PLAYGO_ENV_FILE=.env.producao`) para criar as tabelas novas (`recebedores`, `lancamentos_recebedor`, `saques_recebedor`, `eventos_recebimento`) **com RLS**. O banco próprio recebe as colunas novas sozinho (`ALTER TABLE … IF NOT EXISTS`).
+
+### Webhooks e validação de saque (cadastrar no Asaas)
+
+1. **Webhook das subcontas**: já vai junto com cada subconta criada (campo `webhooks` do `POST /v3/accounts`): `https://SEU-DOMINIO/api/v1/recebimentos/asaas`, token `PLAYGO_ASAAS_WEBHOOK_TOKEN_PARCEIROS` no cabeçalho `asaas-access-token`, eventos de cobrança (`PAYMENT_CONFIRMED/RECEIVED/REFUNDED/DELETED/OVERDUE/SPLIT_DONE`), transferência (`TRANSFER_DONE/FAILED/CANCELLED`) e situação da conta (`ACCOUNT_STATUS_*`). Responde 200 depois de validar o token (401 se o token estiver errado), é idempotente e não interfere no webhook dos planos (`/api/v1/cobranca/asaas`).
+2. **Validação de saque** (o Asaas chama o nosso servidor ~5 s depois de cada transferência e na liquidação de cada split; resposta inválida ou 3 falhas = operação cancelada): no Asaas, **Menu do usuário → Integrações → Mecanismos de segurança** (validação de saque via webhook), informe a URL `https://SEU-DOMINIO/api/v1/recebimentos/asaas/validar-saque` e o **mesmo token**. O PlayGo confere com o saque que registrou (valor, destino) e responde `{"status":"APPROVED"}` ou `{"status":"REFUSED","refuseReason":"…"}`; **recusa toda transferência que não registrou** (inclui PIX_REFUND, BILL, recarga e Pix QR Code) e só aprova split de cobranças criadas por nós para a carteira da conta-mãe. Faça um saque de teste no sandbox antes de ligar em produção.
+3. Rotação da apiKey de uma subconta (Administração → Recebimentos → "Trocar chave"): exige antes, no Asaas, **Integrações → Chaves de API → Gerenciamento de chaves de API de subcontas** (liberação de 2 horas) e o IP do servidor na whitelist.
+
+### Aviso regulatório obrigatório (Resolução Conjunta nº 16/17)
+
+O Asaas deve aparecer como instituição prestadora do serviço em **todas** as telas e mensagens de recebimento/pagamento (cadastro, status, saldo, extrato, saque, link de cobrança, avisos). O rodapé sai de `PLAYGO_RECEBIMENTOS_TEXTO_ASAAS` e `PLAYGO_RECEBIMENTOS_LINKS_ASAAS`.
+
+> **TODO (Playbook do Asaas):** o texto provisório é "Pagamentos processados por Asaas Gestão Financeira Instituição de Pagamento S.A.". O texto oficial e os links (marca, termos, política) vêm do **Playbook** do Asaas, que ainda não recebemos: trocar as duas variáveis (e o padrão em `config.py`) assim que chegar.
+
+### Checklist do que falta fazer com o Asaas
+
+O processo do Asaas (BaaS): **(1)** conta-mãe PJ com análise cadastral aprovada; **(2)** criar a primeira subconta via API — isso **inicia o Período de Avaliação** (até 60 dias corridos, no máximo 10 subcontas e R$ 2.000 em cobranças por subconta; ao atingir qualquer limite o Asaas bloqueia novas subcontas e cobranças até concluir a avaliação); **(3)** pedir a habilitação do BaaS e preencher o checklist do modelo de negócio (análise em até ~3 dias úteis); **(4)** após aprovação: contrato, etapas de Segurança da Informação e liberação técnica.
+
+- [ ] Conta-mãe PJ aprovada (etapa 1).
+- [ ] Validar tudo no **sandbox** (fase `avaliacao` ou `baas`, `PLAYGO_ASAAS_AMBIENTE=sandbox`): ativação, pendências com e sem `onboardingUrl`, aprovação, cobrança com split, webhook, saque e validação de saque.
+- [ ] Criar a **primeira subconta de produção somente com o código pronto** (isso inicia os 60 dias).
+- [ ] Enviar o checklist do modelo de negócio BaaS (etapa 3) e anexar `docs/seguranca-recebimentos.md` ao questionário de Segurança da Informação.
+- [ ] Obter o **Playbook** (marca e textos) e atualizar o rodapé.
+- [ ] Fechar **condições comerciais** (taxas) e o **contrato**; então ajustar comissão e `PLAYGO_RECEBIMENTOS_TAXA_POR`.
+- [ ] Ativar a **validação de saque** (URL + token acima) e conferir o `PLAYGO_ASAAS_WALLET_ID`.
+- [ ] Confirmar que a conta-mãe aceita o webhook por subconta (ou cadastrar o webhook manualmente) e liberar o gerenciamento de chaves de subcontas se for rotacionar.
+- [ ] Só então mudar para `PLAYGO_RECEBIMENTOS_FASE=baas`.
+
+A integração foi testada apenas com transporte simulado: valide cada passo no sandbox antes de cobrar de verdade. Campos da documentação oficial usados: criar subconta (`POST /v3/accounts`), documentos (`GET/POST /v3/myAccount/documents`), situação (`GET /v3/myAccount/status`), dados comerciais (`POST /v3/myAccount/commercialInfo`), saldo (`GET /v3/finance/balance`), transferência Pix (`POST /v3/transfers`), split e chaves de API de subcontas.
+
 ## Pendências conhecidas
 
 - **Vídeos acima de 4 MB**: exigem upload direto do navegador para o Storage (URL assinada de envio). É a próxima etapa técnica.

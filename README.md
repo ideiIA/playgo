@@ -94,8 +94,9 @@ O app tem as mesmas funções em abas, mais Criar jogo / atividade / grupo / cam
 ## Limitações conhecidas
 
 - Chat de grupo e textos descritivos (atividade, grupo, arena) ainda não passam pela moderação.
-- Sem pagamento, reserva paga, ranking e reputação/avaliações (fases 2 e 3 do projeto; o modelo já separa `Reserva`
-  de `Atividade` para a reserva entrar sem mexer no resto).
+- **Reserva paga** (fase 2): a Arena cobra reservas e recebe pelo app numa **subconta Asaas** (BaaS) — `recebimentos.py`, desligada por padrão
+  (`PLAYGO_RECEBIMENTOS_FASE`); depende de aprovação e contrato com o Asaas (checklist em `docs/deploy.md`, controles em `docs/seguranca-recebimentos.md`).
+- Ainda sem ranking e reputação/avaliações (fase 3 do projeto).
 - O local de uma atividade é marcado no mapa (clique ou GPS) ou vem da arena; não há busca de endereço (geocodificação).
 - Tabelas criadas por `create_all`; colunas novas entram por `ALTER TABLE … IF NOT EXISTS` em `playgo/db.py` (sem Alembic,
   como no Licitações).

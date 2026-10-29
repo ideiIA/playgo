@@ -15,6 +15,7 @@
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     {% if arenas|length > 1 %}<select onchange="location.href='/gestao?arena=' + this.value" style="border:1px solid var(--border);border-radius:12px;padding:10px">{% for x in arenas %}<option value="{{ x.id }}" {{ 'selected' if x.id == arena.id }}>{{ x.nome }}</option>{% endfor %}</select>{% endif %}
     <a class="btn soft" href="/arenas/{{ arena.id }}">Ver página pública</a>
+    {% if rec_fase != 'desligado' %}<a class="btn soft" href="/gestao/recebimentos?arena={{ arena.id }}">💰 Receber pelo app</a>{% endif %}
     <a class="btn soft" href="/gestao/arenas/nova">+ Nova arena</a>
     <a class="btn purple" href="#nova-quadra" onclick="document.getElementById('nova-quadra').open = true">+ Nova quadra</a>
   </div>
@@ -66,7 +67,14 @@
         {% else %}
           <span class="celula-ocupada">{{ cel.rotulo }}</span>
           {% if cel.atividade_id %}<a href="/atividades/{{ cel.atividade_id }}" class="link-botao">ver</a>
-          {% elif cel.tipo in ('reserva', 'bloqueio') %}<form method="post" action="/gestao/reservas/{{ cel.reserva_id }}/liberar"><input type="hidden" name="arena" value="{{ arena.id }}"><button class="link-botao" style="color:var(--red)">Liberar</button></form>{% endif %}
+          {% elif cel.tipo in ('reserva', 'bloqueio') %}
+            {% if cel.tipo == 'reserva' and rec_fase != 'desligado' %}
+              {% if cel.status_pagamento in ('pendente', 'pago', 'estornado') %}<span class="tag {{ 'green' if cel.status_pagamento == 'pago' else 'orange' }}">{{ {'pendente': 'Cobrança pendente', 'pago': 'Paga', 'estornado': 'Estornada'}[cel.status_pagamento] }}</span>
+                {% if cel.invoice_url and cel.status_pagamento == 'pendente' %}<a class="link-botao" href="{{ cel.invoice_url }}" target="_blank" rel="noopener">link</a>{% endif %}
+              {% else %}<button type="button" class="link-botao" onclick="cobrarReserva({{ cel.reserva_id }}, {{ cel.valor_hora }})">💳 Cobrar</button>{% endif %}
+            {% endif %}
+            {% if cel.status_pagamento not in ('pendente', 'pago') %}<form method="post" action="/gestao/reservas/{{ cel.reserva_id }}/liberar"><input type="hidden" name="arena" value="{{ arena.id }}"><button class="link-botao" style="color:var(--red)">Liberar</button></form>{% endif %}
+          {% endif %}
         {% endif %}
       </td>
       {% endfor %}
@@ -77,6 +85,12 @@
   {% else %}{{ c.vazio('Cadastre a primeira quadra para montar a agenda.') }}{% endif %}
 </div>
 
+{% if rec_fase != 'desligado' %}
+<link rel="stylesheet" href="/static/recebimentos.css"><script src="/static/recebimentos.js"></script>
+<script>
+  async function cobrarReserva(id, valor) { const r = await Recebimentos.cobrar({ api: (c, o) => webApi(c, o), toast: (m) => toast(m) }, id, valor); if (r) location.reload(); }
+</script>
+{% endif %}
 <details id="nova-quadra" class="panel" style="margin-top:20px">
   <summary style="font-weight:800;cursor:pointer">+ Nova quadra ou espaço</summary>
   <form method="post" action="/gestao/{{ arena.id }}/quadras" style="margin-top:14px">

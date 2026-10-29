@@ -43,12 +43,14 @@ def _base() -> str:
     return "https://api-sandbox.asaas.com/v3" if settings.asaas_ambiente != "producao" else "https://api.asaas.com/v3"
 
 
-def _chamar(metodo: str, caminho: str, json: dict | None = None) -> dict:
-    if not configurado():
+def _chamar(metodo: str, caminho: str, json: dict | None = None, chave: str | None = None, arquivos: dict | None = None, dados: dict | None = None) -> dict:
+    """`chave`: apiKey de uma subconta (recebimentos.py); sem ela vale a chave da conta-mãe. `arquivos`/`dados`: envio multipart (documentos)."""
+    token = chave or settings.asaas_api_key
+    if not token:
         raise ErroNegocio("A cobrança ainda não está ativa neste ambiente. Fale com a administração.")
     try:
         with _http() as c:
-            r = c.request(metodo, _base() + caminho, json=json, headers={"access_token": settings.asaas_api_key, "User-Agent": "PlayGo"})
+            r = c.request(metodo, _base() + caminho, json=json, files=arquivos, data=dados, headers={"access_token": token, "User-Agent": "PlayGo"})
     except httpx.HTTPError as e:
         log.error("Asaas indisponível: %s", e)
         raise ErroNegocio("Não foi possível falar com o sistema de pagamento agora. Tente de novo em instantes.") from None

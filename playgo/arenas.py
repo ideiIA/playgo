@@ -186,7 +186,10 @@ def agenda_do_dia(s: SessaoORM, arena: Arena, dia: date) -> dict:
             r = next((x for x in reservas if x.quadra_id == q.id and x.inicio < h2 and x.fim > h), None)
             d = next((x for x in divulgados if x.quadra_id == q.id and x.inicio < h2 and x.fim > h), None)
             if r:
-                celula = {"estado": "ocupado", "rotulo": r.rotulo or ("Reservada" if r.tipo == R_RESERVA else "Bloqueada"), "reserva_id": r.id, "tipo": r.tipo, "atividade_id": r.atividade_id}
+                celula = {
+                    "estado": "ocupado", "rotulo": r.rotulo or ("Reservada" if r.tipo == R_RESERVA else "Bloqueada"), "reserva_id": r.id, "tipo": r.tipo, "atividade_id": r.atividade_id,
+                    "status_pagamento": r.status_pagamento, "invoice_url": r.invoice_url, "valor_hora": float(r.valor or q.valor_hora or 0),
+                }
             elif d:
                 celula = {"estado": "divulgado", "rotulo": "Divulgado", "horario_id": d.id}
             else:

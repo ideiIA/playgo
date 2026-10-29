@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block titulo %}Receber pelo app — {{ arena.nome }} — PlayGo{% endblock %}
+{% block conteudo %}
+<link rel="stylesheet" href="/static/recebimentos.css">
+<div class="section-title">
+  <h2>{{ arena.nome }}</h2>
+  <a class="btn soft" href="/gestao?arena={{ arena.id }}">← Voltar à agenda</a>
+</div>
+{% if fase == 'desligado' %}
+<div class="panel"><h2>💰 Receber pelo app</h2><p class="suave">O recebimento pelo app ainda não está disponível. Em breve!</p>
+  <p class="suave" style="font-size:12px">{{ rodape.texto }}</p></div>
+{% else %}
+<div id="recebimentos" style="max-width:820px"><p class="suave">Carregando…</p></div>
+<script src="/static/recebimentos.js"></script>
+<script>window.addEventListener('load', () => Recebimentos.montarArena(document.getElementById('recebimentos'), { api: (c, o) => webApi(c, o), toast: (m) => toast(m), arenaId: {{ arena.id }} }));</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block titulo %}Recebimentos de parceiros — PlayGo{% endblock %}
+{% block conteudo %}
+<link rel="stylesheet" href="/static/recebimentos.css">
+<div class="section-title"><h2>Recebimentos de parceiros</h2><a class="btn soft" href="/administracao">← Administração</a></div>
+<div id="recebimentos-admin" style="max-width:900px"><p class="suave">Carregando…</p></div>
+<script src="/static/recebimentos.js"></script>
+<script>window.addEventListener('load', () => Recebimentos.montarAdmin(document.getElementById('recebimentos-admin'), { api: (c, o) => webApi(c, o), toast: (m) => toast(m) }));</script>
+{% endblock %}

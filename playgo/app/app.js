@@ -761,12 +761,21 @@
         <div class="livebar" style="flex-direction:column;align-items:stretch">${p.horarios_ociosos ? `<div><span class="pulse"></span><strong>${p.horarios_ociosos} horário(s) ocioso(s).</strong> Publique para atletas próximos.</div><button class="btn lima" data-acao="divulgar-todos" data-id="${arena.id}">Divulgar horário</button>` : `<div><span class="pulse"></span><strong>Sem horários ociosos no restante do dia${p.horarios_divulgados ? ' — ' + p.horarios_divulgados + ' já divulgado(s)' : ''}.</strong></div>`}</div>
         <div class="secao"><h2>Agenda</h2><div><button class="btn suave pequeno" data-acao="dia" data-v="${mover(-1)}">←</button> <span class="suave">${d.toLocaleDateString('pt-BR')}</span> <button class="btn suave pequeno" data-acao="dia" data-v="${mover(1)}">→</button></div></div>
         <div class="painel" style="overflow-x:auto">${ag.quadras.length ? `<table class="agenda"><thead><tr><th>Hora</th>${ag.quadras.map((q) => `<th>${esc(q.nome)}</th>`).join('')}</tr></thead><tbody>${ag.linhas.map((l) => `<tr><td>${esc(l.hora)}</td>${l.celulas.map((c) => `<td><button class="cel ${c.estado} ${c.passado ? 'passado' : ''}" data-acao="celula" data-c='${esc(JSON.stringify({ ...c, inicio: l.inicio }))}'>${esc(c.rotulo)}</button></td>`).join('')}</tr>`).join('')}</tbody></table>` : '<p class="vazio">Cadastre a primeira quadra.</p>'}</div>
-        <div style="display:flex;gap:8px;margin-top:12px"><button class="btn suave" data-acao="nova-quadra" data-id="${arena.id}">+ Nova quadra</button><a class="btn suave" href="#/nova-arena">+ Nova arena</a></div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn suave" data-acao="nova-quadra" data-id="${arena.id}">+ Nova quadra</button><a class="btn suave" href="#/nova-arena">+ Nova arena</a>${pode('recebimentos') ? `<a class="btn suave" href="#/recebimentos/${arena.id}">💰 Receber pelo app</a>` : ''}</div>
         ${secao('Ocupação por horário')}<div class="painel barras">${p.ocupacao_por_hora.map((h) => `<div class="l"><span>${esc(h.hora)}</span><div class="barra"><i style="width:${h.pct}%"></i></div><span>${h.pct}%</span></div>`).join('')}</div>
         ${secao('Dias com maior demanda')}<div class="painel barras">${p.demanda_por_dia.map((x) => `<div class="l"><span>${esc(x.dia)}</span><div class="barra"><i style="width:${Math.round((100 * x.total) / max)}%"></i></div><span>${x.total}</span></div>`).join('')}</div>
         ${secao('Mais procurados')}<div class="painel">${p.modalidades_procuradas.map((m) => `<div class="pessoa"><span style="font-size:22px">${esc(m.icone)}</span><b>${esc(m.nome)}</b><span class="suave" style="margin-left:auto">${m.total}</span></div>`).join('') || '<p class="suave">Sem atividades ainda.</p>'}<p class="suave" style="margin-top:10px">${p.clientes_recorrentes} clientes recorrentes</p></div>`,
       () => { const s = $('#sel-arena'); if (s) s.onchange = () => { estado.arena = Number(s.value); guardar('playgo_arena', estado.arena); vGestao(); }; });
     } catch (e) { erroTela(e); }
+  }
+
+  function vRecebimentos(id) {
+    montar('<a href="#/gestao" class="suave">← Minha Arena</a><div id="recebimentos"></div>');
+    window.Recebimentos.montarArena($('#recebimentos'), { api, toast, arenaId: Number(id) || estado.arena });
+  }
+  function vAdminRecebimentos() {
+    montar('<a href="#/admin" class="suave">← Administração</a><h1 style="margin:8px 0 12px">💰 Recebimentos de parceiros</h1><div id="recebimentos"></div>');
+    window.Recebimentos.montarAdmin($('#recebimentos'), { api, toast });
   }
 
   function vNovaArena() {
@@ -1097,6 +1106,7 @@
       const r = await api('/admin/usuarios?' + qs({ q, perfil }));
       montar(`<h1>⚙️ Administração</h1><p class="suave" style="margin:4px 0 12px"><b>Administrador</b>: tudo, inclusive promover perfis. <b>Moderador geral</b>: aprova a fila e oculta em qualquer mural. <b>Usuário</b>: comum.</p>
         <a class="btn suave bloco" href="#/admin-profissionais" style="margin-bottom:10px">🧑‍🏫 Aprovação de profissionais</a>
+        <a class="btn suave bloco" href="#/admin-recebimentos" style="margin-bottom:10px">💰 Recebimentos de parceiros</a>
         <form class="busca" id="f-admin"><span>⌕</span><input name="q" value="${esc(q)}" placeholder="@usuario, nome ou e-mail"><button class="btn roxo pequeno">Buscar</button></form>
         <div class="chips">${[['', 'Todos'], ['admin', 'Administradores'], ['moderador', 'Moderadores']].map(([v, n]) => `<button class="chip ${perfil === v ? 'on' : ''}" data-acao="admin-filtro" data-v="${v}">${n}</button>`).join('')}</div>
         <div class="painel">${r.itens.map((i) => `<div class="pessoa" style="flex-wrap:wrap"><span class="avatar">${i.foto_url ? `<img src="${esc(i.foto_url)}" alt="">` : esc(i.iniciais)}</span><div><b>${esc(i.arroba)}</b><div class="suave">${esc(i.nome)} · ${esc(i.email)}</div></div>
@@ -1344,12 +1354,18 @@
       if (c.estado === 'livre') corpo += `<button class="btn roxo bloco" data-acao="g-divulgar" data-q="${c.quadra_id}" data-i="${c.inicio}" data-f="${fim(c.inicio)}">Divulgar para atletas próximos</button><button class="btn suave bloco" style="margin-top:8px" data-acao="g-reservar" data-q="${c.quadra_id}" data-i="${c.inicio}" data-f="${fim(c.inicio)}">Reservar</button>`;
       else if (c.estado === 'divulgado') corpo += `<button class="btn perigo bloco" data-acao="g-retirar" data-id="${c.horario_id}">Retirar divulgação</button>`;
       else if (c.atividade_id) corpo += `<a class="btn suave bloco" href="#/atividade/${c.atividade_id}" onclick="document.getElementById('folha').hidden=true">Abrir atividade</a>`;
-      else corpo += `<button class="btn perigo bloco" data-acao="g-liberar" data-id="${c.reserva_id}">Liberar horário</button>`;
+      else {
+        const cobravel = c.tipo === 'reserva' && pode('recebimentos');
+        if (cobravel && ['pendente', 'pago', 'estornado'].includes(c.status_pagamento)) corpo += `<p class="suave">Cobrança: <b>${esc({ pendente: 'pendente', pago: 'paga', estornado: 'estornada' }[c.status_pagamento])}</b></p>${c.invoice_url && c.status_pagamento === 'pendente' ? `<a class="btn suave bloco" href="${esc(c.invoice_url)}" target="_blank" rel="noopener">Abrir link de pagamento</a>` : ''}`;
+        else if (cobravel) corpo += `<button class="btn roxo bloco" style="margin-bottom:8px" data-acao="g-cobrar" data-id="${c.reserva_id}" data-valor="${c.valor_hora || ''}">💳 Cobrar</button>`;
+        if (!['pendente', 'pago'].includes(c.status_pagamento)) corpo += `<button class="btn perigo bloco" data-acao="g-liberar" data-id="${c.reserva_id}">Liberar horário</button>`;
+      }
       folha(corpo);
     },
     async 'g-divulgar'(el) { try { await post(`/gestao/quadras/${el.dataset.q}/divulgar`, { inicio: el.dataset.i, fim: el.dataset.f }); toast('Horário divulgado! 🚀'); fecharFolha(); vGestao(); } catch (e) { toast(e.message); } },
     async 'g-reservar'(el) { const r = prompt('Nome da reserva (ex.: Futebol do João)'); if (r === null) return; try { await post(`/gestao/quadras/${el.dataset.q}/reservas`, { inicio: el.dataset.i, fim: el.dataset.f, rotulo: r || 'Reservada' }); fecharFolha(); vGestao(); } catch (e) { toast(e.message); } },
     async 'g-retirar'(el) { try { await api(`/gestao/horarios/${el.dataset.id}`, { metodo: 'DELETE' }); fecharFolha(); vGestao(); } catch (e) { toast(e.message); } },
+    async 'g-cobrar'(el) { const r = await window.Recebimentos.cobrar({ api, toast }, el.dataset.id, el.dataset.valor); if (r) { fecharFolha(); vGestao(); } },
     async 'g-liberar'(el) { try { await api(`/gestao/reservas/${el.dataset.id}`, { metodo: 'DELETE' }); fecharFolha(); vGestao(); } catch (e) { toast(e.message); } },
     'nova-quadra'(el) {
       folha(`<h3>Nova quadra ou espaço</h3><form id="f-quadra"><div class="campo"><label>Nome</label><input name="nome" required placeholder="Ex.: Quadra 04, Sala de spinning"></div><div class="campo"><label>Tipo de espaço</label><select name="tipo"><option value="quadra">Quadra</option><option value="sala">Sala</option><option value="piscina">Piscina</option><option value="campo">Campo</option><option value="outro">Outro</option></select></div><div class="duas"><div class="campo"><label>Valor da hora (R$)</label><input name="valor_hora" inputmode="decimal"></div><div class="campo"><label>Capacidade</label><input type="number" name="capacidade" min="1"></div></div><div class="campo"><label>Modalidades</label><div class="marcas">${estado.mods.map((m) => `<label><input type="checkbox" name="modalidades" value="${m.codigo}"> ${esc(m.icone)} ${esc(m.nome)}</label>`).join('')}</div></div><button class="btn roxo bloco">Cadastrar quadra</button></form>`);
@@ -1433,6 +1449,8 @@
       case 'oferta': return vOfertaEnsino(arg);
       case 'ensino': return vEnsino();
       case 'admin-profissionais': return vAdminProfissionais();
+      case 'recebimentos': return vRecebimentos(arg);
+      case 'admin-recebimentos': return vAdminRecebimentos();
       case 'tutoriais': return vTutoriais();
       case 'tutorial': return vTutorial(arg);
       case 'comunidades': return vComunidades();
