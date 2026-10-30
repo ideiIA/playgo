@@ -481,6 +481,17 @@ def atualizar_dados_cadastrais(s: SessaoORM, arena_id: int, u: Usuario, dados: d
     corpo, doc = _payload_cadastro(dados)
     if rec.documento_final and doc[-4:] != rec.documento_final:
         raise ErroNegocio("O CPF/CNPJ informado não é o da conta de recebimento.")
+    corpo.pop("name", None)  # o nome não faz parte dos dados comerciais
+    corpo["personType"] = "JURIDICA" if len(doc) == 14 else "FISICA"  # o Asaas exige o tipo de pessoa
+    if corpo["personType"] == "JURIDICA":  # em PJ o nome da empresa tem de ser um dos que o Asaas oferece (availableCompanyNames)
+        try:
+            atual = _chamar(rec, "GET", "/myAccount/commercialInfo")
+        except ErroNegocio:
+            atual = {}
+        nomes = atual.get("availableCompanyNames") or []
+        nome_empresa = atual.get("companyName") or (nomes[0] if nomes else None)
+        if nome_empresa:
+            corpo["companyName"] = nome_empresa
     _chamar(rec, "POST", "/myAccount/commercialInfo", corpo)
     rec.dados_atualizados_em = agora()
     auditoria.registrar(s, u.id, "recebimento_dados_atualizados", "arena", arena.id)

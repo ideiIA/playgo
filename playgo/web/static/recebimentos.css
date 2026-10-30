@@ -4,6 +4,7 @@
 .rb-caixa h3 { margin: 18px 0 8px; font-size: 15px; }
 .rb-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; align-items: end; }
 .rb-campo { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; }
+.rb-campo[hidden] { display: none; }
 .rb-campo input, .rb-campo select { border: 1px solid var(--border, #e9eaf0); border-radius: 10px; padding: 10px; font: inherit; background: var(--card, #fff); color: inherit; }
 .rb-form > .rb-nota, .rb-form > .rb-check, .rb-form > .rb-btn { grid-column: 1 / -1; }
 .rb-btn { display: inline-block; border: 0; border-radius: 12px; padding: 11px 16px; font: inherit; font-weight: 700; cursor: pointer; background: #6c4cff; color: #fff; text-decoration: none; }

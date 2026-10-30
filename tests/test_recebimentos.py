@@ -776,6 +776,8 @@ def test_atualizacao_anual_dos_dados_e_lembrete(s, fabrica, asaas):
         recebimentos.atualizar_dados_cadastrais(s, a.id, g, DADOS_PF | {"cpf_cnpj": "11144477735"})
     est = recebimentos.atualizar_dados_cadastrais(s, a.id, g, DADOS_PF)
     assert est["recebedor"]["precisa_atualizar_dados"] is False and asaas.chamou("POST", "/myAccount/commercialInfo")[0][2].startswith(CHAVE_SUB)
+    corpo = asaas.chamou("POST", "/myAccount/commercialInfo")[0][3]
+    assert corpo["personType"] == "FISICA" and "name" not in corpo and corpo["incomeValue"] == 8000
 
 
 def test_acesso_cruzado_uma_arena_nunca_ve_nem_mexe_na_outra(s, fabrica, asaas):
