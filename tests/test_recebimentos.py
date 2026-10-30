@@ -345,7 +345,7 @@ def test_cobranca_so_com_kyc_aprovado_e_com_split_da_comissao(s, fabrica, asaas)
     res = recebimentos.criar_cobranca_reserva(s, r.id, g, Decimal(100), pagador)
     assert res["link_pagamento"].startswith("https://") and res["comissao"] == Decimal("10.00") and res["asaas"]["texto"]
     pg = asaas.chamou("POST", "/payments")[0]
-    assert pg[2].startswith(CHAVE_SUB) and pg[3]["billingType"] == "UNDEFINED" and pg[3]["externalReference"] == f"reserva:{r.id}"
+    assert pg[2].startswith(CHAVE_SUB) and pg[3]["billingType"] == "PIX" and pg[3]["externalReference"] == f"reserva:{r.id}"
     assert pg[3]["split"] == [{"walletId": "wal_mae", "percentualValue": 10.0}]
     s.refresh(r)
     assert r.status_pagamento == "pendente" and r.asaas_payment_id and r.valor == Decimal("100.00")

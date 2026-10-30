@@ -502,6 +502,9 @@ def atualizar_dados_cadastrais(s: SessaoORM, arena_id: int, u: Usuario, dados: d
 # ---------------------------------------------------------------- cobrança da reserva
 
 
+TIPO_COBRANCA = {"pix": "PIX", "cartao": "CREDIT_CARD"}  # boleto fica de fora: a compensação demora
+
+
 def _comissao(valor: Decimal) -> Decimal:
     return _dinheiro(valor * settings.recebimentos_comissao_percentual / 100 + settings.recebimentos_comissao_fixa)
 
@@ -521,8 +524,8 @@ def _split(valor: Decimal) -> list[dict]:
     return [item]
 
 
-def criar_cobranca_reserva(s: SessaoORM, reserva_id: int, u: Usuario, valor: Decimal | None, pagador: dict) -> dict:
-    """Cria a cobrança (Pix, boleto ou cartão: billingType UNDEFINED) na subconta da arena, com split da comissão, e devolve o link. Só com KYC aprovado."""
+def criar_cobranca_reserva(s: SessaoORM, reserva_id: int, u: Usuario, valor: Decimal | None, pagador: dict, metodo: str = "pix") -> dict:
+    """Cria a cobrança (Pix ou cartão; boleto não é oferecido) na subconta da arena, com split da comissão, e devolve o link. Só com KYC aprovado."""
     exigir_ligado()
     reserva = s.scalar(select(Reserva).where(Reserva.id == reserva_id).with_for_update(of=Reserva))
     if reserva is None:
@@ -535,7 +538,9 @@ def criar_cobranca_reserva(s: SessaoORM, reserva_id: int, u: Usuario, valor: Dec
     if reserva.status_pagamento in ("pendente", "pago"):
         raise ErroNegocio("Esta reserva já tem cobrança." if reserva.status_pagamento == "pendente" else "Esta reserva já foi paga.")
     valor = _dinheiro(valor if valor is not None else reserva.valor)
-    resposta = _emitir_cobranca(s, reserva, quadra, rec, valor, pagador)
+    if metodo not in TIPO_COBRANCA:
+        raise ErroNegocio("Escolha cobrar por Pix ou cartão.")
+    resposta = _emitir_cobranca(s, reserva, quadra, rec, valor, pagador, tipo_cobranca=TIPO_COBRANCA[metodo])
     auditoria.registrar(s, u.id, "reserva_cobrar", "reserva", reserva.id, valor=str(valor))
     s.commit()
     return resposta

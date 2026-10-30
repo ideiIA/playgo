@@ -89,7 +89,7 @@ def serializar(s: SessaoORM, r: Reserva) -> dict:
     }
 
 
-TIPO_COBRANCA = {"pix": "PIX", "cartao": "CREDIT_CARD"}  # boleto fica de fora: a compensação demora e prende o horário
+TIPO_COBRANCA = recebimentos.TIPO_COBRANCA
 
 
 def valor_com_acrescimo(arena: Arena, valor: Decimal, metodo: str) -> Decimal:

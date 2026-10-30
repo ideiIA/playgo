@@ -54,6 +54,7 @@ class PagadorIn(BaseModel):
 class CobrarIn(BaseModel):
     valor: Decimal | None = None  # vazio = o valor já registrado na reserva
     pagador: PagadorIn
+    metodo: str = "pix"  # pix | cartao
 
 
 class LiberarIn(BaseModel):
@@ -133,7 +134,7 @@ def sacar(arena_id: int, corpo: SaqueIn, resposta: Response, u: AtualApi, s: Ses
 @router.post("/reservas/{reserva_id}/cobrar")
 def cobrar(reserva_id: int, corpo: CobrarIn, resposta: Response, u: AtualApi, s: Sessao):
     _sem_cache(resposta)
-    return recebimentos.criar_cobranca_reserva(s, reserva_id, u, corpo.valor, corpo.pagador.model_dump())
+    return recebimentos.criar_cobranca_reserva(s, reserva_id, u, corpo.valor, corpo.pagador.model_dump(), corpo.metodo)
 
 
 @router.post("/reservas/{reserva_id}/cancelar-cobranca")

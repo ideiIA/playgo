@@ -8,7 +8,7 @@
   {% if pol.formas %}
   <div class="form-grid">
     <div class="field full"><label>Como pagar</label>
-      {% for f in pol.formas %}<label class="rotulo" style="display:flex;gap:8px;align-items:center"><input type="radio" name="forma" value="{{ f }}" style="width:auto" {{ 'checked' if loop.first }} onchange="formaPagamento()"> {{ 'Pelo app — Pix, boleto ou cartão' if f == 'online' else 'Na arena — você acerta direto com ela' }}</label>{% endfor %}
+      {% for f in pol.formas %}<label class="rotulo" style="display:flex;gap:8px;align-items:center"><input type="radio" name="forma" value="{{ f }}" style="width:auto" {{ 'checked' if loop.first }} onchange="formaPagamento()"> {{ 'Pelo app — Pix ou cartão' if f == 'online' else 'Na arena — você acerta direto com ela' }}</label>{% endfor %}
     </div>
     <div id="dados-pagador" class="form-grid full" style="display:none">
       <div class="field full"><label>Pagar com</label>

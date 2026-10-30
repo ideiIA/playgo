@@ -66,7 +66,7 @@
     function telaAtivar(d) {
       const bloqueada = d.fase === 'avaliacao' && !d.liberada;
       el.innerHTML = '<div class="rb-caixa"><h2>💰 Receber pelo app</h2>' +
-        '<p>Receba o pagamento das reservas direto pelo PlayGo (Pix, boleto ou cartão). O dinheiro cai na <b>sua conta de recebimento</b>, você acompanha saldo e extrato aqui e pede o saque quando quiser. Você não precisa abrir conta nem entrar em nenhum outro site.</p>' +
+        '<p>Receba o pagamento das reservas direto pelo PlayGo (Pix ou cartão). O dinheiro cai na <b>sua conta de recebimento</b>, você acompanha saldo e extrato aqui e pede o saque quando quiser. Você não precisa abrir conta nem entrar em nenhum outro site.</p>' +
         (bloqueada ? '<p class="rb-aviso">Sua arena ainda não foi liberada para esta função. Fale com a administração do PlayGo.</p>' : '<h3>Dados do titular da conta</h3>' + formCadastro('Ativar recebimento')) +
         rodape(d) + '</div>';
       if (bloqueada) return;
@@ -181,11 +181,13 @@
     if (!nome) return null;
     const doc = prompt('CPF ou CNPJ de quem vai pagar (vai direto ao Asaas, não fica guardado):');
     if (!doc) return null;
+    const forma = prompt('Cobrar por Pix ou cartão? Digite 1 para Pix ou 2 para cartão:', '1');
+    if (!forma) return null;
     const valor = prompt('Valor da cobrança (R$):', valorSugerido ? String(valorSugerido).replace('.', ',') : '');
     if (!valor) return null;
     try {
-      const r = await api('/recebimentos/reservas/' + reservaId + '/cobrar', { metodo: 'POST', corpo: { valor: valor.replace(',', '.'), pagador: { nome, cpf_cnpj: doc } } });
-      prompt('Cobrança criada! Copie o link e envie ao cliente (Pix, boleto ou cartão).\n' + ((r.asaas && r.asaas.texto) || ''), r.link_pagamento);
+      const r = await api('/recebimentos/reservas/' + reservaId + '/cobrar', { metodo: 'POST', corpo: { valor: valor.replace(',', '.'), metodo: forma.trim() === '2' ? 'cartao' : 'pix', pagador: { nome, cpf_cnpj: doc } } });
+      prompt('Cobrança criada! Copie o link e envie ao cliente (Pix ou cartão).\n' + ((r.asaas && r.asaas.texto) || ''), r.link_pagamento);
       return r;
     } catch (e) { if (toast) toast(e.message); return null; }
   }
