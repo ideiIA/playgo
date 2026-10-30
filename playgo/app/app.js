@@ -715,6 +715,7 @@
         <div class="mapa pequeno" id="mapa" style="margin:12px 0"></div>
         <div class="painel"><h3>Quadras</h3>${a.quadras_lista.map((q) => `<div class="pessoa"><b>${esc(q.nome)}</b><span class="suave">${esc(q.modalidades.join(', ').replace(/_/g, ' '))}</span><span class="acoes"><b>${esc(q.valor_texto)}</b></span></div>`).join('') || '<p class="suave">Nenhuma quadra cadastrada.</p>'}</div>
         ${secao('Horários disponíveis')}${lista(a.horarios, (h) => `<div class="card"><span class="tag verde">🏟️ Livre</span><h3>${modIcone(h.modalidade)} ${esc(h.modalidade ? h.modalidade.nome : 'Quadra')} • ${esc(h.quando)}</h3><div class="meta">${esc(h.quadra_nome)} • <b>${esc(h.valor_texto)}</b></div>${(a.reserva.aceita_reserva || !h.valor) ? `<button class="btn roxo pequeno" style="margin-top:8px" data-reservar="${h.id}">Reservar</button>` : ''}</div>`, 'Nenhum horário divulgado no momento.')}
+        ${a.horarios.length && !a.reserva.aceita_reserva ? '<p class="aviso">Esta arena ainda não aceita reservas pelo app.' + (a.sou_gestor ? ' Ela está configurada para receber só pelo app e o “Receber pelo app” ainda não foi aprovado: em Editar arena, escolha “Na arena” ou “Os dois”.' : '') + '</p>' : ''}
         <p style="margin-top:12px"><a class="suave" href="#/reservas">Minhas reservas</a></p>`,
       () => {
         iniciarMapa('mapa', { latitude: a.latitude, longitude: a.longitude }, [{ tipo: 'arena', id: a.id, latitude: a.latitude, longitude: a.longitude, rotulo: a.nome, distancia: a.distancia }]);

@@ -20,6 +20,7 @@
       {% if ar.regras %}<p class="suave">Regras: {{ ar.regras }}</p>{% endif %}
     </div>
     <div class="section-title" style="margin-top:0"><h2>Horários disponíveis</h2><a class="suave" href="/reservas">Minhas reservas</a></div>
+    {% if ar.horarios and not ar.reserva.aceita_reserva %}<p class="aviso">Esta arena ainda não aceita reservas pelo app{% if ar.sou_gestor %}: ela está configurada para receber só pelo app, mas o “Receber pelo app” ainda não foi aprovado. Em <a href="/gestao/arenas/{{ ar.id }}/editar">Editar arena</a>, escolha “Na arena” ou “Os dois” enquanto isso{% endif %}.</p>{% endif %}
     {% if ar.horarios %}<div class="grid" style="grid-template-columns:1fr 1fr">{% for h in ar.horarios %}
       <div class="card"><span class="tag verde">🏟️ LIVRE</span><h3>{{ h.modalidade.icone if h.modalidade else '' }} {{ h.modalidade.nome if h.modalidade else 'Quadra' }} • {{ h.quando }}</h3><div class="meta">{{ h.quadra_nome }}<br><b>{{ h.valor_texto }}</b></div>
         <div class="spots"><span></span>{% if ar.reserva.aceita_reserva or h.valor == 0 %}<a class="btn pequeno" href="/horarios/{{ h.id }}/reservar">Reservar</a> {% endif %}{% if pode.atividade %}<a class="btn purple pequeno" href="/atividades/nova?arena_id={{ ar.id }}&quadra_id={{ h.quadra_id }}&inicio={{ h.inicio }}{% if h.modalidade %}&modalidade_id={{ h.modalidade.id }}{% endif %}">Criar jogo aqui</a>{% endif %}</div></div>
