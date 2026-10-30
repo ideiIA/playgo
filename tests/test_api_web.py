@@ -118,8 +118,8 @@ def test_atividade_sem_quadra_ponto_de_encontro(cliente, auth):
 
 
 def test_gestao_arena_pela_api(cliente):
-    gestor, _ = _cadastrar(cliente, "Gestor")
-    atleta, _ = _cadastrar(cliente, "Atleta")
+    gestor, email_gestor = _cadastrar(cliente, "Gestor")
+    atleta, email_atleta = _cadastrar(cliente, "Atleta")
     mods = _ids_modalidades(cliente, gestor)
     cliente.patch("/api/v1/me", headers=atleta, json={"latitude": PERTO[0], "longitude": PERTO[1]})
     cliente.put("/api/v1/me/esportes", headers=atleta, json=[{"modalidade_id": mods["beach_tennis"], "nivel": "intermediario"}])
@@ -151,6 +151,34 @@ def test_gestao_arena_pela_api(cliente):
     assert cliente.post(f"/api/v1/gestao/quadras/{quadra_id}/reservas", headers=gestor, json={"inicio": inicio.isoformat(), "fim": (inicio + timedelta(hours=1)).isoformat(), "rotulo": "Do João"}).status_code == 201
     assert cliente.post(f"/api/v1/gestao/quadras/{quadra_id}/reservas", headers=gestor, json={"inicio": inicio.isoformat(), "fim": (inicio + timedelta(hours=1)).isoformat()}).status_code == 400
     assert cliente.get(f"/api/v1/arenas/{arena_id}", headers=atleta).json()["horarios"] == []
+
+    # "Criar jogo aqui": o formulário do site só oferece as modalidades da quadra e mostra qual quadra será reservada
+    site = TestClient(cliente.app)
+    assert site.post("/entrar", data={"email": email_gestor, "senha": "senha-de-teste-1"}, follow_redirects=False).status_code == 303
+    pagina_nova = site.get(f"/atividades/nova?arena_id={arena_id}&quadra_id={quadra_id}&inicio={inicio.isoformat(timespec='minutes')}")
+    assert pagina_nova.status_code == 200, pagina_nova.text[:300]
+    # reserva pelo atleta: política da arena (na arena), reservar, listar e cancelar
+    ar_atual = cliente.get(f"/api/v1/arenas/{arena_id}", headers=gestor).json()
+    assert ar_atual["reserva"]["pagamento"] == "local" and ar_atual["reserva"]["formas"] == ["local"]
+    put = cliente.put(f"/api/v1/gestao/arenas/{arena_id}", headers=gestor, json={"nome": "Beach Teste", "latitude": PERTO[0], "longitude": PERTO[1], "abre": "00:00:00", "fecha": "23:59:00", "pagamento_reserva": "ambos", "cancel_horas": 12, "reembolso_pct": 100, "reembolso_pct_fora": 20})
+    assert put.status_code == 200 and put.json()["reserva"]["cancel_horas"] == 12 and put.json()["reserva"]["formas"] == ["local"]  # online só com recebimento ativo
+    outro = inicio + timedelta(hours=2)
+    h2 = cliente.post(f"/api/v1/gestao/quadras/{quadra_id}/divulgar", headers=gestor, json={"inicio": outro.isoformat(), "fim": (outro + timedelta(hours=1)).isoformat()}).json()["id"]
+    r = cliente.post(f"/api/v1/horarios/{h2}/reservar", headers=atleta, json={"forma": "local"})
+    assert r.status_code == 201, r.text
+    assert r.json()["forma_pagamento"] == "local" and r.json()["valor"] == 80.0
+    assert [x["id"] for x in cliente.get("/api/v1/me/reservas", headers=atleta).json()] == [r.json()["id"]]
+    site_atleta = TestClient(cliente.app)
+    assert site_atleta.post("/entrar", data={"email": email_atleta, "senha": "senha-de-teste-1"}, follow_redirects=False).status_code == 303
+    assert "Minhas reservas" in site_atleta.get("/reservas").text and "Beach Teste" in site_atleta.get("/reservas").text
+    terceiro = inicio + timedelta(hours=4)
+    h3 = cliente.post(f"/api/v1/gestao/quadras/{quadra_id}/divulgar", headers=gestor, json={"inicio": terceiro.isoformat(), "fim": (terceiro + timedelta(hours=1)).isoformat()}).json()["id"]
+    tela = site_atleta.get(f"/horarios/{h3}/reservar")
+    assert tela.status_code == 200 and "Na arena" in tela.text and "Cancelamento" in tela.text
+    assert site_atleta.get(f"/arenas/{arena_id}").text.count("/reservar") >= 1
+    assert cliente.post(f"/api/v1/reservas/{r.json()['id']}/cancelar", headers=gestor).status_code == 404  # só quem reservou cancela
+    assert cliente.post(f"/api/v1/reservas/{r.json()['id']}/cancelar", headers=atleta).json()["cancelada"] is True
+    assert "Beach Teste — Areia 1" in pagina_nova.text and "Beach Tennis" in pagina_nova.text and "Futebol" not in pagina_nova.text.split('id="modalidade_id"')[1].split("</select>")[0]
 
 
 def test_grupos_e_campeonatos_pela_api(cliente):

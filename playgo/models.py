@@ -186,6 +186,11 @@ class Arena(Base):
     tipo_estabelecimento: Mapped[str] = mapped_column(String(12), default="arena")  # arena | academia | clube | escola
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     recebimento_liberado: Mapped[bool] = mapped_column(Boolean, default=False)  # fase "avaliacao": só Arenas liberadas pelo admin criam subconta
+    # Reserva feita pelo atleta (reservas.py): como se paga e a política de cancelamento.
+    pagamento_reserva: Mapped[str] = mapped_column(String(8), default="local")  # online | local | ambos
+    cancel_horas: Mapped[int] = mapped_column(Integer, default=24)  # cancelar com pelo menos N horas de antecedência
+    reembolso_pct: Mapped[int] = mapped_column(Integer, default=100)  # % devolvido quando cancela dentro do prazo
+    reembolso_pct_fora: Mapped[int] = mapped_column(Integer, default=0)  # % devolvido quando cancela depois do prazo
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
 
     gestores: Mapped[list[Usuario]] = relationship(secondary=arena_gestores, back_populates="arenas")
@@ -262,6 +267,10 @@ class Reserva(Base):
     status_pagamento: Mapped[str] = mapped_column(String(14), default="sem_cobranca")  # sem_cobranca | pendente | pago | cancelado | estornado
     asaas_payment_id: Mapped[str | None] = mapped_column(String(40), unique=True)
     invoice_url: Mapped[str | None] = mapped_column(String(300))
+    # Reserva feita pelo atleta (reservas.py); a do gestor e o bloqueio ficam sem usuário.
+    usuario_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id", ondelete="SET NULL"))
+    forma_pagamento: Mapped[str | None] = mapped_column(String(8))  # online | local
+    valor_reembolsado: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
 
     quadra: Mapped[Quadra] = relationship()
 

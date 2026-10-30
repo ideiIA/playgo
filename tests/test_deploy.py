@@ -140,7 +140,7 @@ def test_cron_exige_segredo(banco, monkeypatch):
         assert c.get("/api/v1/cron/ciclo").status_code == 403
         assert c.get("/api/v1/cron/ciclo", headers={"Authorization": "Bearer errado"}).status_code == 403
         r = c.get("/api/v1/cron/ciclo", headers={"Authorization": "Bearer segredo-do-cron"})
-        assert r.status_code == 200 and set(r.json()) == {"encerradas", "lembretes", "urgentes", "planos", "recebimentos", "instagram", "youtube"}
+        assert r.status_code == 200 and set(r.json()) == {"encerradas", "lembretes", "urgentes", "planos", "recebimentos", "reservas", "instagram", "youtube"}
         monkeypatch.setattr(settings, "cron_secret", "")
         monkeypatch.setenv("CRON_SECRET", "do-vercel")  # o Vercel injeta CRON_SECRET
         assert c.get("/api/v1/cron/ciclo", headers={"Authorization": "Bearer do-vercel"}).status_code == 200

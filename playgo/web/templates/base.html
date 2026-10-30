@@ -50,6 +50,7 @@
     <a href="/gestao" class="{{ 'active' if aba == 'gestao' }}"><span class="ico">{{ ic('building-2') }}</span><span class="t">Minha Arena</span></a>
     {% endif %}
     {% if pode.ensino_menu %}<a href="/ensino" class="{{ 'active' if aba == 'ensino' }}"><span class="ico">{{ ic('clipboard-list') }}</span><span class="t">{{ 'Minhas aulas' if pode.perfil_prof else 'Dar aulas' }}</span></a>{% endif %}
+    <a href="/reservas" class="{{ 'active' if aba == 'reservas' }}"><span class="ico">{{ ic('calendar-check') }}</span><span class="t">Minhas reservas</span></a>
     <a href="/planos" class="{{ 'active' if aba == 'planos' }}"><span class="ico">{{ ic('credit-card') }}</span><span class="t">Meu plano</span></a>
     <details class="submenu {{ 'active' if aba == 'tutorial' }}" {{ 'open' if aba == 'tutorial' }}>
       <summary><span class="ico">{{ ic('book-open') }}</span><span class="t">Tutoriais</span></summary>

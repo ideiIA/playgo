@@ -95,6 +95,9 @@ def criar(
     return arena
 
 
+FORMAS_PAGAMENTO = ("online", "local", "ambos")
+
+
 def editar(
     s: SessaoORM,
     arena: Arena,
@@ -110,6 +113,10 @@ def editar(
     abre: time = time(6, 0),
     fecha: time = time(23, 0),
     tipo_estabelecimento: str = "arena",
+    pagamento_reserva: str | None = None,
+    cancel_horas: int | None = None,
+    reembolso_pct: int | None = None,
+    reembolso_pct_fora: int | None = None,
 ) -> Arena:
     """Altera os dados cadastrais da arena (só gestor ou admin). Os dados da conta de recebimento (Asaas) não mudam por aqui."""
     exigir_gestor(arena, usuario)
@@ -124,6 +131,17 @@ def editar(
     arena.endereco, arena.cidade = endereco.strip(), (cidade or "").strip() or None
     arena.descricao, arena.estrutura, arena.regras = descricao or None, estrutura or None, regras or None
     arena.abre, arena.fecha, arena.tipo_estabelecimento = abre, fecha, tipo_estabelecimento
+    if pagamento_reserva is not None:  # vazio = não mexe (telas antigas não enviam a política)
+        if pagamento_reserva not in FORMAS_PAGAMENTO:
+            raise ErroNegocio("Escolha como a arena recebe: pelo app, na arena ou as duas formas.")
+        for rotulo, v in (("Prazo de cancelamento", cancel_horas), ("Devolução dentro do prazo", reembolso_pct), ("Devolução fora do prazo", reembolso_pct_fora)):
+            if v is None or v < 0:
+                raise ErroNegocio(f"{rotulo}: informe um número.")
+        if cancel_horas > 24 * 30 or reembolso_pct > 100 or reembolso_pct_fora > 100:
+            raise ErroNegocio("O prazo vai até 720 horas e a devolução até 100%.")
+        if reembolso_pct_fora > reembolso_pct:
+            raise ErroNegocio("Fora do prazo a devolução não pode ser maior que dentro do prazo.")
+        arena.pagamento_reserva, arena.cancel_horas, arena.reembolso_pct, arena.reembolso_pct_fora = pagamento_reserva, cancel_horas, reembolso_pct, reembolso_pct_fora
     auditoria.registrar(s, usuario.id, "arena_editar", "arena", arena.id)
     s.commit()
     return arena

@@ -36,6 +36,7 @@ from .. import (
     planos,
     publicacoes,
     recebimentos,
+    reservas,
     seguranca,
     termos,
     vagas,
@@ -54,7 +55,9 @@ from ..config import settings
 from ..db import Session, agora, criar_tabelas
 from ..deps import Atual, Opcional, PrecisaCompletar, PrecisaEntrar, Sessao
 from ..erros import ErroNegocio, NaoEncontrado, PlanoNecessario, SemPermissao
-from ..models import CATEGORIAS, NIVEIS, NOME_NIVEL, PERIODOS, Usuario
+from sqlalchemy import select
+
+from ..models import CATEGORIAS, NIVEIS, NOME_NIVEL, PERIODOS, HorarioDivulgado, Quadra, Usuario
 
 PASTA = Path(__file__).parent
 
@@ -320,11 +323,22 @@ def nova_atividade(request: Request, s: Sessao, usuario: Atual):
             v["data"], v["hora"] = d.date().isoformat(), d.strftime("%H:%M")
         except ValueError:
             pass
+    # Vindo de um horário da arena: só as modalidades da quadra servem (senão a 1ª da lista, ex.: futebol, é recusada).
+    quadra = s.get(Quadra, int(v["quadra_id"])) if (v["quadra_id"] or "").isdigit() else None
+    codigos = list(quadra.modalidades or []) if quadra is not None else []
+    if quadra is not None:
+        v["quadra_nome"] = f"{quadra.arena.nome} — {quadra.nome}"
+        if not v["modalidade_id"]:
+            v["modalidade_id"] = next((m.id for m in modalidades.ativas(s) if m.codigo in codigos), None)
     la, ln, informada = descoberta.localizacao(usuario)
     lista = descoberta.buscar_arenas(s, la, ln, descoberta.Filtros(raio_km=None), limite=40)
+    esportes_da_arena: dict[int, set[str]] = {}
+    for qd in s.scalars(select(Quadra).where(Quadra.ativa, Quadra.arena_id.in_([a["id"] for a in lista] or [0]))):
+        esportes_da_arena.setdefault(qd.arena_id, set()).update(qd.modalidades or [])
+    esportes_da_arena = {k: sorted(x) for k, x in esportes_da_arena.items()}
     return pagina(
         request, s, usuario, "atividade_nova.html", "criar", v=v, arenas=lista, meus_grupos=grupos.meus(s, usuario),
-        centro={"latitude": la, "longitude": ln, "informada": informada},
+        centro={"latitude": la, "longitude": ln, "informada": informada}, codigos_quadra=codigos, esportes_da_arena=esportes_da_arena,
     )
 
 
@@ -654,6 +668,37 @@ def cancelar_equipe(equipe_id: int, s: Sessao, usuario: Atual):
 # ---------------------------------------------------------------- arenas e gestão
 
 
+@app.get("/horarios/{horario_id}/reservar")
+def reservar_horario_tela(horario_id: int, request: Request, s: Sessao, usuario: Atual):
+    h = s.get(HorarioDivulgado, horario_id)
+    if h is None or h.inicio <= agora():
+        raise ErroNegocio("Esse horário não está mais disponível.")
+    arena = h.quadra.arena
+    pol, hor = reservas.politica(s, arena), ser.horario(h, agora())
+    if not pol["formas"] and not hor["valor"]:
+        pol["formas"] = ["local"]  # horário sem valor: nada a cobrar, a reserva só segura o horário
+    return pagina(request, s, usuario, "reservar.html", "explorar", h=hor, ar=arena, pol=pol)
+
+
+@app.post("/horarios/{horario_id}/reservar")
+def reservar_horario(horario_id: int, request: Request, s: Sessao, usuario: Atual, forma: str = Form(""), nome: str = Form(""), cpf_cnpj: str = Form(""), email: str = Form("")):
+    r = reservas.reservar_horario(s, usuario, horario_id, forma or None, {"nome": nome, "cpf_cnpj": cpf_cnpj, "email": email})
+    request.session["ok"] = "Reserva feita! Pague pelo link para confirmar." if r["link_pagamento"] else "Reserva feita! O pagamento é combinado direto com a arena."
+    return RedirectResponse("/reservas", status_code=303)
+
+
+@app.get("/reservas")
+def minhas_reservas(request: Request, s: Sessao, usuario: Atual):
+    return pagina(request, s, usuario, "reservas.html", "reservas", lista=reservas.minhas(s, usuario))
+
+
+@app.post("/reservas/{reserva_id}/cancelar")
+def cancelar_reserva(reserva_id: int, request: Request, s: Sessao, usuario: Atual):
+    r = reservas.cancelar(s, usuario, reserva_id)
+    request.session["ok"] = "Reserva cancelada." + (f" Devolvemos R$ {r['devolvido']:.2f}.".replace(".", ",") if r["devolvido"] else "")
+    return RedirectResponse("/reservas", status_code=303)
+
+
 @app.get("/arenas/{arena_id}")
 def ver_arena(arena_id: int, request: Request, s: Sessao, usuario: Atual):
     return pagina(request, s, usuario, "arena.html", "explorar", ar=detalhes.arena_publica(s, arenas.obter(s, arena_id), usuario))
@@ -795,18 +840,22 @@ def editar_arena_tela(arena_id: int, request: Request, s: Sessao, usuario: Atual
         return r
     a = arenas.obter(s, arena_id)
     arenas.exigir_gestor(a, usuario)
-    return pagina(request, s, usuario, "arena_editar.html", "gestao", arena=a, centro={"latitude": a.latitude, "longitude": a.longitude, "informada": True})
+    return pagina(
+        request, s, usuario, "arena_editar.html", "gestao", arena=a, centro={"latitude": a.latitude, "longitude": a.longitude, "informada": True},
+        online_pronto=reservas._recebimento_pronto(s, a),
+    )
 
 
 @app.post("/gestao/arenas/{arena_id}/editar")
 def editar_arena(
     arena_id: int, s: Sessao, usuario: Atual, nome: str = Form(), latitude: str = Form(""), longitude: str = Form(""), endereco: str = Form(""), cidade: str = Form(""),
     abre: str = Form("06:00"), fecha: str = Form("23:00"), estrutura: str = Form(""), descricao: str = Form(""), regras: str = Form(""), tipo_estabelecimento: str = Form("arena"),
+    pagamento_reserva: str = Form("local"), cancel_horas: int = Form(24), reembolso_pct: int = Form(100), reembolso_pct_fora: int = Form(0),
 ):
     lat, lng = _num(latitude, float), _num(longitude, float)
     if lat is None or lng is None:
         raise ErroNegocio("Marque a localização da arena no mapa.")
-    a = arenas.editar(s, arenas.obter(s, arena_id), usuario, nome, lat, lng, endereco, cidade or None, descricao or None, estrutura or None, regras or None, _hora(abre), _hora(fecha), tipo_estabelecimento)
+    a = arenas.editar(s, arenas.obter(s, arena_id), usuario, nome, lat, lng, endereco, cidade or None, descricao or None, estrutura or None, regras or None, _hora(abre), _hora(fecha), tipo_estabelecimento, pagamento_reserva, cancel_horas, reembolso_pct, reembolso_pct_fora)
     return RedirectResponse(f"/gestao?arena={a.id}", status_code=303)
 
 

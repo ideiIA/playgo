@@ -25,6 +25,7 @@ from .. import (
     modalidades,
     notificacoes,
     planos,
+    reservas,
     convites,
     seguranca,
     termos,
@@ -188,6 +189,10 @@ class ArenaIn(BaseModel):
     abre: time = time(6, 0)
     fecha: time = time(23, 0)
     tipo_estabelecimento: str = "arena"  # arena | academia | clube | escola
+    pagamento_reserva: str | None = None  # online | local | ambos (só na edição)
+    cancel_horas: int | None = None
+    reembolso_pct: int | None = None
+    reembolso_pct_fora: int | None = None
 
 
 class LocalIn(BaseModel):
@@ -215,6 +220,17 @@ class QuadraIn(BaseModel):
     capacidade: int | None = None
     valor_hora: Decimal = Decimal(0)
     tipo: str = "quadra"  # quadra | sala | piscina | campo | outro
+
+
+class PagadorReservaIn(BaseModel):
+    nome: str = ""
+    cpf_cnpj: str = ""
+    email: str | None = None
+
+
+class ReservarHorarioIn(BaseModel):
+    forma: str | None = None  # online | local (vazio = a única forma da arena)
+    pagador: PagadorReservaIn | None = None  # só para pagar pelo app; o CPF/CNPJ vai ao Asaas e não é guardado
 
 
 class ReservaIn(BaseModel):
@@ -615,12 +631,13 @@ def ver_arena(arena_id: int, u: AtualApi, s: Sessao):
 
 @router.get("/gestao/arenas")
 def minhas_arenas(u: AtualApi, s: Sessao):
-    return [ser.arena(a) | {"abre": a.abre.strftime("%H:%M"), "fecha": a.fecha.strftime("%H:%M"), "descricao": a.descricao, "regras": a.regras} for a in arenas.minhas(s, u)]
+    return [ser.arena(a) | {"abre": a.abre.strftime("%H:%M"), "fecha": a.fecha.strftime("%H:%M"), "descricao": a.descricao, "regras": a.regras,
+                                  "pagamento_reserva": a.pagamento_reserva, "cancel_horas": a.cancel_horas, "reembolso_pct": a.reembolso_pct, "reembolso_pct_fora": a.reembolso_pct_fora} for a in arenas.minhas(s, u)]
 
 
 @router.post("/gestao/arenas", status_code=201)
 def criar_arena(corpo: ArenaIn, u: AtualApi, s: Sessao):
-    a = arenas.criar(s, u, **corpo.model_dump())
+    a = arenas.criar(s, u, **corpo.model_dump(exclude={"pagamento_reserva", "cancel_horas", "reembolso_pct", "reembolso_pct_fora"}))
     return detalhes.arena_publica(s, a, u)
 
 
@@ -686,6 +703,21 @@ def divulgar(quadra_id: int, corpo: DivulgarIn, u: AtualApi, s: Sessao):
 def despublicar(horario_id: int, u: AtualApi, s: Sessao):
     arenas.despublicar(s, horario_id, u)
     return {"ok": True}
+
+
+@router.post("/horarios/{horario_id}/reservar", status_code=201)
+def reservar_horario(horario_id: int, corpo: ReservarHorarioIn, u: AtualApi, s: Sessao):
+    return reservas.reservar_horario(s, u, horario_id, corpo.forma, corpo.pagador.model_dump() if corpo.pagador else None)
+
+
+@router.get("/me/reservas")
+def minhas_reservas(u: AtualApi, s: Sessao):
+    return reservas.minhas(s, u)
+
+
+@router.post("/reservas/{reserva_id}/cancelar")
+def cancelar_reserva(reserva_id: int, u: AtualApi, s: Sessao):
+    return reservas.cancelar(s, u, reserva_id)
 
 
 # ---------------------------------------------------------------- notificações

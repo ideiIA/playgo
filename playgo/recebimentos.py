@@ -535,6 +535,14 @@ def criar_cobranca_reserva(s: SessaoORM, reserva_id: int, u: Usuario, valor: Dec
     if reserva.status_pagamento in ("pendente", "pago"):
         raise ErroNegocio("Esta reserva já tem cobrança." if reserva.status_pagamento == "pendente" else "Esta reserva já foi paga.")
     valor = _dinheiro(valor if valor is not None else reserva.valor)
+    resposta = _emitir_cobranca(s, reserva, quadra, rec, valor, pagador)
+    auditoria.registrar(s, u.id, "reserva_cobrar", "reserva", reserva.id, valor=str(valor))
+    s.commit()
+    return resposta
+
+
+def _emitir_cobranca(s: SessaoORM, reserva: Reserva, quadra: Quadra, rec: Recebedor, valor: Decimal, pagador: dict, vence_em_dias: int | None = None) -> dict:
+    """Cria o cliente e a cobrança no Asaas (subconta da arena) e grava na reserva. Quem chama confere permissão, trava a reserva e dá o commit."""
     if valor <= 0:
         raise ErroNegocio("Informe o valor da cobrança.")
     nome, email = (pagador.get("nome") or "").strip(), (pagador.get("email") or "").strip()
@@ -545,6 +553,8 @@ def criar_cobranca_reserva(s: SessaoORM, reserva_id: int, u: Usuario, valor: Dec
     split = _split(valor)
     cliente = _chamar(rec, "POST", "/customers", {"name": nome, "email": email or None, "cpfCnpj": doc, "externalReference": f"reserva:{reserva.id}", "notificationDisabled": False})
     vencimento = min(agora().date() + timedelta(days=3), max(agora().date() + timedelta(days=1), reserva.inicio.date()))
+    if vence_em_dias is not None:
+        vencimento = agora().date() + timedelta(days=vence_em_dias)
     corpo = {
         "customer": cliente["id"], "billingType": "UNDEFINED", "value": float(valor), "dueDate": vencimento.isoformat(),
         "description": f"Reserva {quadra.nome} — {reserva.inicio:%d/%m %H:%M}", "externalReference": f"reserva:{reserva.id}",
@@ -554,9 +564,28 @@ def criar_cobranca_reserva(s: SessaoORM, reserva_id: int, u: Usuario, valor: Dec
     pg = _chamar(rec, "POST", "/payments", corpo)
     reserva.valor, reserva.comissao = valor, (_comissao(valor) if split else Decimal(0))
     reserva.status_pagamento, reserva.asaas_payment_id, reserva.invoice_url = "pendente", pg["id"], pg.get("invoiceUrl")
-    auditoria.registrar(s, u.id, "reserva_cobrar", "reserva", reserva.id, valor=str(valor))
-    s.commit()
     return com_rodape({"link_pagamento": reserva.invoice_url, "valor": valor, "comissao": reserva.comissao, "status_pagamento": reserva.status_pagamento})
+
+
+def reembolsar_reserva(s: SessaoORM, reserva: Reserva, valor: Decimal) -> Decimal:
+    """Devolve `valor` (total ou parcial) de uma reserva paga pela subconta da arena. Quem chama confere a regra e trava a reserva.
+    O livro-razão ganha o estorno aqui (chave `{pid}:estorno`); o webhook do Asaas repetido não duplica."""
+    exigir_ligado()
+    rec = _recebedor_da_reserva(s, reserva)
+    if rec is None or not reserva.asaas_payment_id or reserva.status_pagamento != "pago":
+        raise ErroNegocio("Esta reserva não tem pagamento a devolver.")
+    pago = _dinheiro(reserva.valor)
+    valor = min(_dinheiro(valor), pago)
+    if valor <= 0:
+        return Decimal(0)
+    _chamar(rec, "POST", f"/payments/{reserva.asaas_payment_id}/refund", {"value": float(valor), "description": "Cancelamento de reserva"})
+    pid = reserva.asaas_payment_id
+    comissao = _dinheiro(reserva.comissao) * valor / pago if pago else Decimal(0)  # o split é devolvido na mesma proporção
+    _lancar(s, rec, "estorno", valor, -(valor - _dinheiro(comissao)), pid, f"{pid}:estorno")
+    reserva.valor_reembolsado = valor
+    if valor >= pago:
+        reserva.status_pagamento = "estornado"
+    return valor
 
 
 def cancelar_cobranca_reserva(s: SessaoORM, reserva_id: int, u: Usuario) -> dict:
@@ -784,7 +813,8 @@ def _evento_pagamento(s: SessaoORM, evento: str, corpo: dict, pagamento: dict) -
             comissao = recebida.valor_bruto if recebida is not None else Decimal(0)  # o split também é estornado: a Arena recupera a comissão
             _lancar(s, rec, "estorno", bruto, -(bruto - comissao), pid, f"{pid}:estorno")
             _avisar_gestores(s, arena, "Reserva estornada", f"O pagamento da reserva de {reserva.inicio:%d/%m %H:%M} foi estornado.", f"reserva-estorno:{reserva.id}")
-        if reserva.status_pagamento != "cancelado":
+        parcial = reserva.valor_reembolsado is not None and reserva.valor is not None and reserva.valor_reembolsado < reserva.valor
+        if reserva.status_pagamento != "cancelado" and not parcial:  # devolução parcial (cancelamento com multa) segue "pago"
             reserva.status_pagamento = "estornado"
         return "ok"
     if evento == "PAYMENT_DELETED":

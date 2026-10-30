@@ -65,6 +65,8 @@ class FakeAsaas:
             return httpx.Response(200, json={"id": "cus_" + uuid.uuid4().hex[:6]})
         if req.method == "POST" and caminho == "/payments":
             return httpx.Response(200, json={"id": "pay_" + uuid.uuid4().hex[:8], "invoiceUrl": "https://sandbox.asaas.com/i/reserva"})
+        if req.method == "POST" and caminho.startswith("/payments/") and caminho.endswith("/refund"):
+            return httpx.Response(200, json={"status": "REFUNDED"})
         if req.method == "DELETE" and caminho.startswith("/payments/"):
             return httpx.Response(200, json={"deleted": True})
         if req.method == "POST" and caminho == "/transfers":

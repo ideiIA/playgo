@@ -3,7 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session as SessaoORM
 
-from . import campeonatos, elenco, escopos, grupos, vagas
+from . import campeonatos, elenco, escopos, grupos, reservas, vagas
 from . import serializadores as ser
 from .db import agora
 from .geo import haversine
@@ -159,6 +159,7 @@ def arena_publica(s: SessaoORM, a: Arena, usuario: Usuario | None) -> dict:
             "sou_gestor": bool(usuario and (usuario.admin or usuario in a.gestores)),
             "quadras_lista": [{"id": q.id, "nome": q.nome, "tipo": q.tipo or "quadra", "modalidades": q.modalidades, "capacidade": q.capacidade, "valor_hora": float(q.valor_hora or 0), "valor_texto": ser.valor_texto(q.valor_hora, "/hora")} for q in a.quadras if q.ativa],
             "horarios": [ser.horario(h, n, d["distancia_km"]) for h in horarios],
+            "reserva": reservas.politica(s, a),
         }
     )
     return d

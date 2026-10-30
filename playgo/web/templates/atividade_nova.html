@@ -5,10 +5,11 @@
 <div class="section-title"><h2>Criar nova atividade</h2></div>
 <form class="panel" method="post" action="/atividades" enctype="multipart/form-data">
   <input type="hidden" name="quadra_id" value="{{ v.quadra_id or '' }}">
+  {% if v.quadra_nome %}<p class="aviso">🏟️ Horário na quadra: <b>{{ v.quadra_nome }}</b>{% if v.data %} • {{ v.data[8:10] }}/{{ v.data[5:7] }} às {{ v.hora }}{% endif %}. Ao publicar, a quadra fica reservada para essa atividade.</p>{% endif %}
   <div class="form-grid">
     <div class="field"><label for="modalidade_id">Modalidade</label>
       <select name="modalidade_id" id="modalidade_id" required onchange="aoTrocarModalidade(this)">
-        {% for m in modalidades %}<option value="{{ m.id }}" data-vagas="{{ m.vagas_padrao }}" data-quadra="{{ 1 if m.usa_quadra else 0 }}" {{ 'selected' if v.modalidade_id == m.id }}>{{ m.icone }} {{ m.nome }}</option>{% endfor %}
+        {% for m in modalidades if not codigos_quadra or m.codigo in codigos_quadra %}<option value="{{ m.id }}" data-codigo="{{ m.codigo }}" data-vagas="{{ m.vagas_padrao }}" data-quadra="{{ 1 if m.usa_quadra else 0 }}" {{ 'selected' if v.modalidade_id == m.id }}>{{ m.icone }} {{ m.nome }}</option>{% endfor %}
       </select></div>
     <div class="field"><label for="nome">Nome da atividade</label><input name="nome" id="nome" required maxlength="150" placeholder="Ex.: Futebol de quarta" value="{{ v.nome or '' }}"></div>
     <div class="field"><label for="data">Data</label><input type="date" name="data" id="data" required min="{{ hoje }}" value="{{ v.data or '' }}"></div>
@@ -60,7 +61,24 @@
     if (!campo.dataset.mexido) campo.value = o.dataset.vagas;
   }
   document.getElementById('max_participantes').addEventListener('input', (e) => (e.target.dataset.mexido = 1));
+  const ESPORTES_ARENA = {{ esportes_da_arena|tojson }};
+  const FIXO_QUADRA = {{ 'true' if codigos_quadra else 'false' }};
+  // Com arena escolhida, só entram os esportes das quadras dela (arena sem quadra cadastrada: todos).
+  function filtrarModalidades(arenaId) {
+    if (FIXO_QUADRA) return;
+    const mod = document.getElementById('modalidade_id');
+    const lista = arenaId ? ESPORTES_ARENA[arenaId] : null;
+    for (const op of mod.options) {
+      const ok = !lista || !lista.length || lista.includes(op.dataset.codigo);
+      op.hidden = op.disabled = !ok;
+    }
+    if (mod.selectedOptions[0] && mod.selectedOptions[0].disabled) {
+      const livre = [...mod.options].find((x) => !x.disabled);
+      if (livre) { mod.value = livre.value; aoTrocarModalidade(mod); }
+    }
+  }
   function aoTrocarArena(sel) {
+    filtrarModalidades(sel.value);
     const o = sel.selectedOptions[0];
     if (!o.dataset.lat) return;
     const local = document.getElementById('local_nome');
@@ -77,5 +95,6 @@
   }
   dicaVisibilidade(document.getElementById('visibilidade'));
   aoTrocarModalidade(document.getElementById('modalidade_id'));
+  filtrarModalidades(document.getElementById('arena_id').value);
 </script>
 {% endblock %}

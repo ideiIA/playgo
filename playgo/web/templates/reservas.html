@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% import "_cards.html" as c %}
+{% block titulo %}Minhas reservas — PlayGo{% endblock %}
+{% block conteudo %}
+<div class="section-title"><h2>Minhas reservas</h2></div>
+{% if lista %}<div class="grid" style="grid-template-columns:1fr 1fr">{% for r in lista %}
+  <div class="card">
+    <span class="tag {{ 'verde' if r.status_pagamento in ('pago', 'sem_cobranca') else 'laranja' }}">{{ 'PAGA' if r.status_pagamento == 'pago' else ('AGUARDANDO PAGAMENTO' if r.status_pagamento == 'pendente' else 'PAGAR NA ARENA') }}</span>
+    <h3>{{ r.arena_nome }}</h3>
+    <div class="meta">{{ r.quadra_nome }} • {{ r.quando }}<br><b>R$ {{ '%.2f'|format(r.valor)|replace('.', ',') }}</b>
+      {% if r.paga_ate %}<br>Pague até {{ r.paga_ate[11:16] }} ou o horário é liberado.{% endif %}
+      {% if r.devolucao_pct is not none %}<br>Cancelando agora, devolvemos {{ r.devolucao_pct }}%.{% endif %}</div>
+    <div class="spots"><span></span>
+      {% if r.link_pagamento %}<a class="btn purple pequeno" href="{{ r.link_pagamento }}" target="_blank" rel="noopener">Pagar agora</a> {% endif %}
+      {% if r.pode_cancelar %}<form method="post" action="/reservas/{{ r.id }}/cancelar" style="display:inline" onsubmit="return confirm('{{ 'Cancelar a reserva? ' ~ (('Devolvemos ' ~ r.devolucao_pct ~ '% do valor pago.') if r.devolucao_pct is not none else '') }}')"><button class="btn soft pequeno">Cancelar</button></form>{% endif %}
+    </div>
+    <p class="suave" style="margin:8px 0 0;font-size:12px">{{ r.politica }}</p>
+  </div>
+{% endfor %}</div>
+{% else %}{{ c.vazio('Você não tem reservas. Escolha um horário livre numa arena.') }}{% endif %}
+{% endblock %}

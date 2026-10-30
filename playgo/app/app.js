@@ -247,7 +247,7 @@
   // Menu da conta (foto ao lado do sino): todas as opções do antigo menu do perfil, num menu suspenso
   function itensMenuEu(u) {
     return [
-      ['#/perfil', 'user-round', 'Meu perfil'], ['#/campeonatos', 'trophy', 'Campeonatos'], ...((u.permissoes && u.permissoes.ensino_menu) ? [['#/aulas', 'graduation-cap', 'Aulas e Treinamentos'], ['#/ensino', 'clipboard-list', u.permissoes.perfil_prof ? 'Minhas aulas' : 'Dar aulas']] : []), ['#/planos', 'credit-card', 'Meu plano'], ['#/tutoriais', 'book-open', 'Tutoriais'],
+      ['#/perfil', 'user-round', 'Meu perfil'], ['#/campeonatos', 'trophy', 'Campeonatos'], ...((u.permissoes && u.permissoes.ensino_menu) ? [['#/aulas', 'graduation-cap', 'Aulas e Treinamentos'], ['#/ensino', 'clipboard-list', u.permissoes.perfil_prof ? 'Minhas aulas' : 'Dar aulas']] : []), ['#/reservas', 'calendar-check', 'Minhas reservas'], ['#/planos', 'credit-card', 'Meu plano'], ['#/tutoriais', 'book-open', 'Tutoriais'],
       ['#/notificacoes', 'bell', 'Notificações'], ['#/comunidades', 'users-round', 'Comunidades'], ['#/convites', 'mail', 'Convites'],
       ...(pode('arena') ? [['#/gestao', 'building-2', 'Minha Arena']] : []),
       ...(u.equipe_moderacao ? [['#/moderacao', 'shield-check', 'Moderação']] : []),
@@ -714,8 +714,56 @@
         ${a.descricao ? `<p style="margin:12px 0">${esc(a.descricao)}</p>` : ''}
         <div class="mapa pequeno" id="mapa" style="margin:12px 0"></div>
         <div class="painel"><h3>Quadras</h3>${a.quadras_lista.map((q) => `<div class="pessoa"><b>${esc(q.nome)}</b><span class="suave">${esc(q.modalidades.join(', ').replace(/_/g, ' '))}</span><span class="acoes"><b>${esc(q.valor_texto)}</b></span></div>`).join('') || '<p class="suave">Nenhuma quadra cadastrada.</p>'}</div>
-        ${secao('Horários disponíveis')}${lista(a.horarios, (h) => `<div class="card"><span class="tag verde">🏟️ Livre</span><h3>${modIcone(h.modalidade)} ${esc(h.modalidade ? h.modalidade.nome : 'Quadra')} • ${esc(h.quando)}</h3><div class="meta">${esc(h.quadra_nome)} • <b>${esc(h.valor_texto)}</b></div></div>`, 'Nenhum horário divulgado no momento.')}`,
-      () => iniciarMapa('mapa', { latitude: a.latitude, longitude: a.longitude }, [{ tipo: 'arena', id: a.id, latitude: a.latitude, longitude: a.longitude, rotulo: a.nome, distancia: a.distancia }]));
+        ${secao('Horários disponíveis')}${lista(a.horarios, (h) => `<div class="card"><span class="tag verde">🏟️ Livre</span><h3>${modIcone(h.modalidade)} ${esc(h.modalidade ? h.modalidade.nome : 'Quadra')} • ${esc(h.quando)}</h3><div class="meta">${esc(h.quadra_nome)} • <b>${esc(h.valor_texto)}</b></div>${(a.reserva.aceita_reserva || !h.valor) ? `<button class="btn roxo pequeno" style="margin-top:8px" data-reservar="${h.id}">Reservar</button>` : ''}</div>`, 'Nenhum horário divulgado no momento.')}
+        <p style="margin-top:12px"><a class="suave" href="#/reservas">Minhas reservas</a></p>`,
+      () => {
+        iniciarMapa('mapa', { latitude: a.latitude, longitude: a.longitude }, [{ tipo: 'arena', id: a.id, latitude: a.latitude, longitude: a.longitude, rotulo: a.nome, distancia: a.distancia }]);
+        document.querySelectorAll('[data-reservar]').forEach((b) => { b.onclick = () => folhaReservar(a, a.horarios.find((x) => x.id === Number(b.dataset.reservar))); });
+      });
+    } catch (e) { erroTela(e); }
+  }
+
+  function folhaReservar(a, h) {
+    const pol = a.reserva, formas = pol.formas.length ? pol.formas : ['local'];
+    folha(`<h3>Reservar ${esc(h.quadra_nome)}</h3><p class="suave">${esc(a.nome)} • ${esc(h.quando)} • <b>${esc(h.valor_texto)}</b></p>
+      <form id="f-reserva"><div id="erro-reserva"></div>
+      ${formas.length > 1 ? `<div class="campo"><label>Como pagar</label>${formas.map((f, i) => `<label style="display:flex;gap:8px;align-items:center"><input type="radio" name="forma" value="${f}" ${i === 0 ? 'checked' : ''}> ${f === 'online' ? 'Pelo app (Pix, boleto ou cartão)' : 'Na arena'}</label>`).join('')}</div>` : `<input type="hidden" name="forma" value="${formas[0]}"><p class="suave">Pagamento: ${formas[0] === 'online' ? 'pelo app (Pix, boleto ou cartão)' : 'na arena'}.</p>`}
+      <div id="dados-pagador"><div class="campo"><label>Nome de quem paga</label><input name="nome" value="${esc((estado.usuario && estado.usuario.nome) || '')}"></div>
+        <div class="campo"><label>CPF ou CNPJ</label><input name="cpf_cnpj" inputmode="numeric" autocomplete="off"><span class="suave">Vai só para o Asaas, que emite a cobrança. O PlayGo não guarda.</span></div>
+        <div class="campo"><label>E-mail (opcional)</label><input type="email" name="email"></div></div>
+      <p class="suave"><b>Cancelamento:</b> ${esc(pol.texto)} Pagando pelo app, o horário fica seu por 30 minutos.</p>
+      <button class="btn roxo bloco">Reservar</button> <button type="button" class="btn suave bloco" style="margin-top:8px" id="fechar-reserva">Voltar</button></form>`);
+    const f = $('#f-reserva');
+    const mostrar = () => { const sel = f.querySelector('[name=forma]:checked') || f.querySelector('[name=forma]'); $('#dados-pagador').style.display = sel && sel.value === 'online' ? '' : 'none'; };
+    f.querySelectorAll('[name=forma]').forEach((r) => { r.onchange = mostrar; }); mostrar();
+    $('#fechar-reserva').onclick = fecharFolha;
+    f.onsubmit = async (ev) => {
+      ev.preventDefault(); const d = dadosForm(f);
+      try {
+        const r = await post(`/horarios/${h.id}/reservar`, { forma: d.forma, pagador: d.forma === 'online' ? { nome: d.nome, cpf_cnpj: d.cpf_cnpj, email: d.email || null } : null });
+        fecharFolha(); toast(r.link_pagamento ? 'Reserva feita! Pague para confirmar.' : 'Reserva feita!');
+        location.hash = '#/reservas';
+      } catch (e) { $('#erro-reserva').innerHTML = `<p class="aviso erro">${esc(e.message)}</p>`; }
+    };
+  }
+
+  async function vReservas() {
+    carregando();
+    try {
+      const itens = await api('/me/reservas');
+      montar(`<a href="javascript:history.back()" class="suave">← Voltar</a><h1 style="margin:8px 0 14px">Minhas reservas</h1>
+        ${lista(itens, (r) => `<div class="card"><span class="tag ${r.status_pagamento === 'pendente' ? 'laranja' : 'verde'}">${r.status_pagamento === 'pago' ? 'Paga' : r.status_pagamento === 'pendente' ? 'Aguardando pagamento' : 'Pagar na arena'}</span>
+          <h3>${esc(r.arena_nome)}</h3><div class="meta">${esc(r.quadra_nome)} • ${esc(r.quando)}<br><b>R$ ${String(r.valor.toFixed(2)).replace('.', ',')}</b>${r.paga_ate ? `<br>Pague até ${esc(r.paga_ate.slice(11, 16))} ou o horário é liberado.` : ''}${r.devolucao_pct != null ? `<br>Cancelando agora, devolvemos ${r.devolucao_pct}%.` : ''}</div>
+          <div style="margin-top:8px">${r.link_pagamento ? `<a class="btn roxo pequeno" href="${esc(r.link_pagamento)}" target="_blank" rel="noopener">Pagar agora</a> ` : ''}${r.pode_cancelar ? `<button class="btn suave pequeno" data-cancelar="${r.id}" data-pct="${r.devolucao_pct == null ? '' : r.devolucao_pct}">Cancelar</button>` : ''}</div>
+          <p class="suave" style="font-size:12px;margin:8px 0 0">${esc(r.politica)}</p></div>`, 'Você não tem reservas. Escolha um horário livre numa arena.')}`,
+      () => {
+        document.querySelectorAll('[data-cancelar]').forEach((b) => {
+          b.onclick = async () => {
+            if (!confirm('Cancelar a reserva?' + (b.dataset.pct ? ` Devolvemos ${b.dataset.pct}% do valor pago.` : ''))) return;
+            try { const r = await post(`/reservas/${b.dataset.cancelar}/cancelar`, {}); toast('Reserva cancelada.' + (r.devolvido ? ` Devolvemos R$ ${String(r.devolvido.toFixed(2)).replace('.', ',')}.` : '')); vReservas(); } catch (e) { toast(e.message); }
+          };
+        });
+      });
     } catch (e) { erroTela(e); }
   }
 
@@ -792,6 +840,11 @@
       <div class="campo"><label>Estrutura</label><input name="estrutura" placeholder="Vestiário, bar, estacionamento" value="${v('estrutura')}"></div>
       <div class="campo"><label>Descrição</label><textarea name="descricao">${v('descricao')}</textarea></div>
       <div class="campo"><label>Regras da casa</label><textarea name="regras">${v('regras')}</textarea></div>
+      ${a ? `<h3 style="margin:16px 0 6px">Reservas pelo app</h3>
+      <div class="campo"><label>Como o atleta paga</label><select name="pagamento_reserva">${[['local', 'Na arena (o app só segura o horário)'], ['online', 'Pelo app (Pix, boleto ou cartão)'], ['ambos', 'Os dois — o atleta escolhe']].map(([k, n]) => `<option value="${k}" ${(a.pagamento_reserva || 'local') === k ? 'selected' : ''}>${n}</option>`).join('')}</select><span class="suave">Pagar pelo app só funciona com o “Receber pelo app” aprovado.</span></div>
+      <div class="campo"><label>Cancelamento com devolução até (horas antes)</label><input type="number" name="cancel_horas" min="0" max="720" value="${v('cancel_horas', 24)}" required></div>
+      <div class="duas"><div class="campo"><label>Devolução dentro do prazo (%)</label><input type="number" name="reembolso_pct" min="0" max="100" value="${v('reembolso_pct', 100)}" required></div><div class="campo"><label>Devolução fora do prazo (%)</label><input type="number" name="reembolso_pct_fora" min="0" max="100" value="${v('reembolso_pct_fora', 0)}" required></div></div>
+      <p class="suave">Vale para reservas pagas pelo app. Reserva online não paga em 30 minutos é liberada sozinha.</p>` : ''}
       <div class="campo"><label>Onde fica a arena?</label>
         <div class="mapa pequeno" id="mapa-arena" style="height:300px;margin-top:6px"></div>
         <span class="suave" id="info-local" style="display:block;margin-top:6px">Busque o endereço na lupa do mapa ou toque no ponto exato. Dá para arrastar o pino.</span>
@@ -820,6 +873,7 @@
         ev.preventDefault(); const d = dadosForm(ev.target);
         if (!local) { $('#erro').innerHTML = '<p class="aviso erro">Marque o local da arena no mapa (busque o endereço ou toque no ponto).</p>'; return; }
         const corpo = { nome: d.nome, tipo_estabelecimento: d.tipo_estabelecimento || 'arena', endereco: d.endereco || '', abre: d.abre, fecha: d.fecha, estrutura: d.estrutura || null, descricao: d.descricao || null, regras: d.regras || null, latitude: local.lat, longitude: local.lng, cidade: (a && a.cidade) || estado.usuario.cidade };
+        if (a) Object.assign(corpo, { pagamento_reserva: d.pagamento_reserva || 'local', cancel_horas: Number(d.cancel_horas), reembolso_pct: Number(d.reembolso_pct), reembolso_pct_fora: Number(d.reembolso_pct_fora) });
         try {
           if (a) { await api(`/gestao/arenas/${a.id}`, { metodo: 'PUT', corpo }); toast('Arena atualizada!'); } else { await post('/gestao/arenas', corpo); toast('Arena cadastrada!'); estado.arena = null; }
           location.hash = '#/gestao';
@@ -1450,6 +1504,7 @@
       case 'campeonato': return arg2 === 'editar' ? vEditarCampeonato(arg) : ['chaves', 'ao-vivo', 'sorteio', 'jogo', 'telao', 'acompanhar'].includes(arg2) ? vCampSub(arg, arg2, arg3) : vCampeonato(arg);
       case 'novo-campeonato': return vNovoCampeonato();
       case 'arena': return vArena(arg);
+      case 'reservas': return vReservas();
       case 'local': return vLocal(arg);
       case 'gestao': return vGestao();
       case 'nova-arena': return vNovaArena();
