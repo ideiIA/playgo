@@ -91,8 +91,14 @@
           '<div class="rb-doc"><b>' + esc(p.titulo || p.tipo) + '</b>' + (p.descricao ? '<br><span class="rb-nota">' + esc(p.descricao) + '</span>' : '') +
           (p.onboarding_url ? '<br><a class="rb-btn" href="' + esc(p.onboarding_url) + '" target="_blank" rel="noopener">Enviar pelo link seguro</a><span class="rb-nota"> (abre numa nova aba; ao terminar, volte aqui e toque em “Atualizar situação”)</span>'
             : '<br><input type="file" accept="application/pdf,image/jpeg,image/png" data-grupo="' + esc(p.id) + '" data-tipo="' + esc(p.tipo) + '"> <button class="rb-btn suave" data-enviar="' + esc(p.id) + '">Enviar documento</button>') + '</div>').join('') : '') +
-        '<p><button class="rb-btn suave" id="rb-atualizar">Atualizar situação</button></p>' + rodape(d) + '</div>';
+        '<p><button class="rb-btn suave" id="rb-atualizar">Atualizar situação</button> <button class="rb-btn suave" id="rb-revisar">Revisar dados do cadastro</button></p><div id="rb-dados" hidden></div>' + rodape(d) + '</div>';
       el.querySelector('#rb-atualizar').onclick = () => atualizar(true);
+      el.querySelector('#rb-revisar').onclick = () => {
+        const c = el.querySelector('#rb-dados'); c.hidden = false;
+        c.innerHTML = '<h3>Revisar dados do titular</h3><p class="rb-nota">Por segurança os dados não ficam guardados no PlayGo: preencha tudo de novo. O CPF/CNPJ precisa ser o mesmo do cadastro' + (r.documento_final ? ' (final ' + esc(r.documento_final) + ')' : '') + '. O e-mail do cadastro não muda por aqui.</p>' + formCadastro('Enviar dados corrigidos');
+        const f = ligarCadastro(c);
+        f.onsubmit = async (ev) => { ev.preventDefault(); try { desenhar(await api(base + '/dados', { metodo: 'POST', corpo: lerCadastro(f) })); if (toast) toast('Dados enviados ao Asaas.'); } catch (e) { erro(e); } };
+      };
       el.querySelectorAll('[data-enviar]').forEach((b) => {
         b.onclick = async () => {
           const inp = el.querySelector('input[data-grupo="' + b.dataset.enviar + '"]');
