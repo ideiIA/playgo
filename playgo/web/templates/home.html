@@ -1,11 +1,16 @@
 {% extends "base.html" %}
 {% import "_cards.html" as c %}
+{% from "_ico.html" import ic %}
 {% block conteudo %}
 <div class="hero">
   <div>
     <h1>Tem gente jogando perto de você. Bora completar o time?</h1>
     <p>Descubra jogos, grupos, campeonatos e arenas — com vagas atualizadas em tempo real.</p>
-    <a class="btn lime" href="/explorar">Ver o que está rolando →</a>
+    <form class="hero-busca" action="/explorar" method="get" role="search">
+      {{ ic('map-pin') }}<input name="q" placeholder="Futebol, vôlei, arena… onde você quer jogar?" aria-label="Buscar no mapa">
+      <a class="btn lime" href="/explorar?raio=5&quando=hoje">{{ ic('map') }} Abrir mapa</a>
+    </form>
+    <p class="hero-ao-vivo"><span class="pulse"></span><strong>{{ feed.oportunidades_agora }} oportunidade{{ 's' if feed.oportunidades_agora != 1 }} agora</strong> em até 5 km de você</p>
   </div>
 </div>
 
@@ -31,24 +36,28 @@
 </div>
 {% endif %}
 
-<div class="livebar">
-  <div><span class="pulse"></span><strong>{{ feed.oportunidades_agora }} oportunidade{{ 's' if feed.oportunidades_agora != 1 }} agora</strong> em até 5 km de você</div>
-  <a class="btn lime" href="/explorar?raio=5&quando=hoje">Abrir mapa ao vivo</a>
-</div>
-
 {% if feed.urgentes %}
 <div class="section-title"><h2>🔥 Precisam de jogadores agora</h2><a href="/explorar?com_vagas=1&ordem=relevancia">Ver todas as vagas</a></div>
 <div class="urgent-grid">{% for a in feed.urgentes %}{{ c.urgente(a) }}{% endfor %}</div>
 {% endif %}
 
 <div class="section-title"><h2>O que você quer praticar?</h2><a href="/explorar">Ver todos</a></div>
-<div class="sports">
-  {% for m in modalidades[:6] %}<a class="sport" href="/explorar?modalidades={{ m.codigo }}"><span class="ico">{{ m.icone }}</span>{{ m.nome }}</a>{% endfor %}
+<div class="sports" role="group" aria-label="Filtrar por modalidade">
+  <a class="sport {{ 'on' if not esporte }}" href="/">Todos</a>
+  {% for m in modalidades[:8] %}<a class="sport {{ 'on' if esporte == m.codigo }}" href="/?esporte={{ m.codigo }}" aria-pressed="{{ 'true' if esporte == m.codigo else 'false' }}"><span class="ico">{{ m.icone }}</span>{{ m.nome }}</a>{% endfor %}
 </div>
 
 <div class="section-title"><h2>Rolando perto de você 🔥</h2><a href="/explorar">Ver no mapa</a></div>
 {% if feed.perto %}<div class="grid">{% for a in feed.perto %}{{ c.atividade(a) }}{% endfor %}</div>
-{% else %}{{ c.vazio('Nada marcado por perto ainda. Que tal criar a primeira atividade?') }}{% endif %}
+{% else %}
+<div class="vazio-rico">
+  <span class="vazio-ico">{{ ic('radio') }}</span>
+  <h3>{{ 'Nenhum jogo desse esporte por perto agora' if esporte else 'Nada marcado por perto ainda' }}</h3>
+  <p>Seja o primeiro a marcar e chame a galera.</p>
+  {% if pode.atividade %}<a class="btn lime" href="/atividades/nova">{{ ic('plus') }} Criar partida</a>
+  {% else %}<a class="btn lime" href="/explorar">{{ ic('compass') }} Explorar no mapa</a>{% endif %}
+</div>
+{% endif %}
 
 {% if feed.campeonatos %}
 <div class="section-title"><h2>🏆 Campeonatos com inscrições abertas</h2><a href="/campeonatos">Ver todos</a></div>

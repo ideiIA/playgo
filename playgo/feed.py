@@ -19,12 +19,14 @@ def _proxima_do_grupo(s: SessaoORM, grupo_id: int) -> dict | None:
     return {"id": a.id, "nome": a.nome, "quando": ser.texto_quando(a.inicio, n)} if a else None
 
 
-def montar(s: SessaoORM, usuario: Usuario, lat: float | None = None, lng: float | None = None) -> dict:
+def montar(s: SessaoORM, usuario: Usuario, lat: float | None = None, lng: float | None = None, modalidade: str | None = None) -> dict:
     la, ln, informada = descoberta.localizacao(usuario, lat, lng)
     raio = usuario.raio_km or 10
 
     # Uma única busca por atividades perto; as seções saem dela
     perto_todas = descoberta.buscar_atividades(s, usuario, la, ln, Filtros(raio_km=raio, ordem="relevancia"), limite=200)
+    if modalidade:  # chip de esporte da home: filtra as atividades (campeonatos, grupos e arenas seguem como estão)
+        perto_todas = [a for a in perto_todas if (a["modalidade"] or {}).get("codigo") == modalidade]
     abertas_para_mim = [a for a in perto_todas if a["vagas"] > 0 and a["minha_participacao"] is None]
 
     # 🔥 Precisam de jogadores agora: pediu gente, ou poucas vagas e começa logo

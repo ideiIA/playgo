@@ -314,6 +314,16 @@ def aviso_vencimento(s: SessaoORM, u: Usuario) -> dict | None:
     return None
 
 
+def cartao_menu(s: SessaoORM, u: Usuario) -> dict:
+    """Cartão do rodapé do menu: nome do plano e, quando o plano limita atividades abertas, o uso (barra)."""
+    if u.admin:
+        return {"nome": "Administrador", "limite": None, "usadas": 0, "pct": 0}
+    r = regras(s, situacao(s, u)["plano"])
+    limite = r.max_atividades_abertas if r.pode_atividade else None
+    usadas = _abertas(s, u) if limite else 0
+    return {"nome": r.nome, "limite": limite, "usadas": usadas, "pct": min(100, round(usadas * 100 / limite)) if limite else 0}
+
+
 def resumo(s: SessaoORM, u: Usuario) -> dict:
     sit = situacao(s, u)
     r = regras(s, sit["plano"])

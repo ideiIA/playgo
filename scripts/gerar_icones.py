@@ -23,7 +23,7 @@ scroll-text clipboard-list star list-checks qr-code wifi smartphone monitor hour
 megaphone book-marked graduation-cap target award coins banknote wallet receipt landmark badge-check circle-play circle-stop activity bike footprints
 volleyball goal party-popper bookmark filter sliders-horizontal image-plus file-text file-down mic mic-off video-off power maximize minimize
 phone laptop bot rocket shopping-bag pin thumbs-up satellite clapperboard ban lock-open file-pen
-school calendar-check user-round-check
+school calendar-check user-round-check panel-left-close panel-left-open
 """.split()
 
 

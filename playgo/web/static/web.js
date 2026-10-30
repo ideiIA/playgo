@@ -19,6 +19,14 @@
   }
   window.api = api;
 
+  // Menu lateral recolhível: a escolha fica guardada neste navegador
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-menu-toggle]');
+    if (!b) return;
+    const min = document.body.classList.toggle('menu-min');
+    try { localStorage.setItem('pg-menu', min ? 'min' : 'max'); } catch (err) { /* sem armazenamento */ }
+  });
+
   // API com o cookie de sessão do site (multipart quando há `form`)
   window.webApi = async function (caminho, { metodo = 'GET', corpo, form } = {}) {
     const opc = { method: metodo, credentials: 'same-origin', headers: {} };

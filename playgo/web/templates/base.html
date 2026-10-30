@@ -38,9 +38,13 @@
   ('aulas', '/aulas', 'graduation-cap', 'Aulas e Treinamentos'),
 ] %}
 <body>
+<script>try { if (localStorage.getItem('pg-menu') === 'min') document.body.classList.add('menu-min'); } catch (e) { /* sem armazenamento */ }</script>
 <div class="app">
 <aside class="sidebar">
-  <a class="logo" href="/"><img class="logo-ico" src="/static/marca/icone.svg" alt="" width="34" height="34">Play<span>Go</span></a>
+  <div class="sb-topo">
+    <a class="logo" href="/"><img class="logo-ico" src="/static/marca/icone.svg" alt="" width="34" height="34">Play<span>Go</span></a>
+    <button class="sb-toggle" type="button" data-menu-toggle aria-label="Recolher ou expandir o menu" title="Recolher ou expandir o menu">{{ ic('panel-left-close') }}</button>
+  </div>
   <nav class="nav">
     {% for chave, url, icone, nome in itens_do_menu if (chave != 'criar' or pode.atividade) and (chave != 'aulas' or pode.ensino_menu) %}
     <a href="{{ url }}" class="{{ 'active' if aba == chave }}"><span class="ico">{{ ic(icone) }}</span><span class="t">{{ nome }}</span></a>
@@ -67,6 +71,19 @@
     <a href="/moderacao" class="{{ 'active' if aba == 'moderacao' }}"><span class="ico">{{ ic('shield-check') }}</span><span class="t">Moderação{% if fila_moderacao %} <b class="selo">{{ fila_moderacao }}</b>{% endif %}</span></a>
     {% endif %}
   </nav>
+  <div class="sb-conta">
+    <a class="sb-perfil" href="/perfil" title="Meu perfil">
+      <span class="avatar">{% if usuario.foto_url %}<img src="{{ usuario.foto_url }}" alt="">{% else %}{{ usuario.iniciais }}{% endif %}</span>
+      <span class="sb-nome"><b>{{ usuario.nome.split(' ')[0] }}</b><small>{{ usuario.arroba }}</small></span>
+    </a>
+    <div class="sb-plano">
+      <span class="sb-plano-nome">Seu plano: <b>{{ meu_plano.nome }}</b></span>
+      <a class="btn lime pequeno bloco" href="/planos">Ver planos</a>
+      {% if meu_plano.limite %}
+      <div class="sb-uso"><span>Atividades abertas</span><div class="barra" role="progressbar" aria-valuemin="0" aria-valuemax="{{ meu_plano.limite }}" aria-valuenow="{{ meu_plano.usadas }}"><i style="width: {{ meu_plano.pct }}%"></i></div><small>{{ meu_plano.usadas }} de {{ meu_plano.limite }}</small></div>
+      {% endif %}
+    </div>
+  </div>
 </aside>
 
 <main class="main">
@@ -75,6 +92,7 @@
     {{ ic('search') }} <input name="q" value="{{ busca or '' }}" placeholder="Busque futebol, vôlei, corrida, arena..." aria-label="Buscar">
   </form>
   <div class="topo-direita">
+    {% if pode.atividade %}<a class="btn lime pequeno topo-criar" href="/atividades/nova">{{ ic('plus') }} Criar</a>{% endif %}
     {% if convites_pendentes %}<a class="sino" href="/convites" aria-label="Convites" title="Você tem convites">{{ ic('mail') }}<b>{{ convites_pendentes }}</b></a>{% endif %}
     <a class="sino" href="/notificacoes" aria-label="Notificações" title="Notificações">{{ ic('bell') }}{% if nao_lidas %}<b>{{ nao_lidas if nao_lidas < 100 else '99+' }}</b>{% endif %}</a>
     <a class="avatar" href="/perfil" title="{{ usuario.arroba }}">{% if usuario.foto_url %}<img src="{{ usuario.foto_url }}" alt="">{% else %}{{ usuario.iniciais }}{% endif %}</a>

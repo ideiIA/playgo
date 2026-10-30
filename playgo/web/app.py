@@ -159,6 +159,7 @@ def pagina(request: Request, s, usuario: Usuario, nome: str, aba: str = "", **co
         "fila_moderacao": publicacoes.contar_fila(s) if usuario.equipe_moderacao else 0,
         "convites_pendentes": len(convites.pendentes(s, usuario)),
         "pode": planos.permissoes(s, usuario),
+        "meu_plano": planos.cartao_menu(s, usuario),
         "aviso_plano": planos.aviso_vencimento(s, usuario),
         "tut_sub": request.url.path.rsplit("/", 1)[-1] if request.url.path.startswith("/tutorial/") else "",
     }
@@ -279,7 +280,7 @@ def saude(s: Sessao):
 
 
 @app.get("/")
-def inicio(request: Request, s: Sessao, usuario: Opcional):
+def inicio(request: Request, s: Sessao, usuario: Opcional, esporte: str = ""):
     """Sem login, a página de divulgação (com o caminho para criar conta, entrar e abrir o app); com login, o início."""
     if usuario is None:
         return templates.TemplateResponse(
@@ -289,7 +290,7 @@ def inicio(request: Request, s: Sessao, usuario: Opcional):
     pendencia = contas.pendencias(usuario)
     if pendencia:
         raise PrecisaCompletar(pendencia)
-    return pagina(request, s, usuario, "home.html", "home", feed=feed.montar(s, usuario))
+    return pagina(request, s, usuario, "home.html", "home", feed=feed.montar(s, usuario, modalidade=esporte or None), esporte=esporte)
 
 
 @app.get("/explorar")
