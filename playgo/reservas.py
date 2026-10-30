@@ -51,6 +51,7 @@ def politica(s: SessaoORM, arena: Arena) -> dict:
     return {
         "pagamento": arena.pagamento_reserva, "formas": disponiveis, "aceita_reserva": bool(disponiveis),
         "cancel_horas": arena.cancel_horas, "reembolso_pct": arena.reembolso_pct, "reembolso_pct_fora": arena.reembolso_pct_fora,
+        "acrescimo_cartao_pct": float(arena.acrescimo_cartao_pct or 0), "metodos": ["pix", "cartao"],
         "texto": texto_politica(arena),
     }
 
@@ -88,7 +89,16 @@ def serializar(s: SessaoORM, r: Reserva) -> dict:
     }
 
 
-def reservar_horario(s: SessaoORM, usuario: Usuario, horario_id: int, forma: str | None = None, pagador: dict | None = None) -> dict:
+TIPO_COBRANCA = {"pix": "PIX", "cartao": "CREDIT_CARD"}  # boleto fica de fora: a compensação demora e prende o horário
+
+
+def valor_com_acrescimo(arena: Arena, valor: Decimal, metodo: str) -> Decimal:
+    if metodo == "cartao":
+        return _dinheiro(valor * (1 + (arena.acrescimo_cartao_pct or 0) / 100))
+    return _dinheiro(valor)
+
+
+def reservar_horario(s: SessaoORM, usuario: Usuario, horario_id: int, forma: str | None = None, pagador: dict | None = None, metodo: str | None = None) -> dict:
     """O atleta reserva um horário divulgado. Online: já cria a cobrança e a reserva segura o horário por PRAZO_PAGAMENTO_MIN minutos."""
     planos.exigir(s, usuario, "basico")
     h = s.scalar(select(HorarioDivulgado).where(HorarioDivulgado.id == horario_id).with_for_update(of=HorarioDivulgado))
@@ -111,6 +121,10 @@ def reservar_horario(s: SessaoORM, usuario: Usuario, horario_id: int, forma: str
             forma = disponiveis[0]
         if forma not in disponiveis:
             raise ErroNegocio("Escolha como pagar: " + " ou ".join("pelo app" if f == "online" else "na arena" for f in disponiveis) + ".")
+    if forma == "online":
+        if metodo not in TIPO_COBRANCA:
+            raise ErroNegocio("Escolha pagar com Pix ou cartão.")
+        valor = valor_com_acrescimo(arena, valor, metodo)
     inicio, fim = h.inicio, h.fim
     try:
         r = arenas.reservar(s, quadra.id, inicio, fim, R_RESERVA, f"@{usuario.usuario or usuario.nome}")
@@ -118,7 +132,7 @@ def reservar_horario(s: SessaoORM, usuario: Usuario, horario_id: int, forma: str
         resposta = {}
         if forma == "online":
             rec = recebimentos._recebedor_obrigatorio(s, arena, lock=True)
-            resposta = recebimentos._emitir_cobranca(s, r, quadra, rec, valor, pagador or {}, vence_em_dias=1)
+            resposta = recebimentos._emitir_cobranca(s, r, quadra, rec, valor, pagador or {}, vence_em_dias=1, tipo_cobranca=TIPO_COBRANCA[metodo])
         auditoria.registrar(s, usuario.id, "reserva_cliente", "reserva", r.id, forma=forma, valor=str(valor))
         _gestores(s, arena, "🏟️ Nova reserva", f"{r.rotulo} reservou {quadra.nome} em {texto_quando(inicio, agora()).lower()}"
                   + (" (pagamento pelo app)." if forma == "online" else " (pagamento na arena)."), f"reserva-nova:{r.id}")

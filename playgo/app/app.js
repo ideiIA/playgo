@@ -728,7 +728,8 @@
     folha(`<h3>Reservar ${esc(h.quadra_nome)}</h3><p class="suave">${esc(a.nome)} • ${esc(h.quando)} • <b>${esc(h.valor_texto)}</b></p>
       <form id="f-reserva"><div id="erro-reserva"></div>
       ${formas.length > 1 ? `<div class="campo"><label>Como pagar</label>${formas.map((f, i) => `<label style="display:flex;gap:8px;align-items:center"><input type="radio" name="forma" value="${f}" ${i === 0 ? 'checked' : ''}> ${f === 'online' ? 'Pelo app (Pix, boleto ou cartão)' : 'Na arena'}</label>`).join('')}</div>` : `<input type="hidden" name="forma" value="${formas[0]}"><p class="suave">Pagamento: ${formas[0] === 'online' ? 'pelo app (Pix, boleto ou cartão)' : 'na arena'}.</p>`}
-      <div id="dados-pagador"><div class="campo"><label>Nome de quem paga</label><input name="nome" value="${esc((estado.usuario && estado.usuario.nome) || '')}"></div>
+      <div id="dados-pagador"><div class="campo"><label>Pagar com</label><label style="display:flex;gap:8px;align-items:center"><input type="radio" name="metodo" value="pix" checked> Pix</label><label style="display:flex;gap:8px;align-items:center"><input type="radio" name="metodo" value="cartao"> Cartão de crédito${pol.acrescimo_cartao_pct ? ` (acréscimo de ${String(pol.acrescimo_cartao_pct).replace('.', ',')}%)` : ''}</label></div>
+        <div class="campo"><label>Nome de quem paga</label><input name="nome" value="${esc((estado.usuario && estado.usuario.nome) || '')}"></div>
         <div class="campo"><label>CPF ou CNPJ</label><input name="cpf_cnpj" inputmode="numeric" autocomplete="off"><span class="suave">Vai só para o Asaas, que emite a cobrança. O PlayGo não guarda.</span></div>
         <div class="campo"><label>E-mail (opcional)</label><input type="email" name="email"></div></div>
       <p class="suave"><b>Cancelamento:</b> ${esc(pol.texto)} Pagando pelo app, o horário fica seu por 30 minutos.</p>
@@ -740,7 +741,7 @@
     f.onsubmit = async (ev) => {
       ev.preventDefault(); const d = dadosForm(f);
       try {
-        const r = await post(`/horarios/${h.id}/reservar`, { forma: d.forma, pagador: d.forma === 'online' ? { nome: d.nome, cpf_cnpj: d.cpf_cnpj, email: d.email || null } : null });
+        const r = await post(`/horarios/${h.id}/reservar`, { forma: d.forma, metodo: d.metodo || null, pagador: d.forma === 'online' ? { nome: d.nome, cpf_cnpj: d.cpf_cnpj, email: d.email || null } : null });
         fecharFolha(); toast(r.link_pagamento ? 'Reserva feita! Pague para confirmar.' : 'Reserva feita!');
         location.hash = '#/reservas';
       } catch (e) { $('#erro-reserva').innerHTML = `<p class="aviso erro">${esc(e.message)}</p>`; }
@@ -843,6 +844,7 @@
       ${a ? `<h3 style="margin:16px 0 6px">Reservas pelo app</h3>
       <div class="campo"><label>Como o atleta paga</label><select name="pagamento_reserva">${[['local', 'Na arena (o app só segura o horário)'], ['online', 'Pelo app (Pix, boleto ou cartão)'], ['ambos', 'Os dois — o atleta escolhe']].map(([k, n]) => `<option value="${k}" ${(a.pagamento_reserva || 'local') === k ? 'selected' : ''}>${n}</option>`).join('')}</select><span class="suave">Pagar pelo app só funciona com o “Receber pelo app” aprovado.</span></div>
       <div class="campo"><label>Cancelamento com devolução até (horas antes)</label><input type="number" name="cancel_horas" min="0" max="720" value="${v('cancel_horas', 24)}" required></div>
+      <div class="campo"><label>Acréscimo no cartão (%)</label><input name="acrescimo_cartao_pct" inputmode="decimal" value="${v('acrescimo_cartao_pct', 0)}"><span class="suave">Somado ao valor no cartão, para cobrir a taxa. Pix não tem acréscimo; boleto não é oferecido.</span></div>
       <div class="duas"><div class="campo"><label>Devolução dentro do prazo (%)</label><input type="number" name="reembolso_pct" min="0" max="100" value="${v('reembolso_pct', 100)}" required></div><div class="campo"><label>Devolução fora do prazo (%)</label><input type="number" name="reembolso_pct_fora" min="0" max="100" value="${v('reembolso_pct_fora', 0)}" required></div></div>
       <p class="suave">Vale para reservas pagas pelo app. Reserva online não paga em 30 minutos é liberada sozinha.</p>` : ''}
       <div class="campo"><label>Onde fica a arena?</label>
@@ -873,7 +875,7 @@
         ev.preventDefault(); const d = dadosForm(ev.target);
         if (!local) { $('#erro').innerHTML = '<p class="aviso erro">Marque o local da arena no mapa (busque o endereço ou toque no ponto).</p>'; return; }
         const corpo = { nome: d.nome, tipo_estabelecimento: d.tipo_estabelecimento || 'arena', endereco: d.endereco || '', abre: d.abre, fecha: d.fecha, estrutura: d.estrutura || null, descricao: d.descricao || null, regras: d.regras || null, latitude: local.lat, longitude: local.lng, cidade: (a && a.cidade) || estado.usuario.cidade };
-        if (a) Object.assign(corpo, { pagamento_reserva: d.pagamento_reserva || 'local', cancel_horas: Number(d.cancel_horas), reembolso_pct: Number(d.reembolso_pct), reembolso_pct_fora: Number(d.reembolso_pct_fora) });
+        if (a) Object.assign(corpo, { pagamento_reserva: d.pagamento_reserva || 'local', cancel_horas: Number(d.cancel_horas), reembolso_pct: Number(d.reembolso_pct), reembolso_pct_fora: Number(d.reembolso_pct_fora), acrescimo_cartao_pct: num(d.acrescimo_cartao_pct) || 0 });
         try {
           if (a) { await api(`/gestao/arenas/${a.id}`, { metodo: 'PUT', corpo }); toast('Arena atualizada!'); } else { await post('/gestao/arenas', corpo); toast('Arena cadastrada!'); estado.arena = null; }
           location.hash = '#/gestao';

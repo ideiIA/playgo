@@ -83,23 +83,23 @@ def test_reserva_online_cria_cobranca_e_segura_o_horario(s, fabrica, asaas):
     atleta = fabrica.atleta("Pagador")
     h = _horario(s, q, g)
     with pytest.raises(ErroNegocio, match="Informe o nome"):
-        reservas.reservar_horario(s, atleta, h.id, "online", {"nome": "", "cpf_cnpj": "529.982.247-25"})
+        reservas.reservar_horario(s, atleta, h.id, "online", {"nome": "", "cpf_cnpj": "529.982.247-25"}, "pix")
     assert s.scalar(select(HorarioDivulgado).where(HorarioDivulgado.id == h.id)) is not None  # falhou: nada ficou pela metade
     with pytest.raises(ErroNegocio, match="Escolha como pagar"):
         reservas.reservar_horario(s, atleta, h.id, "local", PAGADOR)  # a arena só aceita pelo app
-    r = reservas.reservar_horario(s, atleta, h.id, "online", PAGADOR)
+    r = reservas.reservar_horario(s, atleta, h.id, "online", PAGADOR, "pix")
     assert r["status_pagamento"] == "pendente" and r["link_pagamento"].startswith("https://") and r["paga_ate"]
     pg = asaas.chamou("POST", "/payments")[0][3]
     assert pg["value"] == 100.0 and pg["split"][0]["walletId"] == "wal_mae" and "529" not in str(r)
     with pytest.raises(ErroNegocio, match="não está mais disponível"):
-        reservas.reservar_horario(s, fabrica.atleta("Atrasado"), h.id, "online", PAGADOR)
+        reservas.reservar_horario(s, fabrica.atleta("Atrasado"), h.id, "online", PAGADOR, "pix")
 
 
 def test_cancelar_dentro_do_prazo_devolve_tudo_e_fora_devolve_a_parte(s, fabrica, asaas):
     a, q, g, rec = _ativada(s, fabrica, asaas)
     _config(s, a, g, "online", horas=24, dentro=100, fora=50)
     atleta = fabrica.atleta("Cancela Cedo")
-    r = reservas.reservar_horario(s, atleta, _horario(s, q, g, 72).id, "online", PAGADOR)
+    r = reservas.reservar_horario(s, atleta, _horario(s, q, g, 72).id, "online", PAGADOR, "pix")
     reserva = s.get(Reserva, r["id"])
     _pagar(s, reserva, rec)
     assert reservas.serializar(s, reserva)["devolucao_pct"] == 100
@@ -110,7 +110,7 @@ def test_cancelar_dentro_do_prazo_devolve_tudo_e_fora_devolve_a_parte(s, fabrica
     assert recebimentos.saldo_interno(s, rec.id) == saldo - Decimal("90.00")  # a Arena devolve a parte dela; a comissão volta junto
 
     atleta2 = fabrica.atleta("Cancela Tarde")
-    r2 = reservas.reservar_horario(s, atleta2, _horario(s, q, g, 10).id, "online", PAGADOR)
+    r2 = reservas.reservar_horario(s, atleta2, _horario(s, q, g, 10).id, "online", PAGADOR, "pix")
     _pagar(s, s.get(Reserva, r2["id"]), rec)
     out2 = reservas.cancelar(s, atleta2, r2["id"])
     assert out2["devolvido"] == 50.0 and out2["devolucao_pct"] == 50 and out2["mantido_pela_arena"] == 50.0
@@ -118,7 +118,7 @@ def test_cancelar_dentro_do_prazo_devolve_tudo_e_fora_devolve_a_parte(s, fabrica
 
     _config(s, a, g, "online", horas=24, dentro=100, fora=0)
     atleta3 = fabrica.atleta("Cancela Muito Tarde")
-    r3 = reservas.reservar_horario(s, atleta3, _horario(s, q, g, 5).id, "online", PAGADOR)
+    r3 = reservas.reservar_horario(s, atleta3, _horario(s, q, g, 5).id, "online", PAGADOR, "pix")
     _pagar(s, s.get(Reserva, r3["id"]), rec)
     n_refunds = len(asaas.chamou("POST", "/refund"))
     out3 = reservas.cancelar(s, atleta3, r3["id"])
@@ -129,7 +129,7 @@ def test_cancelar_antes_de_pagar_apaga_a_cobranca_e_reserva_que_comecou_nao_canc
     a, q, g, rec = _ativada(s, fabrica, asaas)
     _config(s, a, g, "online")
     atleta = fabrica.atleta("Desiste")
-    r = reservas.reservar_horario(s, atleta, _horario(s, q, g).id, "online", PAGADOR)
+    r = reservas.reservar_horario(s, atleta, _horario(s, q, g).id, "online", PAGADOR, "pix")
     out = reservas.cancelar(s, atleta, r["id"])
     assert out["cancelada"] and asaas.chamou("DELETE", "/payments/")
     comecou = arenas.reservar(s, q.id, agora() - timedelta(minutes=10), agora() + timedelta(minutes=50))
@@ -143,8 +143,29 @@ def test_reserva_online_nao_paga_expira_e_libera_o_horario(s, fabrica, asaas):
     a, q, g, rec = _ativada(s, fabrica, asaas)
     _config(s, a, g, "online")
     atleta = fabrica.atleta("Esquece")
-    r = reservas.reservar_horario(s, atleta, _horario(s, q, g).id, "online", PAGADOR)
+    r = reservas.reservar_horario(s, atleta, _horario(s, q, g).id, "online", PAGADOR, "pix")
     s.get(Reserva, r["id"]).criado_em = agora() - timedelta(minutes=reservas.PRAZO_PAGAMENTO_MIN + 1)
     s.commit()
     assert reservas.expirar_pendentes(s) >= 1
     assert s.get(Reserva, r["id"]) is None and asaas.chamou("DELETE", "/payments/")
+
+
+def test_online_so_pix_ou_cartao_e_cartao_leva_o_acrescimo(s, fabrica, asaas):
+    a, q, g, rec = _ativada(s, fabrica, asaas)
+    _config(s, a, g, "online")
+    arenas.editar(s, a, g, a.nome, a.latitude, a.longitude, pagamento_reserva="online", cancel_horas=24, reembolso_pct=100, reembolso_pct_fora=0, acrescimo_cartao_pct=Decimal("5"))
+    with pytest.raises(ErroNegocio, match="acréscimo"):
+        arenas.editar(s, a, g, a.nome, a.latitude, a.longitude, pagamento_reserva="online", cancel_horas=24, reembolso_pct=100, reembolso_pct_fora=0, acrescimo_cartao_pct=Decimal("40"))
+    assert reservas.politica(s, a)["acrescimo_cartao_pct"] == 5.0
+    h = _horario(s, q, g)
+    atleta = fabrica.atleta("Escolhe")
+    for ruim in (None, "boleto"):
+        with pytest.raises(ErroNegocio, match="Pix ou cartão"):
+            reservas.reservar_horario(s, atleta, h.id, "online", PAGADOR, ruim)
+    r = reservas.reservar_horario(s, atleta, h.id, "online", PAGADOR, "cartao")
+    pg = asaas.chamou("POST", "/payments")[-1][3]
+    assert pg["billingType"] == "CREDIT_CARD" and pg["value"] == 105.0 and r["valor"] == 105.0
+    h2 = _horario(s, q, g, 96)
+    reservas.reservar_horario(s, fabrica.atleta("Pix"), h2.id, "online", PAGADOR, "pix")
+    pg2 = asaas.chamou("POST", "/payments")[-1][3]
+    assert pg2["billingType"] == "PIX" and pg2["value"] == 100.0

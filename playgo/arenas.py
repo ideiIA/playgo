@@ -117,6 +117,7 @@ def editar(
     cancel_horas: int | None = None,
     reembolso_pct: int | None = None,
     reembolso_pct_fora: int | None = None,
+    acrescimo_cartao_pct: Decimal | None = None,
 ) -> Arena:
     """Altera os dados cadastrais da arena (só gestor ou admin). Os dados da conta de recebimento (Asaas) não mudam por aqui."""
     exigir_gestor(arena, usuario)
@@ -142,6 +143,10 @@ def editar(
         if reembolso_pct_fora > reembolso_pct:
             raise ErroNegocio("Fora do prazo a devolução não pode ser maior que dentro do prazo.")
         arena.pagamento_reserva, arena.cancel_horas, arena.reembolso_pct, arena.reembolso_pct_fora = pagamento_reserva, cancel_horas, reembolso_pct, reembolso_pct_fora
+        if acrescimo_cartao_pct is not None:
+            if not Decimal(0) <= acrescimo_cartao_pct <= Decimal(30):
+                raise ErroNegocio("O acréscimo do cartão vai de 0% a 30%.")
+            arena.acrescimo_cartao_pct = acrescimo_cartao_pct.quantize(Decimal("0.01"))
     auditoria.registrar(s, usuario.id, "arena_editar", "arena", arena.id)
     s.commit()
     return arena

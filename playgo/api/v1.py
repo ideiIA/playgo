@@ -193,6 +193,7 @@ class ArenaIn(BaseModel):
     cancel_horas: int | None = None
     reembolso_pct: int | None = None
     reembolso_pct_fora: int | None = None
+    acrescimo_cartao_pct: Decimal | None = None
 
 
 class LocalIn(BaseModel):
@@ -230,6 +231,7 @@ class PagadorReservaIn(BaseModel):
 
 class ReservarHorarioIn(BaseModel):
     forma: str | None = None  # online | local (vazio = a única forma da arena)
+    metodo: str | None = None  # pix | cartao, quando a forma é online
     pagador: PagadorReservaIn | None = None  # só para pagar pelo app; o CPF/CNPJ vai ao Asaas e não é guardado
 
 
@@ -632,12 +634,12 @@ def ver_arena(arena_id: int, u: AtualApi, s: Sessao):
 @router.get("/gestao/arenas")
 def minhas_arenas(u: AtualApi, s: Sessao):
     return [ser.arena(a) | {"abre": a.abre.strftime("%H:%M"), "fecha": a.fecha.strftime("%H:%M"), "descricao": a.descricao, "regras": a.regras,
-                                  "pagamento_reserva": a.pagamento_reserva, "cancel_horas": a.cancel_horas, "reembolso_pct": a.reembolso_pct, "reembolso_pct_fora": a.reembolso_pct_fora} for a in arenas.minhas(s, u)]
+                                  "pagamento_reserva": a.pagamento_reserva, "cancel_horas": a.cancel_horas, "reembolso_pct": a.reembolso_pct, "reembolso_pct_fora": a.reembolso_pct_fora, "acrescimo_cartao_pct": float(a.acrescimo_cartao_pct or 0)} for a in arenas.minhas(s, u)]
 
 
 @router.post("/gestao/arenas", status_code=201)
 def criar_arena(corpo: ArenaIn, u: AtualApi, s: Sessao):
-    a = arenas.criar(s, u, **corpo.model_dump(exclude={"pagamento_reserva", "cancel_horas", "reembolso_pct", "reembolso_pct_fora"}))
+    a = arenas.criar(s, u, **corpo.model_dump(exclude={"pagamento_reserva", "cancel_horas", "reembolso_pct", "reembolso_pct_fora", "acrescimo_cartao_pct"}))
     return detalhes.arena_publica(s, a, u)
 
 
@@ -707,7 +709,7 @@ def despublicar(horario_id: int, u: AtualApi, s: Sessao):
 
 @router.post("/horarios/{horario_id}/reservar", status_code=201)
 def reservar_horario(horario_id: int, corpo: ReservarHorarioIn, u: AtualApi, s: Sessao):
-    return reservas.reservar_horario(s, u, horario_id, corpo.forma, corpo.pagador.model_dump() if corpo.pagador else None)
+    return reservas.reservar_horario(s, u, horario_id, corpo.forma, corpo.pagador.model_dump() if corpo.pagador else None, corpo.metodo)
 
 
 @router.get("/me/reservas")

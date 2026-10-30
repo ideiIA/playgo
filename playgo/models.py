@@ -191,6 +191,7 @@ class Arena(Base):
     cancel_horas: Mapped[int] = mapped_column(Integer, default=24)  # cancelar com pelo menos N horas de antecedência
     reembolso_pct: Mapped[int] = mapped_column(Integer, default=100)  # % devolvido quando cancela dentro do prazo
     reembolso_pct_fora: Mapped[int] = mapped_column(Integer, default=0)  # % devolvido quando cancela depois do prazo
+    acrescimo_cartao_pct: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=0)  # % somado ao valor quando o atleta paga no cartão (Pix não tem acréscimo)
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
 
     gestores: Mapped[list[Usuario]] = relationship(secondary=arena_gestores, back_populates="arenas")

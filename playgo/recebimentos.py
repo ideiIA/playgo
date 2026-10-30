@@ -541,7 +541,7 @@ def criar_cobranca_reserva(s: SessaoORM, reserva_id: int, u: Usuario, valor: Dec
     return resposta
 
 
-def _emitir_cobranca(s: SessaoORM, reserva: Reserva, quadra: Quadra, rec: Recebedor, valor: Decimal, pagador: dict, vence_em_dias: int | None = None) -> dict:
+def _emitir_cobranca(s: SessaoORM, reserva: Reserva, quadra: Quadra, rec: Recebedor, valor: Decimal, pagador: dict, vence_em_dias: int | None = None, tipo_cobranca: str = "UNDEFINED") -> dict:
     """Cria o cliente e a cobrança no Asaas (subconta da arena) e grava na reserva. Quem chama confere permissão, trava a reserva e dá o commit."""
     if valor <= 0:
         raise ErroNegocio("Informe o valor da cobrança.")
@@ -556,7 +556,7 @@ def _emitir_cobranca(s: SessaoORM, reserva: Reserva, quadra: Quadra, rec: Recebe
     if vence_em_dias is not None:
         vencimento = agora().date() + timedelta(days=vence_em_dias)
     corpo = {
-        "customer": cliente["id"], "billingType": "UNDEFINED", "value": float(valor), "dueDate": vencimento.isoformat(),
+        "customer": cliente["id"], "billingType": tipo_cobranca, "value": float(valor), "dueDate": vencimento.isoformat(),
         "description": f"Reserva {quadra.nome} — {reserva.inicio:%d/%m %H:%M}", "externalReference": f"reserva:{reserva.id}",
     }
     if split:

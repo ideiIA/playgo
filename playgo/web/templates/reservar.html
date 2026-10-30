@@ -11,6 +11,9 @@
       {% for f in pol.formas %}<label class="rotulo" style="display:flex;gap:8px;align-items:center"><input type="radio" name="forma" value="{{ f }}" style="width:auto" {{ 'checked' if loop.first }} onchange="formaPagamento()"> {{ 'Pelo app — Pix, boleto ou cartão' if f == 'online' else 'Na arena — você acerta direto com ela' }}</label>{% endfor %}
     </div>
     <div id="dados-pagador" class="form-grid full" style="display:none">
+      <div class="field full"><label>Pagar com</label>
+        <label class="rotulo" style="display:flex;gap:8px;align-items:center"><input type="radio" name="metodo" value="pix" style="width:auto" checked> Pix — {{ h.valor_texto }}</label>
+        <label class="rotulo" style="display:flex;gap:8px;align-items:center"><input type="radio" name="metodo" value="cartao" style="width:auto"> Cartão de crédito{% if pol.acrescimo_cartao_pct %} — acréscimo de {{ pol.acrescimo_cartao_pct|string|replace('.0', '')|replace('.', ',') }}% sobre o valor{% endif %}</label></div>
       <div class="field"><label for="nome">Nome de quem paga</label><input name="nome" id="nome" value="{{ usuario.nome }}" maxlength="120"></div>
       <div class="field"><label for="cpf_cnpj">CPF ou CNPJ</label><input name="cpf_cnpj" id="cpf_cnpj" inputmode="numeric" autocomplete="off"><span class="suave">Vai só para o Asaas, que emite a cobrança. O PlayGo não guarda.</span></div>
       <div class="field"><label for="email">E-mail (opcional)</label><input type="email" name="email" id="email"></div>

@@ -107,6 +107,7 @@ _COLUNAS_NOVAS: tuple[str, ...] = (
     "ALTER TABLE arenas ADD COLUMN IF NOT EXISTS cancel_horas integer NOT NULL DEFAULT 24",
     "ALTER TABLE arenas ADD COLUMN IF NOT EXISTS reembolso_pct integer NOT NULL DEFAULT 100",
     "ALTER TABLE arenas ADD COLUMN IF NOT EXISTS reembolso_pct_fora integer NOT NULL DEFAULT 0",
+    "ALTER TABLE arenas ADD COLUMN IF NOT EXISTS acrescimo_cartao_pct numeric(5,2) NOT NULL DEFAULT 0",
     "ALTER TABLE reservas ADD COLUMN IF NOT EXISTS usuario_id integer REFERENCES usuarios(id) ON DELETE SET NULL",
     "ALTER TABLE reservas ADD COLUMN IF NOT EXISTS forma_pagamento varchar(8)",
     "ALTER TABLE reservas ADD COLUMN IF NOT EXISTS valor_reembolsado numeric(10,2)",

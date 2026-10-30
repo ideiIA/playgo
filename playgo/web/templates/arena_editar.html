@@ -27,6 +27,7 @@
       <span class="suave">{% if online_pronto %}Seu recebimento pelo app está ativo.{% else %}Pagamento pelo app só funciona depois de ativar e ter aprovado o “Receber pelo app”; até lá o atleta só vê “na arena”.{% endif %}</span></div>
     <div class="field"><label for="cancel_horas">Cancelamento com devolução até (horas antes)</label><input type="number" name="cancel_horas" id="cancel_horas" min="0" max="720" value="{{ arena.cancel_horas }}" required></div>
     <div class="field"><label for="reembolso_pct">Devolução dentro do prazo (%)</label><input type="number" name="reembolso_pct" id="reembolso_pct" min="0" max="100" value="{{ arena.reembolso_pct }}" required></div>
+    <div class="field"><label for="acrescimo_cartao_pct">Acréscimo no cartão (%)</label><input name="acrescimo_cartao_pct" id="acrescimo_cartao_pct" inputmode="decimal" value="{{ ((arena.acrescimo_cartao_pct or 0)|string).replace('.', ',') }}"><span class="suave">Somado ao valor quando o atleta paga no cartão, para cobrir a taxa. Pix não tem acréscimo. Boleto não é oferecido.</span></div>
     <div class="field"><label for="reembolso_pct_fora">Devolução fora do prazo (%)</label><input type="number" name="reembolso_pct_fora" id="reembolso_pct_fora" min="0" max="100" value="{{ arena.reembolso_pct_fora }}" required></div>
   </div>
   <p class="suave">A devolução vale para reservas pagas pelo app. Reserva paga na arena é só liberada ao cancelar. Reserva online que não for paga em 30 minutos é liberada sozinha.</p>

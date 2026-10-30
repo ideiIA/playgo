@@ -681,8 +681,8 @@ def reservar_horario_tela(horario_id: int, request: Request, s: Sessao, usuario:
 
 
 @app.post("/horarios/{horario_id}/reservar")
-def reservar_horario(horario_id: int, request: Request, s: Sessao, usuario: Atual, forma: str = Form(""), nome: str = Form(""), cpf_cnpj: str = Form(""), email: str = Form("")):
-    r = reservas.reservar_horario(s, usuario, horario_id, forma or None, {"nome": nome, "cpf_cnpj": cpf_cnpj, "email": email})
+def reservar_horario(horario_id: int, request: Request, s: Sessao, usuario: Atual, forma: str = Form(""), metodo: str = Form(""), nome: str = Form(""), cpf_cnpj: str = Form(""), email: str = Form("")):
+    r = reservas.reservar_horario(s, usuario, horario_id, forma or None, {"nome": nome, "cpf_cnpj": cpf_cnpj, "email": email}, metodo or None)
     request.session["ok"] = "Reserva feita! Pague pelo link para confirmar." if r["link_pagamento"] else "Reserva feita! O pagamento é combinado direto com a arena."
     return RedirectResponse("/reservas", status_code=303)
 
@@ -850,12 +850,12 @@ def editar_arena_tela(arena_id: int, request: Request, s: Sessao, usuario: Atual
 def editar_arena(
     arena_id: int, s: Sessao, usuario: Atual, nome: str = Form(), latitude: str = Form(""), longitude: str = Form(""), endereco: str = Form(""), cidade: str = Form(""),
     abre: str = Form("06:00"), fecha: str = Form("23:00"), estrutura: str = Form(""), descricao: str = Form(""), regras: str = Form(""), tipo_estabelecimento: str = Form("arena"),
-    pagamento_reserva: str = Form("local"), cancel_horas: int = Form(24), reembolso_pct: int = Form(100), reembolso_pct_fora: int = Form(0),
+    pagamento_reserva: str = Form("local"), cancel_horas: int = Form(24), reembolso_pct: int = Form(100), reembolso_pct_fora: int = Form(0), acrescimo_cartao_pct: str = Form("0"),
 ):
     lat, lng = _num(latitude, float), _num(longitude, float)
     if lat is None or lng is None:
         raise ErroNegocio("Marque a localização da arena no mapa.")
-    a = arenas.editar(s, arenas.obter(s, arena_id), usuario, nome, lat, lng, endereco, cidade or None, descricao or None, estrutura or None, regras or None, _hora(abre), _hora(fecha), tipo_estabelecimento, pagamento_reserva, cancel_horas, reembolso_pct, reembolso_pct_fora)
+    a = arenas.editar(s, arenas.obter(s, arena_id), usuario, nome, lat, lng, endereco, cidade or None, descricao or None, estrutura or None, regras or None, _hora(abre), _hora(fecha), tipo_estabelecimento, pagamento_reserva, cancel_horas, reembolso_pct, reembolso_pct_fora, _num(acrescimo_cartao_pct) or Decimal(0))
     return RedirectResponse(f"/gestao?arena={a.id}", status_code=303)
 
 
