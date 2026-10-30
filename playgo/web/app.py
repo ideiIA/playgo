@@ -789,6 +789,27 @@ def criar_arena(
     return RedirectResponse(f"/gestao?arena={a.id}", status_code=303)
 
 
+@app.get("/gestao/arenas/{arena_id}/editar")
+def editar_arena_tela(arena_id: int, request: Request, s: Sessao, usuario: Atual):
+    if (r := _sem_plano(request, s, usuario, "arena")) is not None:
+        return r
+    a = arenas.obter(s, arena_id)
+    arenas.exigir_gestor(a, usuario)
+    return pagina(request, s, usuario, "arena_editar.html", "gestao", arena=a, centro={"latitude": a.latitude, "longitude": a.longitude, "informada": True})
+
+
+@app.post("/gestao/arenas/{arena_id}/editar")
+def editar_arena(
+    arena_id: int, s: Sessao, usuario: Atual, nome: str = Form(), latitude: str = Form(""), longitude: str = Form(""), endereco: str = Form(""), cidade: str = Form(""),
+    abre: str = Form("06:00"), fecha: str = Form("23:00"), estrutura: str = Form(""), descricao: str = Form(""), regras: str = Form(""), tipo_estabelecimento: str = Form("arena"),
+):
+    lat, lng = _num(latitude, float), _num(longitude, float)
+    if lat is None or lng is None:
+        raise ErroNegocio("Marque a localização da arena no mapa.")
+    a = arenas.editar(s, arenas.obter(s, arena_id), usuario, nome, lat, lng, endereco, cidade or None, descricao or None, estrutura or None, regras or None, _hora(abre), _hora(fecha), tipo_estabelecimento)
+    return RedirectResponse(f"/gestao?arena={a.id}", status_code=303)
+
+
 def _volta_gestao(arena_id: int | str, dia: str = "") -> RedirectResponse:
     return RedirectResponse(f"/gestao?arena={arena_id}", status_code=303)
 

@@ -615,12 +615,18 @@ def ver_arena(arena_id: int, u: AtualApi, s: Sessao):
 
 @router.get("/gestao/arenas")
 def minhas_arenas(u: AtualApi, s: Sessao):
-    return [ser.arena(a) | {"abre": a.abre.strftime("%H:%M"), "fecha": a.fecha.strftime("%H:%M")} for a in arenas.minhas(s, u)]
+    return [ser.arena(a) | {"abre": a.abre.strftime("%H:%M"), "fecha": a.fecha.strftime("%H:%M"), "descricao": a.descricao, "regras": a.regras} for a in arenas.minhas(s, u)]
 
 
 @router.post("/gestao/arenas", status_code=201)
 def criar_arena(corpo: ArenaIn, u: AtualApi, s: Sessao):
     a = arenas.criar(s, u, **corpo.model_dump())
+    return detalhes.arena_publica(s, a, u)
+
+
+@router.put("/gestao/arenas/{arena_id}")
+def editar_arena(arena_id: int, corpo: ArenaIn, u: AtualApi, s: Sessao):
+    a = arenas.editar(s, arenas.obter(s, arena_id), u, **corpo.model_dump())
     return detalhes.arena_publica(s, a, u)
 
 

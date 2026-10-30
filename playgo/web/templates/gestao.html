@@ -15,6 +15,7 @@
   <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
     {% if arenas|length > 1 %}<select onchange="location.href='/gestao?arena=' + this.value" style="border:1px solid var(--border);border-radius:12px;padding:10px">{% for x in arenas %}<option value="{{ x.id }}" {{ 'selected' if x.id == arena.id }}>{{ x.nome }}</option>{% endfor %}</select>{% endif %}
     <a class="btn soft" href="/arenas/{{ arena.id }}">Ver página pública</a>
+    <a class="btn soft" href="/gestao/arenas/{{ arena.id }}/editar">✏️ Editar arena</a>
     {% if rec_fase != 'desligado' %}<a class="btn soft" href="/gestao/recebimentos?arena={{ arena.id }}">💰 Receber pelo app</a>{% endif %}
     <a class="btn soft" href="/gestao/arenas/nova">+ Nova arena</a>
     <a class="btn purple" href="#nova-quadra" onclick="document.getElementById('nova-quadra').open = true">+ Nova quadra</a>

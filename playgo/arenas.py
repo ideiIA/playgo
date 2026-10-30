@@ -7,7 +7,7 @@ from decimal import Decimal
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session as SessaoORM
 
-from . import notificacoes, planos
+from . import auditoria, notificacoes, planos
 from .db import agora
 from .erros import ErroNegocio, NaoEncontrado, SemPermissao
 from .geo import distancia_sql, formatar_km
@@ -91,6 +91,40 @@ def criar(
     arena.gestores.append(usuario)
     usuario.gestor = True  # quem cadastra uma arena ganha a área Gestão
     s.add(arena)
+    s.commit()
+    return arena
+
+
+def editar(
+    s: SessaoORM,
+    arena: Arena,
+    usuario: Usuario,
+    nome: str,
+    latitude: float,
+    longitude: float,
+    endereco: str = "",
+    cidade: str | None = None,
+    descricao: str | None = None,
+    estrutura: str | None = None,
+    regras: str | None = None,
+    abre: time = time(6, 0),
+    fecha: time = time(23, 0),
+    tipo_estabelecimento: str = "arena",
+) -> Arena:
+    """Altera os dados cadastrais da arena (só gestor ou admin). Os dados da conta de recebimento (Asaas) não mudam por aqui."""
+    exigir_gestor(arena, usuario)
+    planos.exigir(s, usuario, "arena")
+    if tipo_estabelecimento not in TIPOS_ESTABELECIMENTO:
+        raise ErroNegocio("Escolha o tipo de estabelecimento: arena, academia, clube ou escola.")
+    if not nome.strip():
+        raise ErroNegocio("Informe o nome da arena.")
+    if abre >= fecha:
+        raise ErroNegocio("O horário de abertura precisa ser anterior ao de fechamento.")
+    arena.nome, arena.latitude, arena.longitude = nome.strip(), latitude, longitude
+    arena.endereco, arena.cidade = endereco.strip(), (cidade or "").strip() or None
+    arena.descricao, arena.estrutura, arena.regras = descricao or None, estrutura or None, regras or None
+    arena.abre, arena.fecha, arena.tipo_estabelecimento = abre, fecha, tipo_estabelecimento
+    auditoria.registrar(s, usuario.id, "arena_editar", "arena", arena.id)
     s.commit()
     return arena
 

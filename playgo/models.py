@@ -1023,6 +1023,7 @@ class Recebedor(Base):
     documentos_pendentes: Mapped[list | None] = mapped_column(JSONB)  # [{id, tipo, titulo, onboarding_url}]
     motivo_recusa: Mapped[str | None] = mapped_column(String(300))
     documento_final: Mapped[str | None] = mapped_column(String(4))  # 4 últimos dígitos do CPF/CNPJ, só para exibir
+    email_mascara: Mapped[str | None] = mapped_column(String(120))  # e-mail do cadastro no Asaas, mascarado (j•••@dominio): só para a Arena saber onde olhar
     consultar_apos: Mapped[datetime | None] = mapped_column(DateTime)  # o Asaas pede >= 15 s antes de consultar as pendências
     destino_tipo: Mapped[str | None] = mapped_column(String(8))  # CPF | CNPJ | EMAIL | PHONE | EVP
     destino_cripto: Mapped[str | None] = mapped_column(Text)

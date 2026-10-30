@@ -238,7 +238,7 @@ def estado(rec: Recebedor | None, arena: Arena | None = None) -> dict:
     espera = max(0, int((rec.consultar_apos - agora()).total_seconds()) + 1) if rec.consultar_apos and rec.consultar_apos > agora() else 0
     return com_rodape(base | {"ativo": rec.ativo, "recebedor": {
         "id": rec.id, "arena_id": rec.arena_id, "status_kyc": rec.status_kyc, "ambiente": rec.ambiente, "documentos_pendentes": rec.documentos_pendentes or [],
-        "motivo_recusa": rec.motivo_recusa, "aguardar_s": espera, "documento_final": rec.documento_final, "destino": _destino(rec),
+        "motivo_recusa": rec.motivo_recusa, "aguardar_s": espera, "documento_final": rec.documento_final, "email_mascara": rec.email_mascara, "destino": _destino(rec),
         "dados_atualizados_em": rec.dados_atualizados_em, "precisa_atualizar_dados": precisa_atualizar(rec), "pode_cobrar": rec.ativo and rec.status_kyc == "aprovado",
     }})
 
@@ -344,7 +344,7 @@ def ativar_recebimento(s: SessaoORM, arena_id: int, u: Usuario, dados: dict) -> 
         raise ErroNegocio("O sistema de pagamento criou a conta mas não devolveu as credenciais. Fale com a administração.")
     rec = Recebedor(
         arena_id=arena.id, asaas_account_id=str(resp["id"]), wallet_id=str(resp["walletId"]), api_key_cripto=cifrar(api_key), api_key_id=token.get("id"),
-        ambiente="producao" if settings.asaas_ambiente == "producao" else "sandbox", status_kyc="criando", documento_final=doc[-4:],
+        ambiente="producao" if settings.asaas_ambiente == "producao" else "sandbox", status_kyc="criando", documento_final=doc[-4:], email_mascara=_mascara_chave("EMAIL", corpo["email"]),
         consultar_apos=agora() + timedelta(seconds=ESPERA_ONBOARDING_S), dados_atualizados_em=agora(),
     )
     s.add(rec)
@@ -412,7 +412,13 @@ def enviar_documento(s: SessaoORM, arena_id: int, u: Usuario, grupo_id: str, tip
         raise ErroNegocio("Envie um arquivo de até 10 MB.")
     if not (conteudo.startswith(b"%PDF-") or conteudo[:3] == b"\xff\xd8\xff" or conteudo[:8] == b"\x89PNG\r\n\x1a\n"):
         raise ErroNegocio("Envie o documento em PDF, JPG ou PNG.")
-    _chamar(rec, "POST", f"/myAccount/documents/{grupo_id}", arquivos={"documentFile": ("documento", conteudo, content_type or "application/octet-stream")}, dados={"type": tipo})
+    try:
+        _chamar(rec, "POST", f"/myAccount/documents/{grupo_id}", arquivos={"documentFile": ("documento", conteudo, content_type or "application/octet-stream")}, dados={"type": tipo})
+    except ErroNegocio as e:
+        if "via API" not in str(e):
+            raise
+        raise ErroNegocio("O Asaas não aceita esse documento por aqui. Abra o e-mail que o Asaas enviou ao endereço do cadastro (veja também o spam) "
+                          "e envie por lá; depois toque em \"Atualizar situação\".") from None
     auditoria.registrar(s, u.id, "recebimento_documento", "arena", arena.id, tipo=tipo)  # só o tipo: nunca o nome nem o conteúdo
     rec.consultar_apos = None
     s.commit()

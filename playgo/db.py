@@ -104,6 +104,7 @@ _COLUNAS_NOVAS: tuple[str, ...] = (
     "CREATE UNIQUE INDEX IF NOT EXISTS ux_reservas_asaas_payment ON reservas (asaas_payment_id)",
     "ALTER TABLE reservas ADD COLUMN IF NOT EXISTS invoice_url varchar(300)",
     "ALTER TABLE saques_recebedor ADD COLUMN IF NOT EXISTS destino_selo varchar(64)",
+    "ALTER TABLE recebedores ADD COLUMN IF NOT EXISTS email_mascara varchar(120)",
     "ALTER TABLE saques_recebedor ADD COLUMN IF NOT EXISTS validacao varchar(10)",
     "ALTER TABLE eventos_recebimento ADD COLUMN IF NOT EXISTS tipo varchar(20)",
     "ALTER TABLE eventos_recebimento ADD COLUMN IF NOT EXISTS resultado varchar(10)",

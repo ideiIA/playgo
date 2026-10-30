@@ -83,6 +83,7 @@
       const [rotulo, cor] = KYC[r.status_kyc] || [r.status_kyc, 'rb-azul'];
       const pend = r.documentos_pendentes || [];
       el.innerHTML = '<div class="rb-caixa"><h2>💰 Receber pelo app</h2><p>Situação do cadastro: <span class="rb-tag ' + cor + '">' + esc(rotulo) + '</span></p>' +
+        (r.email_mascara && r.status_kyc !== 'aprovado' ? '<p class="rb-nota">O Asaas escreve para o e-mail do cadastro: <b>' + esc(r.email_mascara) + '</b> (veja também o spam). É por lá que chegam o link e os pedidos de documentos.</p>' : '') +
         (r.status_kyc === 'criando' || r.aguardar_s ? '<p class="rb-nota">Estamos preparando sua conta' + (r.aguardar_s ? ' (consulta em ' + r.aguardar_s + ' s)' : '') + '…</p>' : '') +
         (r.status_kyc === 'recusado' ? '<p class="rb-aviso">Seu cadastro foi recusado' + (r.motivo_recusa ? ': ' + esc(r.motivo_recusa) : '') + '. Fale com a administração do PlayGo.</p>' : '') +
         (r.status_kyc === 'em_analise' ? '<p class="rb-nota">Recebemos seus dados e o Asaas está analisando. Avisamos você aqui assim que for aprovado.</p>' : '') +

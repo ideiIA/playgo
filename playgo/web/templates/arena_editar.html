@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% import "_cards.html" as c %}
+{% block titulo %}Editar arena — PlayGo{% endblock %}
+{% block conteudo %}
+<div class="section-title"><h2>Editar arena</h2></div>
+<form class="panel" method="post" action="/gestao/arenas/{{ arena.id }}/editar">
+  <div class="form-grid">
+    <div class="field"><label for="nome">Nome da arena</label><input name="nome" id="nome" required maxlength="200" value="{{ arena.nome }}"></div>
+    <div class="field"><label for="tipo_estabelecimento">Tipo de estabelecimento</label><select name="tipo_estabelecimento" id="tipo_estabelecimento">{% for k, v in {'arena': 'Arena', 'academia': 'Academia', 'clube': 'Clube', 'escola': 'Escola'}.items() %}<option value="{{ k }}" {{ 'selected' if arena.tipo_estabelecimento == k }}>{{ v }}</option>{% endfor %}</select></div>
+    <div class="field"><label for="cidade">Cidade</label><input name="cidade" id="cidade" value="{{ arena.cidade or '' }}"></div>
+    <div class="field full"><label for="endereco">Endereço</label><input name="endereco" id="endereco" value="{{ arena.endereco or '' }}" placeholder="Rua, número, bairro"></div>
+    <div class="field"><label for="abre">Abre às</label><input type="time" name="abre" id="abre" value="{{ arena.abre.strftime('%H:%M') }}" required></div>
+    <div class="field"><label for="fecha">Fecha às</label><input type="time" name="fecha" id="fecha" value="{{ arena.fecha.strftime('%H:%M') }}" required></div>
+    {{ c.seletor_local(centro, arena.latitude, arena.longitude) }}
+    <div class="field full"><label for="estrutura">Estrutura</label><input name="estrutura" id="estrutura" value="{{ arena.estrutura or '' }}" placeholder="Vestiário, bar, estacionamento…"></div>
+    <div class="field full"><label for="descricao">Descrição</label><textarea name="descricao" id="descricao">{{ arena.descricao or '' }}</textarea></div>
+    <div class="field full"><label for="regras">Regras da casa</label><textarea name="regras" id="regras">{{ arena.regras or '' }}</textarea></div>
+  </div>
+  <p class="suave">Os dados da conta de recebimento (documento, e-mail e conta no Asaas) não mudam aqui.</p>
+  <br><button class="btn purple">Salvar alterações</button> <a class="btn soft" href="/gestao?arena={{ arena.id }}">Cancelar</a>
+</form>
+{% endblock %}

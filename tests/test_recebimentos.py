@@ -133,6 +133,8 @@ def _ativada(s, fabrica, asaas, aprovar=True, nome="Arena Gol"):
     a, q, g = _arena(s, fabrica, nome)
     recebimentos.ativar_recebimento(s, a.id, g, DADOS_PF)
     rec = s.scalar(select(Recebedor).where(Recebedor.arena_id == a.id))
+    assert rec.email_mascara == "m•••@arena.test"  # o e-mail inteiro nunca é guardado
+    assert recebimentos.estado(rec, a)["recebedor"]["email_mascara"] == "m•••@arena.test"
     if aprovar:
         rec.status_kyc = "aprovado"
         s.commit()

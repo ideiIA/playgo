@@ -118,6 +118,19 @@ def test_gestor_virou_gestor_e_cadastrou_quadra(s, arena):
     assert gestor.gestor and q.modalidades == ["beach_tennis"]
 
 
+def test_editar_arena_so_gestor_e_valida(s, arena, fabrica):
+    gestor, a, _ = arena
+    arenas.editar(s, a, gestor, "  Arena Nova ", -20.5, -54.7, endereco="Rua A, 10", cidade="Campo Grande", descricao="Boa", abre=time(8, 0), fecha=time(22, 0), tipo_estabelecimento="clube")
+    s.refresh(a)
+    assert (a.nome, a.latitude, a.endereco, a.cidade, a.tipo_estabelecimento, a.abre) == ("Arena Nova", -20.5, "Rua A, 10", "Campo Grande", "clube", time(8, 0))
+    with pytest.raises(ErroNegocio):
+        arenas.editar(s, a, gestor, " ", -20.5, -54.7)
+    with pytest.raises(ErroNegocio):
+        arenas.editar(s, a, gestor, "X", -20.5, -54.7, abre=time(10, 0), fecha=time(9, 0))
+    with pytest.raises(SemPermissao):
+        arenas.editar(s, a, fabrica.atleta("Intruso"), "Hack", 0, 0)
+
+
 def test_reserva_nao_sobrepoe(s, arena):
     _, _, q = arena
     ini = (agora() + timedelta(days=1)).replace(minute=0, second=0, microsecond=0)

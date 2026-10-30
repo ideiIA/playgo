@@ -761,7 +761,7 @@
         <div class="livebar" style="flex-direction:column;align-items:stretch">${p.horarios_ociosos ? `<div><span class="pulse"></span><strong>${p.horarios_ociosos} horário(s) ocioso(s).</strong> Publique para atletas próximos.</div><button class="btn lima" data-acao="divulgar-todos" data-id="${arena.id}">Divulgar horário</button>` : `<div><span class="pulse"></span><strong>Sem horários ociosos no restante do dia${p.horarios_divulgados ? ' — ' + p.horarios_divulgados + ' já divulgado(s)' : ''}.</strong></div>`}</div>
         <div class="secao"><h2>Agenda</h2><div><button class="btn suave pequeno" data-acao="dia" data-v="${mover(-1)}">←</button> <span class="suave">${d.toLocaleDateString('pt-BR')}</span> <button class="btn suave pequeno" data-acao="dia" data-v="${mover(1)}">→</button></div></div>
         <div class="painel" style="overflow-x:auto">${ag.quadras.length ? `<table class="agenda"><thead><tr><th>Hora</th>${ag.quadras.map((q) => `<th>${esc(q.nome)}</th>`).join('')}</tr></thead><tbody>${ag.linhas.map((l) => `<tr><td>${esc(l.hora)}</td>${l.celulas.map((c) => `<td><button class="cel ${c.estado} ${c.passado ? 'passado' : ''}" data-acao="celula" data-c='${esc(JSON.stringify({ ...c, inicio: l.inicio }))}'>${esc(c.rotulo)}</button></td>`).join('')}</tr>`).join('')}</tbody></table>` : '<p class="vazio">Cadastre a primeira quadra.</p>'}</div>
-        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn suave" data-acao="nova-quadra" data-id="${arena.id}">+ Nova quadra</button><a class="btn suave" href="#/nova-arena">+ Nova arena</a>${pode('recebimentos') ? `<a class="btn suave" href="#/recebimentos/${arena.id}">💰 Receber pelo app</a>` : ''}</div>
+        <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn suave" data-acao="nova-quadra" data-id="${arena.id}">+ Nova quadra</button><a class="btn suave" href="#/editar-arena/${arena.id}">✏️ Editar arena</a><a class="btn suave" href="#/nova-arena">+ Nova arena</a>${pode('recebimentos') ? `<a class="btn suave" href="#/recebimentos/${arena.id}">💰 Receber pelo app</a>` : ''}</div>
         ${secao('Ocupação por horário')}<div class="painel barras">${p.ocupacao_por_hora.map((h) => `<div class="l"><span>${esc(h.hora)}</span><div class="barra"><i style="width:${h.pct}%"></i></div><span>${h.pct}%</span></div>`).join('')}</div>
         ${secao('Dias com maior demanda')}<div class="painel barras">${p.demanda_por_dia.map((x) => `<div class="l"><span>${esc(x.dia)}</span><div class="barra"><i style="width:${Math.round((100 * x.total) / max)}%"></i></div><span>${x.total}</span></div>`).join('')}</div>
         ${secao('Mais procurados')}<div class="painel">${p.modalidades_procuradas.map((m) => `<div class="pessoa"><span style="font-size:22px">${esc(m.icone)}</span><b>${esc(m.nome)}</b><span class="suave" style="margin-left:auto">${m.total}</span></div>`).join('') || '<p class="suave">Sem atividades ainda.</p>'}<p class="suave" style="margin-top:10px">${p.clientes_recorrentes} clientes recorrentes</p></div>`,
@@ -778,17 +778,25 @@
     window.Recebimentos.montarAdmin($('#recebimentos'), { api, toast });
   }
 
-  function vNovaArena() {
-    montar(`<a href="#/gestao" class="suave">← Voltar</a><h1 style="margin:8px 0 14px">Cadastrar arena</h1>
+  async function vNovaArena(id) {  // com `id`, edita a arena (mesma tela do cadastro, já preenchida)
+    let a = null;
+    if (id) {
+      try { a = (await api('/gestao/arenas')).find((x) => x.id === Number(id)); } catch (e) { return erroTela(e); }
+      if (!a) return erroTela(new Error('Arena não encontrada.'));
+    }
+    const v = (k, padrao = '') => esc(a && a[k] != null ? a[k] : padrao);
+    montar(`<a href="#/gestao" class="suave">← Voltar</a><h1 style="margin:8px 0 14px">${a ? 'Editar arena' : 'Cadastrar arena'}</h1>
       <form id="f-arena" class="painel"><div id="erro"></div>
-      <div class="campo"><label>Nome</label><input name="nome" required></div><div class="campo"><label>Tipo de estabelecimento</label><select name="tipo_estabelecimento"><option value="arena">Arena</option><option value="academia">Academia</option><option value="clube">Clube</option><option value="escola">Escola</option></select></div><div class="campo"><label>Endereço</label><input name="endereco"></div>
-      <div class="duas"><div class="campo"><label>Abre</label><input type="time" name="abre" value="06:00" required></div><div class="campo"><label>Fecha</label><input type="time" name="fecha" value="23:00" required></div></div>
-      <div class="campo"><label>Estrutura</label><input name="estrutura" placeholder="Vestiário, bar, estacionamento"></div>
+      <div class="campo"><label>Nome</label><input name="nome" required value="${v('nome')}"></div><div class="campo"><label>Tipo de estabelecimento</label><select name="tipo_estabelecimento">${[['arena', 'Arena'], ['academia', 'Academia'], ['clube', 'Clube'], ['escola', 'Escola']].map(([k, n]) => `<option value="${k}" ${a && a.tipo_estabelecimento === k ? 'selected' : ''}>${n}</option>`).join('')}</select></div><div class="campo"><label>Endereço</label><input name="endereco" value="${v('endereco')}"></div>
+      <div class="duas"><div class="campo"><label>Abre</label><input type="time" name="abre" value="${v('abre', '06:00')}" required></div><div class="campo"><label>Fecha</label><input type="time" name="fecha" value="${v('fecha', '23:00')}" required></div></div>
+      <div class="campo"><label>Estrutura</label><input name="estrutura" placeholder="Vestiário, bar, estacionamento" value="${v('estrutura')}"></div>
+      <div class="campo"><label>Descrição</label><textarea name="descricao">${v('descricao')}</textarea></div>
+      <div class="campo"><label>Regras da casa</label><textarea name="regras">${v('regras')}</textarea></div>
       <div class="campo"><label>Onde fica a arena?</label>
         <div class="mapa pequeno" id="mapa-arena" style="height:300px;margin-top:6px"></div>
         <span class="suave" id="info-local" style="display:block;margin-top:6px">Busque o endereço na lupa do mapa ou toque no ponto exato. Dá para arrastar o pino.</span>
         <button type="button" class="btn suave bloco" data-acao="local-arena" style="margin-top:8px">📍 Usar minha localização atual</button></div>
-      <button class="btn roxo bloco">Cadastrar</button></form>`, () => {
+      <button class="btn roxo bloco">${a ? 'Salvar alterações' : 'Cadastrar'}</button></form>`, () => {
       let local = null;
       const info = $('#info-local');
       const centro = estado.pos ? [estado.pos.lat, estado.pos.lng] : (estado.usuario && estado.usuario.latitude ? [estado.usuario.latitude, estado.usuario.longitude] : [-20.4697, -54.6201]);
@@ -807,10 +815,15 @@
         mapa.on('click', (e) => definir(e.latlng.lat, e.latlng.lng));
         estado.seletorArena = { definir, mapa };
       } else { $('#mapa-arena').innerHTML = '<p class="vazio">Mapa indisponível sem conexão. Use “Usar minha localização atual”.</p>'; estado.seletorArena = { definir: (la, ln) => { local = { lat: la, lng: ln }; info.textContent = 'Local marcado ✓'; } }; }
+      if (a) { estado.seletorArena.definir(a.latitude, a.longitude); if (estado.seletorArena.mapa) estado.seletorArena.mapa.setView([a.latitude, a.longitude], 16); }
       $('#f-arena').onsubmit = async (ev) => {
         ev.preventDefault(); const d = dadosForm(ev.target);
         if (!local) { $('#erro').innerHTML = '<p class="aviso erro">Marque o local da arena no mapa (busque o endereço ou toque no ponto).</p>'; return; }
-        try { await post('/gestao/arenas', { nome: d.nome, tipo_estabelecimento: d.tipo_estabelecimento || 'arena', endereco: d.endereco || '', abre: d.abre, fecha: d.fecha, estrutura: d.estrutura || null, latitude: local.lat, longitude: local.lng, cidade: estado.usuario.cidade }); toast('Arena cadastrada!'); estado.arena = null; location.hash = '#/gestao'; }
+        const corpo = { nome: d.nome, tipo_estabelecimento: d.tipo_estabelecimento || 'arena', endereco: d.endereco || '', abre: d.abre, fecha: d.fecha, estrutura: d.estrutura || null, descricao: d.descricao || null, regras: d.regras || null, latitude: local.lat, longitude: local.lng, cidade: (a && a.cidade) || estado.usuario.cidade };
+        try {
+          if (a) { await api(`/gestao/arenas/${a.id}`, { metodo: 'PUT', corpo }); toast('Arena atualizada!'); } else { await post('/gestao/arenas', corpo); toast('Arena cadastrada!'); estado.arena = null; }
+          location.hash = '#/gestao';
+        }
         catch (e) { $('#erro').innerHTML = `<p class="aviso erro">${esc(e.message)}</p>`; }
       };
     });
@@ -1440,6 +1453,7 @@
       case 'local': return vLocal(arg);
       case 'gestao': return vGestao();
       case 'nova-arena': return vNovaArena();
+      case 'editar-arena': return vNovaArena(arg);
       case 'perfil': return vPerfil();
       case 'notificacoes': return vNotificacoes();
       case 'feed': return vFeed(parametros);
