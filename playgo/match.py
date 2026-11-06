@@ -113,7 +113,7 @@ def avisar_compativeis(s: SessaoORM, a: Atividade, motivo: str, chave: str | Non
             tipo = "vaga"
         else:
             titulo = f"{m.icone} Novo {m.nome.lower()} a {perto} de você."
-            corpo = f"{a.nome} — {quando} • {valor_texto(a.valor)} • {a.vagas} vaga{'s' if a.vagas > 1 else ''}."
+            corpo = f"{a.nome} · {quando} • {valor_texto(a.valor)} • {a.vagas} vaga{'s' if a.vagas > 1 else ''}."
             tipo = "vaga"
         k = f"{chave or motivo}:{a.id}" if motivo != "vaga" else (chave or f"vaga:{a.id}:{a.vagas}")
         if notificacoes.avisar(s, usuario.id, tipo, titulo, corpo, f"/atividades/{a.id}", a.id, k[:80]):

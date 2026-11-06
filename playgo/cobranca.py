@@ -104,7 +104,7 @@ def assinar(s: SessaoORM, u: Usuario, plano: str, cpf_cnpj: str, ciclo: str = "m
     primeira = max(hoje + timedelta(days=1), sit["fim"] + timedelta(days=1) if sit["fim"] and sit["status"] in ("teste", "ativa") and sit["plano"] == plano else hoje + timedelta(days=1))
     sub = _chamar("POST", "/subscriptions", {
         "customer": a.asaas_customer_id, "billingType": "UNDEFINED", "value": float(valor), "nextDueDate": primeira.isoformat(),
-        "cycle": "YEARLY" if ciclo == "anual" else "MONTHLY", "description": f"PlayGo — plano {regra.nome} ({ciclo})", "externalReference": f"assinatura:{a.id}",
+        "cycle": "YEARLY" if ciclo == "anual" else "MONTHLY", "description": f"PlayGo: plano {regra.nome} ({ciclo})", "externalReference": f"assinatura:{a.id}",
     })
     a.asaas_subscription_id, a.plano, a.origem, a.ciclo = sub["id"], plano, "asaas", ciclo
     if a.status == "cancelada":
@@ -144,7 +144,7 @@ def comprar_eventos(s: SessaoORM, u: Usuario, quantidade: int, cpf_cnpj: str) ->
     plural = "s" if quantidade > 1 else ""
     pg = _chamar("POST", "/payments", {
         "customer": cliente, "billingType": "UNDEFINED", "value": float(total), "dueDate": (agora().date() + timedelta(days=3)).isoformat(),
-        "description": f"PlayGo — {quantidade} evento{plural} (campeonato{plural})", "externalReference": f"evento:{c.id}",
+        "description": f"PlayGo: {quantidade} evento{plural} (campeonato{plural})", "externalReference": f"evento:{c.id}",
     })
     c.asaas_payment_id, c.invoice_url = pg["id"], pg.get("invoiceUrl")
     auditoria.registrar(s, u.id, "evento_comprar", "credito_evento", c.id, quantidade=quantidade, valor=str(total))

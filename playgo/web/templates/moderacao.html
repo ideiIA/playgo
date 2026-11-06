@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block titulo %}Moderação — PlayGo{% endblock %}
+{% block titulo %}Moderação | PlayGo{% endblock %}
 {% block conteudo %}
 <div class="section-title"><h2>🛡 Fila de moderação</h2></div>
-<p class="suave" style="margin:-6px 0 14px">Aqui chegam as publicações e comentários que a análise automática segurou (ou que juntaram várias denúncias). Eles <b>não aparecem para ninguém</b> além do autor até você decidir. Você só aprova ou rejeita — nunca edita o conteúdo de outra pessoa. Para tirar do ar algo já publicado, use <b>Ocultar</b> no próprio mural.</p>
+<p class="suave" style="margin:-6px 0 14px">Aqui chegam as publicações e comentários que a análise automática segurou (ou que juntaram várias denúncias). Eles <b>não aparecem para ninguém</b> além do autor até você decidir. Você só aprova ou rejeita. Nunca edita o conteúdo de outra pessoa. Para tirar do ar algo já publicado, use <b>Ocultar</b> no próprio mural.</p>
 <div id="fila" class="lista-fila"><p class="vazio">Carregando…</p></div>
 <div id="instagram-fila"></div>
 <script src="/static/instagram.js"></script>
@@ -16,7 +16,7 @@
       el.innerHTML = f.itens.map((i) => `<article class="panel" style="margin-bottom:14px" data-tipo="${i.tipo}" data-id="${i.id}">
         <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><b>${i.tipo === 'publicacao' ? 'Publicação' : 'Comentário'} de ${esc(i.autor.arroba)}</b><span class="suave">${esc(i.quando)} · ${esc(i.escopo_titulo || '')}</span></div>
         <p class="aviso" style="background:#fff6dd;color:#8a5a00;margin:10px 0"><b>Motivo apontado:</b> ${esc(i.motivo_analise)}</p>
-        ${i.denuncias && i.denuncias.length ? `<p class="suave">Denúncias: ${i.denuncias.map((d) => esc(d.motivo) + (d.detalhe ? ' — “' + esc(d.detalhe) + '”' : '')).join('; ')}</p>` : ''}
+        ${i.denuncias && i.denuncias.length ? `<p class="suave">Denúncias: ${i.denuncias.map((d) => esc(d.motivo) + (d.detalhe ? ': “' + esc(d.detalhe) + '”' : '')).join('; ')}</p>` : ''}
         <div style="white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0">${esc(i.texto)}</div>
         ${i.midias && i.midias.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin:8px 0">${i.midias.map((m) => m.tipo === 'video' ? `<video controls preload="metadata" src="${esc(m.url)}" style="max-width:260px;border-radius:10px"></video>` : `<a href="${esc(m.url)}" target="_blank" rel="noopener"><img src="${esc(m.miniatura || m.url)}" style="max-height:200px;border-radius:10px"></a>`).join('')}</div>` : ''}
         ${i.local ? `<p class="suave">📍 ${esc(i.local.nome)}</p>` : ''}

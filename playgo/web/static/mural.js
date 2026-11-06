@@ -2,7 +2,7 @@
    Mural.montar(elemento, opcoes)
      opcoes.api(caminho, {metodo, corpo, form})  -> Promise<json>   (cada lado sabe se autenticar)
      opcoes.geral        true para o feed geral; senão informe escopo ('atividade'|'campeonato'|'comunidade') e escopoId
-     opcoes.posicao      {lat, lng} do perfil (se houver) — usada como sugestão de local
+     opcoes.posicao      {lat, lng} do perfil (se houver). Usada como sugestão de local
      opcoes.eu           {id, arroba, admin}
      opcoes.toast(msg)   aviso rápido
      opcoes.link(escopo, id, linkWeb)  mapeia o link do escopo (o app usa #/…)
@@ -86,7 +86,7 @@
         <textarea name="texto" maxlength="2000" rows="3" placeholder="${o.geral ? 'Compartilhe o que está rolando perto de você…' : 'Escreva no mural…'}"></textarea>
         <div class="mu-anexos">${S.anexos.map((a, i) => `<span class="mu-anexo">${a.type.startsWith('video') ? '🎬' : '🖼️'} ${esc(a.name.slice(0, 22))} <button type="button" data-a="tirar-anexo" data-i="${i}" aria-label="Remover">✕</button></span>`).join('')}</div>
         <div class="mu-local">
-          ${fixo ? `<span class="mu-chip">📍 Local do evento — ${esc(S.escopo.titulo)}</span>` : `
+          ${fixo ? `<span class="mu-chip">📍 Local do evento: ${esc(S.escopo.titulo)}</span>` : `
             <span class="mu-chip ${loc ? 'ok' : 'falta'}">📍 ${loc ? (loc.origem === 'perfil' ? 'Usando a localização do seu perfil' : 'Localização marcada') : 'Marque o local da publicação'}</span>
             <button type="button" class="mu-btn cinza peq" data-a="gps">Usar onde estou agora</button>
             <input class="mu-nome-local" name="local_nome" maxlength="200" placeholder="Nome do local (ex.: Parque das Nações)">`}
@@ -117,7 +117,7 @@
     function selo(p) { return seloBase(p) + seloIg(p); }
 
     function seloBase(p) {
-      if (p.status === 'em_analise') return `<div class="mu-aviso em">⏳ Em análise — só você vê por enquanto.${eu.admin && p.motivo_analise ? ' <b>Motivo:</b> ' + esc(p.motivo_analise) : ''}</div>`;
+      if (p.status === 'em_analise') return `<div class="mu-aviso em">⏳ Em análise: só você vê por enquanto.${eu.admin && p.motivo_analise ? ' <b>Motivo:</b> ' + esc(p.motivo_analise) : ''}</div>`;
       if (p.status === 'oculta') return `<div class="mu-aviso oc">🚫 Oculta por ${p.oculta_por_papel === 'admin' ? 'um administrador' : 'um moderador'}${p.oculta_motivo ? ': ' + esc(p.oculta_motivo) : ''}</div>`;
       if (p.status === 'rejeitada') return '<div class="mu-aviso oc">❌ Não aprovada: viola os termos de uso e não é exibida.</div>';
       return '';
@@ -283,7 +283,7 @@
         try {
           await o.api(`/publicacoes/${pid}/comentarios`, { metodo: 'POST', corpo: { texto: f.texto.value } });
           const post = S.itens.find((x) => x.id === pid); if (post) post.n_comentarios += 0;
-          ate('Comentário enviado — passa por uma análise rápida antes de aparecer para todos.');
+          ate('Comentário enviado: passa por uma análise rápida antes de aparecer para todos.');
           carregarComentarios(pid, f.closest('[data-coments]'));
         } catch (e) { ate(e.message); }
       } else if (f.dataset.form === 'editar-post' || f.dataset.form === 'editar-comentario') {

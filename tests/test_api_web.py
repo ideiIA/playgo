@@ -178,7 +178,7 @@ def test_gestao_arena_pela_api(cliente):
     assert site_atleta.get(f"/arenas/{arena_id}").text.count("/reservar") >= 1
     assert cliente.post(f"/api/v1/reservas/{r.json()['id']}/cancelar", headers=gestor).status_code == 404  # só quem reservou cancela
     assert cliente.post(f"/api/v1/reservas/{r.json()['id']}/cancelar", headers=atleta).json()["cancelada"] is True
-    assert "Beach Teste — Areia 1" in pagina_nova.text and "Beach Tennis" in pagina_nova.text and "Futebol" not in pagina_nova.text.split('id="modalidade_id"')[1].split("</select>")[0]
+    assert "Beach Teste · Areia 1" in pagina_nova.text and "Beach Tennis" in pagina_nova.text and "Futebol" not in pagina_nova.text.split('id="modalidade_id"')[1].split("</select>")[0]
 
 
 def test_grupos_e_campeonatos_pela_api(cliente):

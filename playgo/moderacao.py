@@ -50,7 +50,7 @@ class Veredito:
 
     def descricao(self) -> str:
         nomes = ", ".join(CATEGORIAS.get(c, c) for c in self.categorias)
-        return (nomes + (f" — {self.motivo}" if self.motivo else "")).strip(" —") or "sem detalhes"
+        return (nomes + (f": {self.motivo}" if self.motivo else "")).strip(" :") or "sem detalhes"
 
 
 # ---------------------------------------------------------------- regras locais

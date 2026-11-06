@@ -134,7 +134,7 @@
         el.querySelector('#rb-saldo').textContent = brl(sd.saldo);
         if (sd.divergencia) el.querySelector('#rb-div').textContent = ' Conferindo com o Asaas: ' + brl(sd.saldo_asaas) + ' (pode haver valores ainda a liberar ou taxas; a administração acompanha).';
         el.querySelector('#rb-extrato').innerHTML = ex.lancamentos.length ? ex.lancamentos.map((x) => '<div class="rb-linha"><span>' + dh(x.criado_em) + '</span><span>' + esc(TIPO_LANC[x.tipo] || x.tipo) + '</span><b class="' + (x.valor_liquido < 0 ? 'rb-neg' : 'rb-pos') + '">' + brl(x.valor_liquido) + '</b></div>').join('') : '<p class="rb-nota">Nenhum lançamento ainda.</p>';
-        el.querySelector('#rb-saques').innerHTML = sq.saques.length ? sq.saques.map((x) => '<div class="rb-linha"><span>' + dh(x.criado_em) + '</span><span>' + esc({ solicitado: 'Solicitado', enviado: 'Enviado', concluido: 'Concluído', falhou: 'Não concluído' }[x.status] || x.status) + (x.motivo ? ' — ' + esc(x.motivo) : '') + '</span><b>' + brl(x.valor) + '</b></div>').join('') : '<p class="rb-nota">Nenhum saque ainda.</p>';
+        el.querySelector('#rb-saques').innerHTML = sq.saques.length ? sq.saques.map((x) => '<div class="rb-linha"><span>' + dh(x.criado_em) + '</span><span>' + esc({ solicitado: 'Solicitado', enviado: 'Enviado', concluido: 'Concluído', falhou: 'Não concluído' }[x.status] || x.status) + (x.motivo ? ': ' + esc(x.motivo) : '') + '</span><b>' + brl(x.valor) + '</b></div>').join('') : '<p class="rb-nota">Nenhum saque ainda.</p>';
       } catch (e) { erro(e); }
     }
 

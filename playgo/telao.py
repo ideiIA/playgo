@@ -148,7 +148,7 @@ def _montar(s: SessaoORM, c: Campeonato, jogo_id: int | None = None, com_opcoes:
         "campeonato": {"nome": c.nome, "capa_url": f"/capa/{c.capa}" if c.capa else None, "modalidade": c.modalidade.nome, "icone": c.modalidade.icone, "status": c.status},
         "canal": chaves.canal_youtube(s, jogos), "modo": "fixo" if escolhido else "auto", "rotacao_s": ROTACAO_S,
         "opcoes": [
-            {"id": j.id, "status": j.status, "rotulo": f"{'🔴 ' if j.status == J_AO_VIVO else ''}{chaves.jogo_dict(j)['a']['nome']} × {chaves.jogo_dict(j)['b']['nome']} — {j.rodada_nome}"}
+            {"id": j.id, "status": j.status, "rotulo": f"{'🔴 ' if j.status == J_AO_VIVO else ''}{chaves.jogo_dict(j)['a']['nome']} × {chaves.jogo_dict(j)['b']['nome']} · {j.rodada_nome}"}
             for j in (ao_vivo + [x for x in jogos if x.status == J_AGENDADO][:12] + [x for x in reversed(jogos) if x.status == J_ENCERRADO][:6])
         ] if com_opcoes else [],
         "jogos": [_jogo(j, c) for j in ([escolhido] if escolhido else ao_vivo)],

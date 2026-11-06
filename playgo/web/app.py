@@ -290,7 +290,9 @@ def inicio(request: Request, s: Sessao, usuario: Opcional, esporte: str = ""):
     pendencia = contas.pendencias(usuario)
     if pendencia:
         raise PrecisaCompletar(pendencia)
-    return pagina(request, s, usuario, "home.html", "home", feed=feed.montar(s, usuario, modalidade=esporte or None), esporte=esporte)
+    inicio_ = feed.montar(s, usuario, modalidade=esporte or None)
+    pontos = descoberta.pontos_do_mapa({"atividades": inicio_["perto"] + inicio_["urgentes"], "arenas": inicio_["arenas"]})
+    return pagina(request, s, usuario, "home.html", "home", feed=inicio_, esporte=esporte, pontos=pontos)
 
 
 @app.get("/explorar")
@@ -328,7 +330,7 @@ def nova_atividade(request: Request, s: Sessao, usuario: Atual):
     quadra = s.get(Quadra, int(v["quadra_id"])) if (v["quadra_id"] or "").isdigit() else None
     codigos = list(quadra.modalidades or []) if quadra is not None else []
     if quadra is not None:
-        v["quadra_nome"] = f"{quadra.arena.nome} — {quadra.nome}"
+        v["quadra_nome"] = f"{quadra.arena.nome} · {quadra.nome}"
         if not v["modalidade_id"]:
             v["modalidade_id"] = next((m.id for m in modalidades.ativas(s) if m.codigo in codigos), None)
     la, ln, informada = descoberta.localizacao(usuario)
@@ -922,7 +924,7 @@ def perfil(request: Request, s: Sessao, usuario: Atual):
     itens = [serializadores.atividade(a, n, None, st) for a, st in linhas]
     proximas = sorted([i for i in itens if i["minutos_para_inicio"] >= -90 and i["status"] == "aberta"], key=lambda i: i["inicio"])
     historico = [i for i in itens if i["minutos_para_inicio"] < -90 or i["status"] != "aberta"]
-    return pagina(request, s, usuario, "perfil.html", "", proximas=proximas, historico=historico)
+    return pagina(request, s, usuario, "perfil.html", "perfil", proximas=proximas, historico=historico)
 
 
 @app.post("/perfil")
@@ -943,7 +945,7 @@ async def salvar_perfil(request: Request, s: Sessao, usuario: Atual):
 def ver_notificacoes(request: Request, s: Sessao, usuario: Atual):
     n = agora()
     itens = [ser.notificacao(x, n) for x in notificacoes.listar(s, usuario)]
-    return pagina(request, s, usuario, "notificacoes.html", "", itens=itens)
+    return pagina(request, s, usuario, "notificacoes.html", "notificacoes", itens=itens)
 
 
 @app.post("/notificacoes/lidas")

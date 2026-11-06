@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <meta name="theme-color" content="#0f0c2d">
-  <title>Telão — PlayGo</title>
+  <title>Telão | PlayGo</title>
   <link rel="icon" href="/static/marca/favicon.svg" type="image/svg+xml">
   <style>
     :root { --lima: #b7f34b; --rosa: #ff3d81; --roxo: #6c4cff; }
@@ -157,8 +157,8 @@
       $('principal').innerHTML = verClass ? classificacaoHtml(D.classificacao) : (jogos.length ? jogoGrande(jogos[idx]) : espera());
       $('pontos').innerHTML = jogos.length > 1 ? jogos.map((_, i) => `<b class="${i === idx ? 'on' : ''}"></b>`).join('') : '';
       $('rodape').innerHTML =
-        `<div><h3>Próximos jogos</h3>${D.proximos.slice(0, 3).map((j) => linhaMini(j, false)).join('') || '<div class="linha"><span>—</span></div>'}</div>` +
-        `<div><h3>Últimos resultados</h3>${D.ultimos.slice(0, 3).map((j) => linhaMini(j, true)).join('') || '<div class="linha"><span>—</span></div>'}</div>`;
+        `<div><h3>Próximos jogos</h3>${D.proximos.slice(0, 3).map((j) => linhaMini(j, false)).join('') || '<div class="linha"><span>-</span></div>'}</div>` +
+        `<div><h3>Últimos resultados</h3>${D.ultimos.slice(0, 3).map((j) => linhaMini(j, true)).join('') || '<div class="linha"><span>-</span></div>'}</div>`;
     }
 
     function preencherOpcoes() {

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% import "_cards.html" as c %}
-{% block titulo %}{{ 'Editar' if lc else 'Cadastrar' }} local — PlayGo{% endblock %}
+{% block titulo %}{{ 'Editar' if lc else 'Cadastrar' }} local | PlayGo{% endblock %}
 {% block conteudo %}
 <div class="section-title"><h2>{{ 'Editar local' if lc else 'Cadastrar local' }}</h2></div>
 <form class="panel" method="post" action="{{ '/gestao/locais/' ~ lc.id if lc else '/gestao/locais' }}">

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% import "_cards.html" as c %}
-{% block titulo %}Minha Arena — PlayGo{% endblock %}
+{% block titulo %}Minha Arena | PlayGo{% endblock %}
 {% block conteudo %}
 {% if not arena %}
 <div class="section-title"><h2>Minha Arena</h2></div>
@@ -34,7 +34,7 @@
   <div><span class="pulse"></span><strong>{{ p.horarios_ociosos }} horário{{ 's' if p.horarios_ociosos != 1 }} ocioso{{ 's' if p.horarios_ociosos != 1 }} hoje.</strong> Publique para atletas próximos e ajude a formar novos jogos.</div>
   <form method="post" action="/gestao/{{ arena.id }}/divulgar-ociosos"><button class="btn lime">Divulgar horário</button></form>
   {% else %}
-  <div><span class="pulse"></span><strong>Sem horários ociosos pelo resto do dia{% if p.horarios_divulgados %} — {{ p.horarios_divulgados }} já divulgado{{ 's' if p.horarios_divulgados != 1 }}{% endif %}.</strong></div>
+  <div><span class="pulse"></span><strong>Sem horários ociosos pelo resto do dia{% if p.horarios_divulgados %}. {{ p.horarios_divulgados }} já divulgado{{ 's' if p.horarios_divulgados != 1 }}{% endif %}.</strong></div>
   {% endif %}
 </div>
 

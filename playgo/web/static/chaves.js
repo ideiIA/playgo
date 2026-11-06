@@ -96,7 +96,7 @@
     } else if (d.formato === 'eliminatoria') {
       h += '<div class="ch-chave">' + d.rodadas.map((r) => '<div class="ch-coluna"><h4>' + esc(r.nome) + '</h4><div class="ch-col-jogos">' + r.jogos.map((j) => cartao(j, href)).join('') + '</div></div>').join('') + '</div>';
     } else if (d.formato === 'super8') {
-      (d.ranking_super8 || []).forEach((g) => { h += '<h3 class="ch-tit">' + (g.grupo ? 'Ranking — Grupo ' + esc(g.grupo) : 'Ranking') + '</h3>' + tabelaSuper8(g.classificacao, d.regras_placar && d.regras_placar.estilo === 'total'); });
+      (d.ranking_super8 || []).forEach((g) => { h += '<h3 class="ch-tit">' + (g.grupo ? 'Ranking: Grupo ' + esc(g.grupo) : 'Ranking') + '</h3>' + tabelaSuper8(g.classificacao, d.regras_placar && d.regras_placar.estilo === 'total'); });
       h += d.rodadas.map((r) => '<h3 class="ch-tit">' + esc(r.nome) + '</h3><div class="ch-grade">' + r.jogos.map((j) => cartao(j, href)).join('') + '</div>').join('');
     } else {
       h += '<h3 class="ch-tit">Classificação</h3>' + tabela(d.classificacao, d.regras_placar && d.regras_placar.modo === 'sets');
@@ -170,7 +170,7 @@
           : '<div class="av-bt"><button class="ch-btn grande" data-av="' + (porPonto ? 'ponto' : 'marcar') + '" ' + base + ' data-d="1">+1</button><button class="ch-btn suave" data-av="' + (porPonto ? 'ponto' : 'marcar') + '" ' + base + ' data-d="-1">−1</button></div>';
       return '<div class="av-time"><div class="av-nome">' + esc(eq.nome) + '</div><div class="av-pl">' + pl + '</div>' + subt + pt + bt + '</div>';
     };
-    const setInfo = ss ? '<div class="av-setinfo">' + (ss.decidido ? 'Jogo decidido — encerre o jogo' : 'Set ' + ss.numero + ' de ' + rg.melhor_de + ' · até ' + ss.alvo + (ss.numero >= rg.melhor_de && rg.melhor_de > 1 ? ' (decisivo)' : '')) +
+    const setInfo = ss ? '<div class="av-setinfo">' + (ss.decidido ? 'Jogo decidido: encerre o jogo' : 'Set ' + ss.numero + ' de ' + rg.melhor_de + ' · até ' + ss.alvo + (ss.numero >= rg.melhor_de && rg.melhor_de > 1 ? ' (decisivo)' : '')) +
       (ss.fechados.length ? ' · <span class="ch-sub">' + ss.fechados.map((x) => x.a + '–' + x.b).join(' · ') + '</span>' : '') + '</div>' : '';
     const gamesHtml = porPonto ? listaGames(j, rg) : '';
     const videoHtml = j.video && j.video.estado === 'ao_vivo'
@@ -282,7 +282,7 @@
       const ss = lerSets(d, rg);
       const lado = (eq, pontos, sets, id) => '<div class="jv-eq' + (d.vencedor_id && eq && d.vencedor_id === id ? ' venceu' : '') + '"><span>' + nomeEq(eq) + '</span><b>' + pontos + '</b><small>Sets: ' + sets + '</small></div>';
       return '<div class="jv-topo"><span class="ch-sub">' + esc(d.rodada_nome) + (d.local ? ' · ' + esc(d.local) : '') + '</span><span class="jv-status ' + d.status + '">' + (d.status === 'ao_vivo' ? '● ' : '') + ROTULO[d.status] + '</span></div>' +
-        (d.status === 'ao_vivo' ? '<p class="ch-sub" style="text-align:center;margin:0 0 6px">' + (ss.decidido ? 'Jogo decidido — encerre o jogo' : 'Set ' + ss.numero + ' de ' + rg.melhor_de + ' · até ' + ss.alvo + ' pontos (diferença de ' + rg.diferenca + ')' + (ss.numero >= rg.melhor_de && rg.melhor_de > 1 ? ' · set decisivo' : '')) + '</p>' : '') +
+        (d.status === 'ao_vivo' ? '<p class="ch-sub" style="text-align:center;margin:0 0 6px">' + (ss.decidido ? 'Jogo decidido: encerre o jogo' : 'Set ' + ss.numero + ' de ' + rg.melhor_de + ' · até ' + ss.alvo + ' pontos (diferença de ' + rg.diferenca + ')' + (ss.numero >= rg.melhor_de && rg.melhor_de > 1 ? ' · set decisivo' : '')) + '</p>' : '') +
         '<div class="jv-placar">' + lado(d.a, d.status === 'encerrado' ? d.placar_a : ss.pa, d.placar_a, d.a && d.a.id) + '<div class="jv-x">×</div>' + lado(d.b, d.status === 'encerrado' ? d.placar_b : ss.pb, d.placar_b, d.b && d.b.id) + '</div>' +
         (ss.fechados.length ? '<p class="ch-sub" style="text-align:center">Sets: ' + ss.fechados.map((x) => x.a + '–' + x.b).join(' · ') + '</p>' : '') +
         (d.status === 'agendado' ? '<p class="ch-sub" style="text-align:center">' + (d.inicio_previsto ? 'Previsto para ' + dataHora(d.inicio_previsto) : 'Horário a definir') + '</p>' : '');
@@ -442,7 +442,7 @@
     const modelo = modeloChave(n, grupos ? (d.jogos_de_grupo || 0) + 1 : 1, grupos ? (sementes.length ? sementes : null) : d.equipes.map((e) => e.nome));
     return '<div class="ch-painel"><h3>🧩 Montar a chave à mão (quem joga com quem)</h3>' +
       '<p class="ch-sub">Escreva um jogo por linha: <b>número do jogo: lado A x lado B</b>. Cada lado pode ser:</p>' +
-      '<ul class="ch-sub" style="margin:4px 0 8px 18px"><li><b>1</b>, <b>8</b>… — o 1º, o 8º colocado <b>geral</b> da fase de grupos</li><li><b>2A</b>, <b>1B</b>… — o 2º do grupo A, o 1º do grupo B</li><li><b>3T1</b>, <b>3T2</b>… — o 1º e o 2º melhor 3º colocado (comparando os terceiros de todos os grupos); também vale “1º melhor 3º”</li><li><b>V13</b> — o vencedor do jogo 13 · <b>P23</b> — o <b>perdedor</b> do jogo 23 (dois perdedores se enfrentando = disputa de 3º lugar)</li><li>o <b>nome de uma equipe</b> confirmada</li></ul>' +
+      '<ul class="ch-sub" style="margin:4px 0 8px 18px"><li><b>1</b>, <b>8</b>…: o 1º, o 8º colocado <b>geral</b> da fase de grupos</li><li><b>2A</b>, <b>1B</b>…: o 2º do grupo A, o 1º do grupo B</li><li><b>3T1</b>, <b>3T2</b>…: o 1º e o 2º melhor 3º colocado (comparando os terceiros de todos os grupos); também vale “1º melhor 3º”</li><li><b>V13</b>: o vencedor do jogo 13 · <b>P23</b>: o <b>perdedor</b> do jogo 23 (dois perdedores se enfrentando = disputa de 3º lugar)</li><li>o <b>nome de uma equipe</b> confirmada</li></ul>' +
       '<p class="ch-sub">Exemplo: <code>13: 1 x 8</code> e <code>17: V13 x V16</code>. A chave aparece já nas telas (“1º colocado geral”, “Vencedor do jogo 13”) e as equipes entram sozinhas quando os grupos terminam. Quartas, semifinal e final são reconhecidas pela ligação entre os jogos. Vale enquanto nenhum jogo da chave começou.</p>' +
       '<div class="ch-campo"><textarea id="ch-texto" rows="9" style="width:100%;font-family:ui-monospace,Consolas,monospace" placeholder="13: 1 x 8&#10;14: 2 x 7&#10;17: V13 x V14">' + esc(d.chave_manual || modelo) + '</textarea></div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="ch-btn grande" id="bt-chave">💾 Salvar chave</button>' + (d.tem_chave_manual && grupos ? '<button class="ch-btn suave" id="bt-chave-auto">↩ Voltar ao cruzamento automático</button>' : '') + '</div>' +
@@ -450,7 +450,7 @@
   }
 
   function painelTroca(d) {
-    const rotulo = (e) => esc(e.nome) + (e.grupo ? ' (grupo ' + esc(e.grupo) + ')' : '') + (e.no_sorteio ? '' : ' — fora do sorteio');
+    const rotulo = (e) => esc(e.nome) + (e.grupo ? ' (grupo ' + esc(e.grupo) + ')' : '') + (e.no_sorteio ? '' : ' (fora do sorteio)');
     const opts = (d.equipes_lugar || []).map((e) => '<option value="' + e.id + '">' + rotulo(e) + '</option>').join('');
     if (!d.pode_sortear_de_novo) return '<div class="ch-painel"><h3>🔀 Trocar equipes de lugar</h3><p class="ch-sub">Já há jogos começados ou encerrados: não dá mais para trocar equipes de lugar.</p></div>';
     return '<div class="ch-painel"><h3>🔀 Trocar equipes de lugar</h3><p class="ch-sub">Corrige o sorteio sem refazê-lo: troca duas equipes de grupo ou de confronto (levando junto a posição de cabeça de chave). Escolhendo uma equipe de fora do sorteio, ela entra no lugar da outra. Só até algum jogo começar.</p>' +
@@ -467,10 +467,10 @@
         '<div class="ch-painel"><h3>🎲 Sorteio do chaveamento</h3>' +
         '<p class="ch-sub">' + d.equipes_confirmadas + ' equipe' + (d.equipes_confirmadas !== 1 ? 's' : '') + ' confirmada' + (d.equipes_confirmadas !== 1 ? 's' : '') + (d.equipes_pendentes ? ' · ' + d.equipes_pendentes + ' ainda pendente' + (d.equipes_pendentes !== 1 ? 's' : '') + ' (confirme antes de sortear)' : '') + '.</p>' +
         (jaTem ? '<p class="ch-aviso">Sorteado em ' + dataHora(d.sorteado_em) + ' · formato: ' + esc(d.formato_nome || '') + ' · semente ' + d.semente + (d.pode_sortear_de_novo ? '. Você pode sortear de novo enquanto nenhum jogo começou.' : '. Já há jogos começados: o sorteio está travado.') + '</p>' : '') +
-        (!jaTem || d.pode_sortear_de_novo ? '<div class="ch-campo"><label><input type="radio" name="formato" value="eliminatoria" checked> <b>Eliminatória (mata-mata)</b> — quem perde sai; equipes sem adversário passam direto.</label>' +
-          '<label><input type="radio" name="formato" value="grupos"> <b>Fase de grupos + mata-mata</b> — grupos todos contra todos; os melhores de cada grupo seguem para o mata-mata.</label>' +
-          '<label><input type="radio" name="formato" value="pontos_corridos"> <b>Pontos corridos</b> — todos jogam contra todos; vale a classificação.</label>' +
-          '<label><input type="radio" name="formato" value="super8"> <b>Super 8</b> — grupos de 4 duplas inscritas (8 atletas; 8 duplas = 2 grupos). O 1º jogo é entre as duplas inscritas; depois os atletas se misturam (7 rodadas) e o ranking é individual, por grupo. Pontuação: set em games ou total fixo de games (ex.: 5 games, todos disputados, cada game vale ponto). Também aceita atletas individuais (1 por equipe, de 8 em 8).</label></div>' +
+        (!jaTem || d.pode_sortear_de_novo ? '<div class="ch-campo"><label><input type="radio" name="formato" value="eliminatoria" checked> <b>Eliminatória (mata-mata)</b>: quem perde sai; equipes sem adversário passam direto.</label>' +
+          '<label><input type="radio" name="formato" value="grupos"> <b>Fase de grupos + mata-mata</b>: grupos todos contra todos; os melhores de cada grupo seguem para o mata-mata.</label>' +
+          '<label><input type="radio" name="formato" value="pontos_corridos"> <b>Pontos corridos</b>: todos jogam contra todos; vale a classificação.</label>' +
+          '<label><input type="radio" name="formato" value="super8"> <b>Super 8</b>: grupos de 4 duplas inscritas (8 atletas; 8 duplas = 2 grupos). O 1º jogo é entre as duplas inscritas; depois os atletas se misturam (7 rodadas) e o ranking é individual, por grupo. Pontuação: set em games ou total fixo de games (ex.: 5 games, todos disputados, cada game vale ponto). Também aceita atletas individuais (1 por equipe, de 8 em 8).</label></div>' +
           '<div class="ch-campo" id="op-grupos" hidden><div style="display:flex;gap:10px;flex-wrap:wrap"><label>Grupos <select id="n-grupos">' + opcoes(2, Math.max(2, Math.floor(d.equipes_confirmadas / 2)), 2) + '</select></label>' +
           '<label>Quem avança ao mata-mata <select id="modo-classif"><option value="grupo">Os melhores de cada grupo</option><option value="geral">Os melhores no geral (tabela única)</option></select></label>' +
           '<label id="w-classif">Classificam por grupo <select id="n-classif">' + opcoes(1, 4, 2) + '</select></label>' +

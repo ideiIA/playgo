@@ -75,7 +75,7 @@ def test_menu_tutoriais_com_submenus_e_tutorial_de_transmissao_aberto_a_todos(ba
         assert indice.status_code == 200 and "/tutorial/transmissao" in indice.text and "/tutorial/campeonatos" not in indice.text.split("Tutoriais do PlayGo", 1)[1]
         pagina = cli.get("/tutorial/transmissao")
         assert pagina.status_code == 200 and "Larix" in pagina.text and "OBS" in pagina.text and "Câmera do navegador" in pagina.text and "Entrar no ar" in pagina.text
-        assert "Tutoriais" in pagina.text and 'class="submenu' in pagina.text  # o menu lateral tem o submenu
+        assert "Tutoriais" in pagina.text and 'href="/tutorial"' in pagina.text and 'aria-current="page"' in pagina.text  # o menu lateral tem o item Tutoriais (os subtemas ficam nas abas da página)
         # a API entrega o mesmo conteúdo ao app; a versão embutida não repete o cabeçalho
         token = cli.post("/api/v1/auth/entrar", json={"email": email, "senha": "senha-de-teste-1"}).json()["token"]
         h = {"Authorization": "Bearer " + token}

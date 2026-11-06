@@ -151,7 +151,7 @@
     <a class="card" href="#/arena/${h.arena_id}">
       <span class="tag verde">🏟️ Quadra disponível</span>
       <h3>${modIcone(h.modalidade)} ${esc(h.modalidade ? h.modalidade.nome : 'Quadra')} • ${esc(h.quando)}</h3>
-      <div class="meta">${esc(h.arena_nome)} — ${esc(h.quadra_nome)}${h.distancia ? ' • ' + esc(h.distancia) : ''}<br><b>${esc(h.valor_texto)}</b></div>
+      <div class="meta">${esc(h.arena_nome)} · ${esc(h.quadra_nome)}${h.distancia ? ' • ' + esc(h.distancia) : ''}<br><b>${esc(h.valor_texto)}</b></div>
     </a>`;
   const cardArena = (a) => `
     <a class="card" href="#/arena/${a.id}">
@@ -286,7 +286,7 @@
       montar(`
         <div class="hero"><h1>Olá, ${esc(u.nome.split(' ')[0])}! Bora completar o time?</h1><p>Jogos, grupos, campeonatos e arenas com vagas em tempo real.</p></div>
         ${u.aviso_plano ? `<a class="aviso erro" href="#/planos" style="display:block">⏳ ${esc(u.aviso_plano.texto)} <b>Ver planos</b></a>` : ''}
-        ${!f.centro.informada ? '<p class="aviso alerta">📍 Não sabemos onde você está — mostrando Campo Grande. <button class="btn suave pequeno" data-acao="localizar">Usar minha localização</button></p>' : ''}
+        ${!f.centro.informada ? '<p class="aviso alerta">📍 Não sabemos onde você está. Mostrando Campo Grande. <button class="btn suave pequeno" data-acao="localizar">Usar minha localização</button></p>' : ''}
         <div class="livebar"><div><span class="pulse"></span><strong>${f.oportunidades_agora} oportunidade${f.oportunidades_agora !== 1 ? 's' : ''} agora</strong> em até 5 km</div><a class="btn lima pequeno" href="#/explorar?mapa=1">Mapa</a></div>
         ${(f.ao_vivo || []).length ? secao('🔴 Ao vivo agora') + lista(f.ao_vivo, cardVivo) : ''}
         ${f.urgentes.length ? secao('🔥 Precisam de jogadores agora') + `<div class="carrossel">${f.urgentes.map(cardUrg).join('')}</div>` : ''}
@@ -411,7 +411,7 @@
         <div class="campo"><label>Modalidade</label><select name="modalidade_id" id="sel-mod">${mods.map((m) => `<option value="${m.id}" data-vagas="${m.vagas_padrao}" ${String(m.id) === sel ? 'selected' : ''}>${esc(m.icone)} ${esc(m.nome)}</option>`).join('')}</select></div>
         <div class="campo"><label>Nome</label><input name="nome" required maxlength="150" placeholder="Ex.: ${tipo === 'jogo' ? 'Futebol de quarta' : 'Corrida no parque'}"></div>
         <div class="duas"><div class="campo"><label>Data</label><input type="date" name="data" min="${ymd}" required></div><div class="campo"><label>Horário</label><input type="time" name="hora" required></div></div>
-        ${tipo === 'jogo' ? `<div class="campo"><label>Arena <span class="suave">(opcional)</span></label><select name="arena_id" id="sel-arena"><option value="">Sem arena — usar minha localização</option>${arenas.arenas.map((a) => `<option value="${a.id}">${esc(a.nome)}${a.distancia ? ' — ' + esc(a.distancia) : ''}</option>`).join('')}</select></div>` : ''}
+        ${tipo === 'jogo' ? `<div class="campo"><label>Arena <span class="suave">(opcional)</span></label><select name="arena_id" id="sel-arena"><option value="">Sem arena: usar minha localização</option>${arenas.arenas.map((a) => `<option value="${a.id}">${esc(a.nome)}${a.distancia ? ': ' + esc(a.distancia) : ''}</option>`).join('')}</select></div>` : ''}
         <div class="campo"><label>${tipo === 'jogo' ? 'Local' : 'Ponto de encontro'}</label><input name="local_nome" placeholder="${tipo === 'jogo' ? 'Arena, quadra ou endereço' : 'Ex.: Portão 2 do parque'}"></div>
         <div class="campo"><button type="button" class="btn suave bloco" data-acao="marcar-local" id="btn-local">📍 ${estado.pos ? 'Usar minha localização atual' : 'Usar minha localização'}</button><span class="suave" id="info-local">${estado.pos ? 'Usaremos o último ponto conhecido.' : 'Necessário para marcar onde será.'}</span></div>
         ${tipo === 'atividade' ? '<div class="campo"><label>Percurso <span class="suave">(opcional)</span></label><input name="percurso" placeholder="Ex.: 2 voltas, 7 km"></div>' : ''}
@@ -419,10 +419,10 @@
           <div class="campo"><label>Valor (R$)</label><input name="valor" inputmode="decimal" placeholder="0,00"></div></div>
         <div class="duas"><div class="campo"><label>Nível</label><select name="nivel"><option value="todos">Todos</option>${Object.entries(NIVEIS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select></div>
           <div class="campo"><label>Quem participa</label><select name="visibilidade"><option value="publica">Pública</option><option value="autorizados">Só autorizados</option><option value="link">Só por link</option></select></div></div>
-        <p class="suave" style="margin:-4px 0 12px">Pública: aparece na busca, entrada automática. Só autorizados: aparece, mas você aprova cada pessoa (ou convida pelo @usuario). Só por link: não aparece em lugar nenhum — entra quem receber o link.</p>
+        <p class="suave" style="margin:-4px 0 12px">Pública: aparece na busca, entrada automática. Só autorizados: aparece, mas você aprova cada pessoa (ou convida pelo @usuario). Só por link: não aparece em lugar nenhum. Entra quem receber o link.</p>
         ${grupos.meus.length ? `<div class="campo"><label>Grupo <span class="suave">(avisa os membros)</span></label><select name="grupo_id"><option value="">Sem grupo</option>${grupos.meus.map((g) => `<option value="${g.id}">${esc(g.nome)}</option>`).join('')}</select></div>` : ''}
         <div class="campo"><label>Descrição</label><textarea name="descricao"></textarea></div>
-        <div class="campo"><label class="marcas" style="border:0;padding:0"><span style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" name="falta_gente" value="1" style="width:auto"> 🔥 Falta gente — avisar atletas por perto</span></label></div>
+        <div class="campo"><label class="marcas" style="border:0;padding:0"><span style="display:flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" name="falta_gente" value="1" style="width:auto"> 🔥 Falta gente: avisar atletas por perto</span></label></div>
         <button class="btn roxo bloco">Publicar</button></form>`,
       () => {
         const modSel = $('#sel-mod'); const max = $('#in-max');
@@ -777,7 +777,7 @@
       montar(`<a href="javascript:history.back()" class="suave">← Voltar</a>
         <span class="tag verde" style="margin-top:10px">${esc(l.icone)} ${esc(l.categoria_nome)}</span><h1 style="margin:8px 0 4px">${esc(l.nome)}</h1>
         ${l.descricao ? `<p>${esc(l.descricao)}</p>` : ''}
-        ${linha('📍 Endereço', esc(l.endereco) + (l.cidade ? ' — ' + esc(l.cidade) : '') + (l.distancia ? ' (' + esc(l.distancia) + ')' : ''))}
+        ${linha('📍 Endereço', esc(l.endereco) + (l.cidade ? ', ' + esc(l.cidade) : '') + (l.distancia ? ' (' + esc(l.distancia) + ')' : ''))}
         ${l.avaliacao ? `<p style="margin:6px 0"><b style="color:#f5b301">★ ${String(l.avaliacao.toFixed(1)).replace('.', ',')}</b>${l.avaliacoes ? ` <span class="suave">(${l.avaliacoes} avaliações no Google)</span>` : ''}</p>` : ''}
         ${l.incompleto ? '<p class="aviso alerta">Horário ou telefone ainda não informados. Confirme com o local antes de ir.</p>' : ''}
         ${linha('🕒 Funcionamento', l.horario_funcionamento ? `<span style="white-space:pre-line">${esc(l.horario_funcionamento)}</span>` : '<span class="suave">Não informado</span>')}
@@ -808,7 +808,7 @@
       const max = Math.max(1, ...p.demanda_por_dia.map((x) => x.total));
       montar(`<div class="secao" style="margin-top:0"><h1>${esc(arena.nome)}</h1>${arenas.length > 1 ? `<select id="sel-arena" class="chip">${arenas.map((a) => `<option value="${a.id}" ${a.id === arena.id ? 'selected' : ''}>${esc(a.nome)}</option>`).join('')}</select>` : ''}</div>
         <div class="stats"><div class="stat"><b>${p.reservas_hoje}</b><span>Reservas</span></div><div class="stat"><b>${p.ocupacao_pct}%</b><span>Ocupação</span></div><div class="stat"><b>${p.eventos_ativos}</b><span>Eventos ativos</span></div><div class="stat"><b>${p.atletas_alcancados}</b><span>Atletas alcançados</span></div></div>
-        <div class="livebar" style="flex-direction:column;align-items:stretch">${p.horarios_ociosos ? `<div><span class="pulse"></span><strong>${p.horarios_ociosos} horário(s) ocioso(s).</strong> Publique para atletas próximos.</div><button class="btn lima" data-acao="divulgar-todos" data-id="${arena.id}">Divulgar horário</button>` : `<div><span class="pulse"></span><strong>Sem horários ociosos no restante do dia${p.horarios_divulgados ? ' — ' + p.horarios_divulgados + ' já divulgado(s)' : ''}.</strong></div>`}</div>
+        <div class="livebar" style="flex-direction:column;align-items:stretch">${p.horarios_ociosos ? `<div><span class="pulse"></span><strong>${p.horarios_ociosos} horário(s) ocioso(s).</strong> Publique para atletas próximos.</div><button class="btn lima" data-acao="divulgar-todos" data-id="${arena.id}">Divulgar horário</button>` : `<div><span class="pulse"></span><strong>Sem horários ociosos no restante do dia${p.horarios_divulgados ? ': ' + p.horarios_divulgados + ' já divulgado(s)' : ''}.</strong></div>`}</div>
         <div class="secao"><h2>Agenda</h2><div><button class="btn suave pequeno" data-acao="dia" data-v="${mover(-1)}">←</button> <span class="suave">${d.toLocaleDateString('pt-BR')}</span> <button class="btn suave pequeno" data-acao="dia" data-v="${mover(1)}">→</button></div></div>
         <div class="painel" style="overflow-x:auto">${ag.quadras.length ? `<table class="agenda"><thead><tr><th>Hora</th>${ag.quadras.map((q) => `<th>${esc(q.nome)}</th>`).join('')}</tr></thead><tbody>${ag.linhas.map((l) => `<tr><td>${esc(l.hora)}</td>${l.celulas.map((c) => `<td><button class="cel ${c.estado} ${c.passado ? 'passado' : ''}" data-acao="celula" data-c='${esc(JSON.stringify({ ...c, inicio: l.inicio }))}'>${esc(c.rotulo)}</button></td>`).join('')}</tr>`).join('')}</tbody></table>` : '<p class="vazio">Cadastre a primeira quadra.</p>'}</div>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn suave" data-acao="nova-quadra" data-id="${arena.id}">+ Nova quadra</button><a class="btn suave" href="#/editar-arena/${arena.id}">✏️ Editar arena</a><a class="btn suave" href="#/nova-arena">+ Nova arena</a>${pode('recebimentos') ? `<a class="btn suave" href="#/recebimentos/${arena.id}">💰 Receber pelo app</a>` : ''}</div>
@@ -843,7 +843,7 @@
       <div class="campo"><label>Descrição</label><textarea name="descricao">${v('descricao')}</textarea></div>
       <div class="campo"><label>Regras da casa</label><textarea name="regras">${v('regras')}</textarea></div>
       ${a ? `<h3 style="margin:16px 0 6px">Reservas pelo app</h3>
-      <div class="campo"><label>Como o atleta paga</label><select name="pagamento_reserva">${[['local', 'Na arena (o app só segura o horário)'], ['online', 'Pelo app (Pix ou cartão)'], ['ambos', 'Os dois — o atleta escolhe']].map(([k, n]) => `<option value="${k}" ${(a.pagamento_reserva || 'local') === k ? 'selected' : ''}>${n}</option>`).join('')}</select><span class="suave">Pagar pelo app só funciona com o “Receber pelo app” aprovado.</span></div>
+      <div class="campo"><label>Como o atleta paga</label><select name="pagamento_reserva">${[['local', 'Na arena (o app só segura o horário)'], ['online', 'Pelo app (Pix ou cartão)'], ['ambos', 'Os dois: o atleta escolhe']].map(([k, n]) => `<option value="${k}" ${(a.pagamento_reserva || 'local') === k ? 'selected' : ''}>${n}</option>`).join('')}</select><span class="suave">Pagar pelo app só funciona com o “Receber pelo app” aprovado.</span></div>
       <div class="campo"><label>Cancelamento com devolução até (horas antes)</label><input type="number" name="cancel_horas" min="0" max="720" value="${v('cancel_horas', 24)}" required></div>
       <div class="campo"><label>Acréscimo no cartão (%)</label><input name="acrescimo_cartao_pct" inputmode="decimal" value="${v('acrescimo_cartao_pct', 0)}"><span class="suave">Somado ao valor no cartão, para cobrir a taxa. Pix não tem acréscimo.</span></div>
       <div class="duas"><div class="campo"><label>Devolução dentro do prazo (%)</label><input type="number" name="reembolso_pct" min="0" max="100" value="${v('reembolso_pct', 100)}" required></div><div class="campo"><label>Devolução fora do prazo (%)</label><input type="number" name="reembolso_pct_fora" min="0" max="100" value="${v('reembolso_pct_fora', 0)}" required></div></div>
@@ -898,7 +898,7 @@
       montar(`<div style="display:flex;gap:14px;align-items:center;margin-bottom:14px"><span class="avatar grande">${u.foto_url ? `<img src="${esc(u.foto_url)}" alt="Sua foto">` : esc(u.iniciais)}</span><div><h1>${esc(u.arroba)}</h1><p class="suave">${esc(u.nome)} · ${esc(u.email)}</p><button class="btn suave pequeno" data-acao="trocar-usuario" style="margin-top:6px">Trocar @usuario</button> <button class="btn suave pequeno" data-acao="foto" style="margin-top:6px">📷 ${u.foto_url ? 'Trocar foto' : 'Adicionar foto'}</button>${u.foto_url ? ' <button class="btn perigo pequeno" data-acao="remover-foto" style="margin-top:6px">Remover</button>' : ''}</div></div>
         ${mine.proximas.length ? secao('Meus próximos jogos') + lista(mine.proximas, (a) => cardAtv(a)) : ''}
         <form id="f-perfil" style="margin-top:18px"><div class="painel"><h3 style="margin-bottom:12px">Esportes que pratico</h3>
-          ${estado.mods.map((m) => `<div class="pessoa"><span style="font-size:22px">${esc(m.icone)}</span><b>${esc(m.nome)}</b><span class="acoes"><select name="esporte_${m.id}" style="border:1px solid var(--border);border-radius:10px;padding:7px"><option value="">—</option>${Object.entries(NIVEIS).map(([k, v]) => `<option value="${k}" ${nivelDe(m.id) === k ? 'selected' : ''}>${v}</option>`).join('')}</select></span></div>`).join('')}</div>
+          ${estado.mods.map((m) => `<div class="pessoa"><span style="font-size:22px">${esc(m.icone)}</span><b>${esc(m.nome)}</b><span class="acoes"><select name="esporte_${m.id}" style="border:1px solid var(--border);border-radius:10px;padding:7px"><option value="">-</option>${Object.entries(NIVEIS).map(([k, v]) => `<option value="${k}" ${nivelDe(m.id) === k ? 'selected' : ''}>${v}</option>`).join('')}</select></span></div>`).join('')}</div>
         <div class="painel"><h3 style="margin-bottom:12px">Disponibilidade e distância</h3>
           <div class="marcas">${Object.entries(PERIODOS).map(([k, v]) => `<label><input type="checkbox" name="disponibilidade" value="${k}" ${u.disponibilidade.includes(k) ? 'checked' : ''}> ${v}</label>`).join('')}</div>
           <div class="campo" style="margin-top:14px"><label>Distância máxima</label><select name="raio_km">${[2, 5, 10, 20, 50].map((r) => `<option value="${r}" ${u.raio_km === r ? 'selected' : ''}>Até ${r} km</option>`).join('')}</select></div>
@@ -990,7 +990,7 @@
     const url = o.link ? location.origin + o.link : '';
     return `<div class="painel" style="margin-top:14px"><h3>${escopo === 'atividade' ? 'Convites e mural' : 'Mural'}</h3>
       ${escopo === 'atividade' ? `<button class="btn suave bloco" style="margin-top:10px" data-acao="convidar-arroba" data-escopo="atividade" data-id="${o.id}">✉️ Convidar pelo @usuario</button>` : ''}
-      ${url ? `<p class="suave" style="margin-top:12px">Link de convite — quem receber entra direto, sem aprovação:</p><div style="display:flex;gap:6px"><input readonly value="${esc(url)}" style="flex:1;border:1px solid var(--border);border-radius:10px;padding:8px"><button class="btn suave pequeno" data-acao="copiar" data-v="${esc(url)}">Copiar</button></div><button class="btn perigo pequeno" style="margin-top:8px" data-acao="renovar-link" data-escopo="${escopo}" data-id="${o.id}">Gerar novo link (derruba o atual)</button>` : ''}
+      ${url ? `<p class="suave" style="margin-top:12px">Link de convite: quem receber entra direto, sem aprovação:</p><div style="display:flex;gap:6px"><input readonly value="${esc(url)}" style="flex:1;border:1px solid var(--border);border-radius:10px;padding:8px"><button class="btn suave pequeno" data-acao="copiar" data-v="${esc(url)}">Copiar</button></div><button class="btn perigo pequeno" style="margin-top:8px" data-acao="renovar-link" data-escopo="${escopo}" data-id="${o.id}">Gerar novo link (derruba o atual)</button>` : ''}
       <p class="suave" style="margin-top:12px">Quem cuida do mural (além de você):</p><div>${mods}</div>
       <button class="btn suave pequeno" style="margin-top:8px" data-acao="add-mod" data-escopo="${escopo}" data-id="${o.id}">+ Indicar moderador</button></div>`;
   }
@@ -1015,7 +1015,7 @@
     try {
       const c = await api('/comunidades');
       montar(`${segGrupos('comunidades')}<div class="secao" style="margin-top:0"><h1>Comunidades</h1>${pode('comunidade') ? '<a class="btn roxo pequeno" href="#/nova-comunidade">+ Criar</a>' : ''}</div>
-        <p class="suave" style="margin:-4px 0 10px">Espaços de relacionamento por interesse, bairro ou jeito de jogar — cada um com seu mural.</p>
+        <p class="suave" style="margin:-4px 0 10px">Espaços de relacionamento por interesse, bairro ou jeito de jogar. Cada um com seu mural.</p>
         ${lista(c.minhas, cardComunidade, 'Você ainda não participa de nenhuma comunidade.')}
         ${c.descobrir.length ? secao('Descubra comunidades') + lista(c.descobrir, cardComunidade) : ''}`);
     } catch (e) { erroTela(e); }
@@ -1030,7 +1030,7 @@
         <div style="margin-top:10px"><span class="tag ${c.visibilidade === 'publica' ? 'verde' : 'laranja'}">${VISIB[c.visibilidade]}</span></div>
         <h1 style="margin:8px 0 4px">${esc(c.nome)}</h1><p class="suave">${c.membros} membro${c.membros !== 1 ? 's' : ''}${c.cidade ? ' • 📍 ' + esc(c.cidade) : ''}</p>
         ${c.descricao ? `<p style="margin-top:8px">${esc(c.descricao)}</p>` : ''}
-        <div style="margin-top:12px">${c.meu_status === 'ativo' ? (c.sou_dono ? '' : `<button class="btn perigo pequeno" data-acao="sair-com" data-id="${c.id}">Sair</button>`) : c.meu_status === 'pendente' ? '<span class="btn suave">Pedido enviado — aguardando aprovação</span>' : c.visibilidade !== 'link' ? `<button class="btn roxo bloco" data-acao="entrar-com" data-id="${c.id}">${c.visibilidade === 'autorizados' ? 'Pedir para entrar' : 'Entrar na comunidade'}</button>` : ''}</div>
+        <div style="margin-top:12px">${c.meu_status === 'ativo' ? (c.sou_dono ? '' : `<button class="btn perigo pequeno" data-acao="sair-com" data-id="${c.id}">Sair</button>`) : c.meu_status === 'pendente' ? '<span class="btn suave">Pedido enviado, aguardando aprovação</span>' : c.visibilidade !== 'link' ? `<button class="btn roxo bloco" data-acao="entrar-com" data-id="${c.id}">${c.visibilidade === 'autorizados' ? 'Pedir para entrar' : 'Entrar na comunidade'}</button>` : ''}</div>
         ${c.regras ? `<div class="painel" style="margin-top:14px"><h3>Regras</h3><p style="margin-top:6px;white-space:pre-line">${esc(c.regras)}</p></div>` : ''}
         ${c.pendentes.length ? `<div class="painel" style="margin-top:14px"><h3>Pedidos para entrar (${c.pendentes.length})</h3>${c.pendentes.map((m) => pessoa(m, `<span class="acoes"><button class="btn roxo pequeno" data-acao="pedido" data-id="${c.id}" data-u="${m.usuario_id}" data-v="1">Aprovar</button><button class="btn perigo pequeno" data-acao="pedido" data-id="${c.id}" data-u="${m.usuario_id}" data-v="0">Recusar</button></span>`)).join('')}</div>` : ''}
         ${c.sou_moderador ? `<div class="painel" style="margin-top:14px"><h3>Convites</h3><button class="btn suave bloco" style="margin-top:10px" data-acao="convidar-arroba" data-escopo="comunidade" data-id="${c.id}">✉️ Convidar pelo @usuario</button>
@@ -1046,7 +1046,7 @@
       <form id="f-com" class="painel"><div id="erro"></div>
       <div class="campo"><label>Nome</label><input name="nome" required maxlength="120"></div>
       <div class="campo"><label>Cidade</label><input name="cidade" value="${esc(estado.usuario.cidade || '')}"></div>
-      <div class="campo"><label>Quem pode entrar</label><select name="visibilidade"><option value="publica">Pública — qualquer um entra e ela aparece na busca</option><option value="autorizados">Só autorizados — você aprova cada pedido</option><option value="link">Só por link — não aparece na busca; entra quem receber o link ou convite</option></select></div>
+      <div class="campo"><label>Quem pode entrar</label><select name="visibilidade"><option value="publica">Pública: qualquer um entra e ela aparece na busca</option><option value="autorizados">Só autorizados: você aprova cada pedido</option><option value="link">Só por link: não aparece na busca; entra quem receber o link ou convite</option></select></div>
       <div class="campo"><label>Descrição</label><textarea name="descricao"></textarea></div>
       <div class="campo"><label>Regras</label><textarea name="regras" placeholder="Ex.: respeito sempre; nada de propaganda"></textarea></div>
       <p class="suave">Você será o dono: indica moderadores, aprova entradas e cuida do mural.</p>
@@ -1086,10 +1086,10 @@
     carregando();
     try {
       const f = await api('/moderacao/fila');
-      montar(`<h1>🛡 Moderação</h1><p class="suave" style="margin:4px 0 12px">Conteúdo que a análise automática segurou ou que juntou várias denúncias. Só o autor vê até você decidir. Você aprova ou rejeita — nunca edita o texto de outra pessoa.</p>
+      montar(`<h1>🛡 Moderação</h1><p class="suave" style="margin:4px 0 12px">Conteúdo que a análise automática segurou ou que juntou várias denúncias. Só o autor vê até você decidir. Você aprova ou rejeita. Nunca edita o texto de outra pessoa.</p>
         ${f.itens.length ? f.itens.map((i) => `<article class="painel" style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;gap:8px"><b>${i.tipo === 'publicacao' ? 'Publicação' : 'Comentário'} de ${esc(i.autor.arroba)}</b><span class="suave">${esc(i.quando)}</span></div>
           <p class="aviso alerta" style="margin:8px 0"><b>Motivo:</b> ${esc(i.motivo_analise)}</p>
-          ${i.denuncias && i.denuncias.length ? `<p class="suave">Denúncias: ${i.denuncias.map((d) => esc(d.motivo) + (d.detalhe ? ' — “' + esc(d.detalhe) + '”' : '')).join('; ')}</p>` : ''}
+          ${i.denuncias && i.denuncias.length ? `<p class="suave">Denúncias: ${i.denuncias.map((d) => esc(d.motivo) + (d.detalhe ? ': “' + esc(d.detalhe) + '”' : '')).join('; ')}</p>` : ''}
           <div style="white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0">${esc(i.texto)}</div>
           ${i.midias && i.midias.length ? i.midias.map((m) => m.tipo === 'video' ? `<video controls preload="metadata" src="${esc(m.url)}" style="max-width:100%;border-radius:10px;margin-top:6px"></video>` : `<img src="${esc(m.miniatura || m.url)}" style="max-width:100%;border-radius:10px;margin-top:6px">`).join('') : ''}
           ${i.local ? `<p class="suave">📍 ${esc(i.local.nome)}</p>` : ''}
@@ -1420,7 +1420,7 @@
     dia(el) { estado.dia = el.dataset.v; vGestao(); },
     celula(el) {
       const c = JSON.parse(el.dataset.c); const fim = (iso) => { const d = new Date(iso); d.setHours(d.getHours() + 1); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };
-      let corpo = `<h3>${esc(c.rotulo)} — ${c.inicio.slice(11, 16)}</h3>`;
+      let corpo = `<h3>${esc(c.rotulo)} · ${c.inicio.slice(11, 16)}</h3>`;
       if (c.estado === 'livre') corpo += `<button class="btn roxo bloco" data-acao="g-divulgar" data-q="${c.quadra_id}" data-i="${c.inicio}" data-f="${fim(c.inicio)}">Divulgar para atletas próximos</button><button class="btn suave bloco" style="margin-top:8px" data-acao="g-reservar" data-q="${c.quadra_id}" data-i="${c.inicio}" data-f="${fim(c.inicio)}">Reservar</button>`;
       else if (c.estado === 'divulgado') corpo += `<button class="btn perigo bloco" data-acao="g-retirar" data-id="${c.horario_id}">Retirar divulgação</button>`;
       else if (c.atividade_id) corpo += `<a class="btn suave bloco" href="#/atividade/${c.atividade_id}" onclick="document.getElementById('folha').hidden=true">Abrir atividade</a>`;

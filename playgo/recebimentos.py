@@ -562,7 +562,7 @@ def _emitir_cobranca(s: SessaoORM, reserva: Reserva, quadra: Quadra, rec: Recebe
         vencimento = agora().date() + timedelta(days=vence_em_dias)
     corpo = {
         "customer": cliente["id"], "billingType": tipo_cobranca, "value": float(valor), "dueDate": vencimento.isoformat(),
-        "description": f"Reserva {quadra.nome} — {reserva.inicio:%d/%m %H:%M}", "externalReference": f"reserva:{reserva.id}",
+        "description": f"Reserva {quadra.nome} · {reserva.inicio:%d/%m %H:%M}", "externalReference": f"reserva:{reserva.id}",
     }
     if split:
         corpo["split"] = split

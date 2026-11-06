@@ -105,7 +105,7 @@ def popular(s: SessaoORM) -> str:
         nivel="intermediario", valor=Decimal(30), falta_gente=True,
     )
     corrida = criar(
-        marcos, modalidade_id=_m(s, "corrida").id, nome="Corre CG — 7 km", grupo_id=g_corrida.id, max_participantes=30,
+        marcos, modalidade_id=_m(s, "corrida").id, nome="Corre CG, 7 km", grupo_id=g_corrida.id, max_participantes=30,
         inicio=datetime.combine(hoje + timedelta(days=1), time(6, 0)), local_nome="Parque das Nações",
         latitude=PARQUE_NACOES[0], longitude=PARQUE_NACOES[1], percurso="Duas voltas no parque, ritmo 5:30–6:30.", duracao_min=60,
     )
@@ -151,7 +151,7 @@ def popular(s: SessaoORM) -> str:
     vagas.entrar(s, secreta.id, atletas[4], token=secreta.convite_token)
 
     # ---- comunidades de relacionamento
-    corredoras = comunidades.criar(s, atletas[3], "Mães que correm — CG", "Corrida e conversa entre mães de Campo Grande. Respeito acima de tudo.", "Sem propaganda. Fotos de crianças só com autorização dos pais.", "Campo Grande", "publica")
+    corredoras = comunidades.criar(s, atletas[3], "Mães que correm CG", "Corrida e conversa entre mães de Campo Grande. Respeito acima de tudo.", "Sem propaganda. Fotos de crianças só com autorização dos pais.", "Campo Grande", "publica")
     arbitros = comunidades.criar(s, marcos, "Árbitros e mesários de CG", "Escalas, regras e troca de experiências.", None, "Campo Grande", "autorizados")
     comunidades.entrar(s, corredoras.id, carlos)
     comunidades.entrar(s, corredoras.id, ana)

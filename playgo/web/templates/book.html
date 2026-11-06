@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block titulo %}Book — {{ b.nome }} — PlayGo{% endblock %}
+{% block titulo %}Book | {{ b.nome }} | PlayGo{% endblock %}
 {% macro post(p, etiqueta) %}
 <article class="bk-post">
   <span class="bk-etq">{{ etiqueta }}</span>
@@ -76,7 +76,7 @@
         {% for t in pd.semifinalistas[:1] %}{{ lugar('bk-bronze', '🥉', 'Semifinalista', t.nome, '') }}{% endfor %}
       </div>
       {% if pd.final %}
-      <div class="bk-final"><span>Final</span><span>{{ pd.final.a.nome if pd.final.a else '—' }}</span><span class="placar">{{ pd.final.placar_a }} × {{ pd.final.placar_b }}</span><span>{{ pd.final.b.nome if pd.final.b else '—' }}</span></div>
+      <div class="bk-final"><span>Final</span><span>{{ pd.final.a.nome if pd.final.a else '-' }}</span><span class="placar">{{ pd.final.placar_a }} × {{ pd.final.placar_b }}</span><span>{{ pd.final.b.nome if pd.final.b else '-' }}</span></div>
       {% endif %}
       {% if pd.semifinalistas|length > 1 %}<p class="suave" style="margin-top:12px">Também nas semifinais: {{ pd.semifinalistas|map(attribute='nome')|join(', ') }}.</p>{% endif %}
     {% elif pd.ranking %}

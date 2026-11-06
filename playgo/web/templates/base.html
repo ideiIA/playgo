@@ -3,17 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block titulo %}PlayGo — Esporte perto de você{% endblock %}</title>
+  <title>{% block titulo %}PlayGo | Esporte perto de você{% endblock %}</title>
   <meta name="theme-color" content="#6c4cff">
+  <link rel="preload" href="/static/fonts/outfit-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="icon" href="/static/marca/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/static/marca/favicon.ico" sizes="any">
   <link rel="apple-touch-icon" href="/static/marca/apple-touch-icon.png">
-  <meta property="og:title" content="PlayGo — encontre onde jogar, encontre com quem jogar">
+  <meta property="og:title" content="PlayGo: encontre onde jogar, encontre com quem jogar">
   <meta property="og:description" content="Atividades, campeonatos com chaves e placar ao vivo, arenas e comunidades para quem pratica esporte.">
   <meta property="og:image" content="/static/marca/og-playgo.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="/static/tokens.css">
   <link rel="stylesheet" href="/static/app.css">
   <link rel="stylesheet" href="/static/mural.css">
+  <link rel="stylesheet" href="/static/shell.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" defer></script>
   <script>
     window.PLAYGO = {
@@ -27,52 +31,49 @@
   <script src="/static/mural.js" defer></script>
 </head>
 {% from "_ico.html" import ic %}
-{% set itens_do_menu = [
-  ('home', '/', 'home', 'Início'),
-  ('mural', '/mural', 'pen-line', 'Feed'),
-  ('explorar', '/explorar', 'compass', 'Explorar'),
-  ('criar', '/atividades/nova', 'circle-plus', 'Criar atividade'),
-  ('grupos', '/grupos', 'users', 'Meus grupos'),
-  ('comunidades', '/comunidades', 'users-round', 'Comunidades'),
-  ('campeonatos', '/campeonatos', 'trophy', 'Campeonatos'),
-  ('aulas', '/aulas', 'graduation-cap', 'Aulas e Treinamentos'),
+{% from "_logo.html" import simbolo, horizontal %}
+{# (aba, url, ícone, nome, aparece?) — a ordem e os nomes seguem o design system #}
+{% set menu_principal = [
+  ('home', '/', 'home', 'Início', true),
+  ('mural', '/mural', 'pen-line', 'Feed', true),
+  ('explorar', '/explorar', 'compass', 'Explorar', true),
+  ('criar', '/atividades/nova', 'circle-plus', 'Criar atividade', pode.atividade),
+  ('grupos', '/grupos', 'users', 'Meus grupos', true),
+  ('comunidades', '/comunidades', 'users-round', 'Comunidades', true),
+  ('campeonatos', '/campeonatos', 'trophy', 'Campeonatos', true),
 ] %}
+{% set menu_gestao = [
+  ('gestao', '/gestao', 'building-2', 'Minha Arena', pode.arena),
+  ('aulas', '/aulas', 'graduation-cap', 'Aulas e Treinamentos', pode.ensino_menu),
+  ('ensino', '/ensino', 'clipboard-list', 'Minhas aulas' if pode.perfil_prof else 'Dar aulas', pode.ensino_menu),
+  ('reservas', '/reservas', 'calendar-check', 'Minhas reservas', true),
+  ('planos', '/planos', 'credit-card', 'Meu plano', true),
+  ('tutorial', '/tutorial', 'book-open', 'Tutoriais', true),
+  ('locais', '/gestao/locais', 'map-pin', 'Guia de locais', usuario.admin),
+  ('administracao', '/administracao', 'settings', 'Administração', usuario.admin),
+  ('moderacao', '/moderacao', 'shield-check', 'Moderação', usuario.equipe_moderacao),
+] %}
+{% set titulos = {'home': 'Início', 'mural': 'Feed', 'explorar': 'Explorar', 'criar': 'Criar atividade', 'grupos': 'Meus grupos', 'comunidades': 'Comunidades', 'campeonatos': 'Campeonatos', 'gestao': 'Minha Arena', 'aulas': 'Aulas e Treinamentos', 'ensino': 'Aulas', 'reservas': 'Minhas reservas', 'planos': 'Meu plano', 'tutorial': 'Tutoriais', 'locais': 'Guia de locais', 'administracao': 'Administração', 'moderacao': 'Moderação', 'perfil': 'Meu perfil', 'notificacoes': 'Notificações', 'convites': 'Convites', 'privacidade': 'Privacidade'} %}
 <body>
-<script>try { if (localStorage.getItem('pg-menu') === 'min') document.body.classList.add('menu-min'); } catch (e) { /* sem armazenamento */ }</script>
+<script>try { if (!matchMedia('(min-width: 1280px)').matches || localStorage.getItem('pg-menu') === 'min') document.body.classList.add('menu-min'); } catch (e) { /* sem armazenamento */ }</script>
+<a class="pular" href="#conteudo-principal">Ir para o conteúdo</a>
 <div class="app">
-<aside class="sidebar">
+<aside class="sidebar" id="menu" aria-label="Menu principal">
   <div class="sb-topo">
-    <a class="logo" href="/"><img class="logo-ico" src="/static/marca/icone.svg" alt="" width="34" height="34">Play<span>Go</span></a>
-    <button class="sb-toggle" type="button" data-menu-toggle aria-label="Recolher ou expandir o menu" title="Recolher ou expandir o menu">{{ ic('panel-left-close') }}</button>
+    <a class="logo" href="/" aria-label="PlayGo, página inicial"><span class="logo-aberto">{{ horizontal(40) }}</span><span class="logo-fechado">{{ simbolo(44) }}</span></a>
+    <button class="sb-toggle" type="button" data-menu-toggle aria-controls="menu" aria-expanded="true" aria-label="Recolher menu" title="Recolher ou abrir o menu">{{ ic('menu') }}</button>
   </div>
   <nav class="nav">
-    {% for chave, url, icone, nome in itens_do_menu if (chave != 'criar' or pode.atividade) and (chave != 'aulas' or pode.ensino_menu) %}
-    <a href="{{ url }}" class="{{ 'active' if aba == chave }}"><span class="ico">{{ ic(icone) }}</span><span class="t">{{ nome }}</span></a>
+    {% for chave, url, icone, nome, ok in menu_principal if ok %}
+    <a href="{{ url }}" aria-label="{{ nome }}" title="{{ nome }}" class="{{ 'active' if aba == chave }}"{% if aba == chave %} aria-current="page"{% endif %}><span class="ico">{{ ic(icone) }}</span><span class="t">{{ nome }}</span></a>
     {% endfor %}
-    <div class="manager"><small>Gestão</small></div>
-    {% if pode.arena %}
-    <a href="/gestao" class="{{ 'active' if aba == 'gestao' }}"><span class="ico">{{ ic('building-2') }}</span><span class="t">Minha Arena</span></a>
-    {% endif %}
-    {% if pode.ensino_menu %}<a href="/ensino" class="{{ 'active' if aba == 'ensino' }}"><span class="ico">{{ ic('clipboard-list') }}</span><span class="t">{{ 'Minhas aulas' if pode.perfil_prof else 'Dar aulas' }}</span></a>{% endif %}
-    <a href="/reservas" class="{{ 'active' if aba == 'reservas' }}"><span class="ico">{{ ic('calendar-check') }}</span><span class="t">Minhas reservas</span></a>
-    <a href="/planos" class="{{ 'active' if aba == 'planos' }}"><span class="ico">{{ ic('credit-card') }}</span><span class="t">Meu plano</span></a>
-    <details class="submenu {{ 'active' if aba == 'tutorial' }}" {{ 'open' if aba == 'tutorial' }}>
-      <summary><span class="ico">{{ ic('book-open') }}</span><span class="t">Tutoriais</span></summary>
-      <div class="subitens">
-        {% if pode.campeonato %}<a href="/tutorial/campeonatos" class="{{ 'active' if aba == 'tutorial' and tut_sub == 'campeonatos' }}"><span class="ico">{{ ic('trophy') }}</span><span class="t">Campeonatos</span></a>{% endif %}
-        <a href="/tutorial/transmissao" class="{{ 'active' if aba == 'tutorial' and tut_sub == 'transmissao' }}"><span class="ico">{{ ic('video') }}</span><span class="t">Transmissão ao vivo</span></a>
-      </div>
-    </details>
-    {% if usuario.admin %}
-    <a href="/gestao/locais" class="{{ 'active' if aba == 'locais' }}"><span class="ico">{{ ic('map-pin') }}</span><span class="t">Guia de locais</span></a>
-    <a href="/administracao" class="{{ 'active' if aba == 'administracao' }}"><span class="ico">{{ ic('settings') }}</span><span class="t">Administração</span></a>
-    {% endif %}
-    {% if usuario.equipe_moderacao %}
-    <a href="/moderacao" class="{{ 'active' if aba == 'moderacao' }}"><span class="ico">{{ ic('shield-check') }}</span><span class="t">Moderação{% if fila_moderacao %} <b class="selo">{{ fila_moderacao }}</b>{% endif %}</span></a>
-    {% endif %}
+    <hr class="nav-sep">
+    {% for chave, url, icone, nome, ok in menu_gestao if ok %}
+    <a href="{{ url }}" aria-label="{{ nome }}" title="{{ nome }}" class="{{ 'active' if aba == chave }}"{% if aba == chave %} aria-current="page"{% endif %}><span class="ico">{{ ic(icone) }}</span><span class="t">{{ nome }}{% if chave == 'moderacao' and fila_moderacao %} <b class="selo">{{ fila_moderacao }}</b>{% endif %}</span></a>
+    {% endfor %}
   </nav>
   <div class="sb-conta">
-    <a class="sb-perfil" href="/perfil" title="Meu perfil">
+    <a class="sb-perfil" href="/perfil" title="Meu perfil" aria-label="Meu perfil, {{ usuario.arroba }}">
       <span class="avatar">{% if usuario.foto_url %}<img src="{{ usuario.foto_url }}" alt="">{% else %}{{ usuario.iniciais }}{% endif %}</span>
       <span class="sb-nome"><b>{{ usuario.nome.split(' ')[0] }}</b><small>{{ usuario.arroba }}</small></span>
     </a>
@@ -80,26 +81,30 @@
       <span class="sb-plano-nome">Seu plano: <b>{{ meu_plano.nome }}</b></span>
       <a class="btn lime pequeno bloco" href="/planos">Ver planos</a>
       {% if meu_plano.limite %}
-      <div class="sb-uso"><span>Atividades abertas</span><div class="barra" role="progressbar" aria-valuemin="0" aria-valuemax="{{ meu_plano.limite }}" aria-valuenow="{{ meu_plano.usadas }}"><i style="width: {{ meu_plano.pct }}%"></i></div><small>{{ meu_plano.usadas }} de {{ meu_plano.limite }}</small></div>
+      <div class="sb-uso"><span>Atividades abertas</span><div class="barra" role="progressbar" aria-label="Atividades abertas" aria-valuemin="0" aria-valuemax="{{ meu_plano.limite }}" aria-valuenow="{{ meu_plano.usadas }}"><i style="width: {{ meu_plano.pct }}%"></i></div><small>{{ meu_plano.usadas }} de {{ meu_plano.limite }}</small></div>
       {% endif %}
     </div>
   </div>
 </aside>
+<div class="menu-fundo" data-menu-fechar hidden></div>
 
 <main class="main">
 <header class="topbar">
+  <button class="topo-hamb" type="button" data-menu-toggle aria-controls="menu" aria-expanded="false" aria-label="Abrir menu">{{ ic('menu') }}</button>
+  <a class="topo-logo" href="/" aria-label="PlayGo, página inicial">{{ horizontal(36) }}</a>
+  <p class="topo-titulo" role="heading" aria-level="2">{{ titulos.get(aba, 'PlayGo') }}</p>
   <form class="search" action="/explorar" method="get" role="search">
     {{ ic('search') }} <input name="q" value="{{ busca or '' }}" placeholder="Busque futebol, vôlei, corrida, arena..." aria-label="Buscar">
   </form>
   <div class="topo-direita">
     {% if pode.atividade %}<a class="btn lime pequeno topo-criar" href="/atividades/nova">{{ ic('plus') }} Criar</a>{% endif %}
-    {% if convites_pendentes %}<a class="sino" href="/convites" aria-label="Convites" title="Você tem convites">{{ ic('mail') }}<b>{{ convites_pendentes }}</b></a>{% endif %}
-    <a class="sino" href="/notificacoes" aria-label="Notificações" title="Notificações">{{ ic('bell') }}{% if nao_lidas %}<b>{{ nao_lidas if nao_lidas < 100 else '99+' }}</b>{% endif %}</a>
-    <a class="avatar" href="/perfil" title="{{ usuario.arroba }}">{% if usuario.foto_url %}<img src="{{ usuario.foto_url }}" alt="">{% else %}{{ usuario.iniciais }}{% endif %}</a>
+    {% if convites_pendentes %}<a class="sino" href="/convites" aria-label="Convites ({{ convites_pendentes }})" title="Você tem convites">{{ ic('mail') }}<b>{{ convites_pendentes }}</b></a>{% endif %}
+    <a class="sino" href="/notificacoes" aria-label="Notificações{% if nao_lidas %} ({{ nao_lidas }} novas){% endif %}" title="Notificações">{{ ic('bell') }}{% if nao_lidas %}<b>{{ nao_lidas if nao_lidas < 100 else '99+' }}</b>{% endif %}</a>
+    <a class="avatar topo-avatar" href="/perfil" title="{{ usuario.arroba }}" aria-label="Meu perfil">{% if usuario.foto_url %}<img src="{{ usuario.foto_url }}" alt="">{% else %}{{ usuario.iniciais }}{% endif %}</a>
   </div>
 </header>
 
-<div class="content">
+<div class="content" id="conteudo-principal" tabindex="-1">
   {% if erro %}<p class="aviso erro" role="alert">{{ erro }}</p>{% endif %}
   {% if ok %}<p class="aviso ok">{{ ok }}</p>{% endif %}
   {% if aviso_plano and aba != "planos" %}<p class="aviso erro" role="status">⏳ {{ aviso_plano.texto }} <a href="/planos"><b>Ver planos</b></a></p>{% endif %}
@@ -107,6 +112,13 @@
   <footer class="rodape-legal"><a href="/termos">Termos de Uso</a> · <a href="/politica-de-privacidade">Política de Privacidade</a> · <a href="/privacidade">Meus dados e privacidade</a></footer>
 </div>
 </main>
+<nav class="bottombar" aria-label="Atalhos principais">
+  <a href="/" class="{{ 'active' if aba == 'home' }}"{% if aba == 'home' %} aria-current="page"{% endif %}>{{ ic('home') }}<span>Início</span></a>
+  <a href="/explorar" class="{{ 'active' if aba == 'explorar' }}"{% if aba == 'explorar' %} aria-current="page"{% endif %}>{{ ic('compass') }}<span>Explorar</span></a>
+  {% if pode.atividade %}<a href="/atividades/nova" class="{{ 'active' if aba == 'criar' }}"{% if aba == 'criar' %} aria-current="page"{% endif %}>{{ ic('circle-plus') }}<span>Criar</span></a>
+  {% else %}<a href="/mural" class="{{ 'active' if aba == 'mural' }}"{% if aba == 'mural' %} aria-current="page"{% endif %}>{{ ic('pen-line') }}<span>Feed</span></a>{% endif %}
+  <a href="/reservas" class="{{ 'active' if aba == 'reservas' }}"{% if aba == 'reservas' %} aria-current="page"{% endif %}>{{ ic('calendar-check') }}<span>Reservas</span></a>
+</nav>
 </div>
 <div class="toast" id="toast" role="status"></div>
 </body>

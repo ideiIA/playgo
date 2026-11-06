@@ -298,7 +298,7 @@ def preparar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> di
     corpo = {
         "snippet": {
             "title": _titulo(c, j), "scheduledStartTime": _iso_utc(inicio),
-            "description": f"{c.nome} — transmissão oficial pelo PlayGo.\nAcompanhe o placar em {settings.url_publica.rstrip('/') if settings.url_publica else ''}/campeonatos/{c.id}/ao-vivo",
+            "description": f"{c.nome}: transmissão oficial pelo PlayGo.\nAcompanhe o placar em {settings.url_publica.rstrip('/') if settings.url_publica else ''}/campeonatos/{c.id}/ao-vivo",
         },
         "status": {"privacyStatus": privacidade_padrao(s), "selfDeclaredMadeForKids": False},
         "contentDetails": {"enableAutoStart": False, "enableAutoStop": False, "enableDvr": True, "enableEmbed": True, "recordFromStart": True},

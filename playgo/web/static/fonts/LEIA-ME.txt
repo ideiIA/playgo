@@ -1,0 +1,3 @@
+Fontes locais do PlayGo (licença SIL Open Font License 1.1): Outfit (títulos e marca) e Inter (texto).
+Arquivos woff2 variáveis, recortados para o latim (pt-BR) com fonttools; a origem está em github.com/google/fonts (ofl/outfit e ofl/inter).
+O TTF do Outfit usado para gerar a logo fica em scripts/fontes/.

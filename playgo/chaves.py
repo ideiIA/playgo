@@ -773,7 +773,7 @@ def iniciar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario) -> Jog
     j.status, j.iniciado_em = J_AO_VIVO, agora()
     _evento(s, j, "inicio", por, "Bola rolando!")
     auditoria.registrar(s, por.id, "jogo_iniciar", "jogo", j.id)
-    _avisar_equipes(s, c, _ids_do_jogo(j), f"🔴 Ao vivo: {_nome_lado(j, 'a')} x {_nome_lado(j, 'b')}", f"{c.nome} — acompanhe o placar.", f"jogo-vivo:{j.id}")
+    _avisar_equipes(s, c, _ids_do_jogo(j), f"🔴 Ao vivo: {_nome_lado(j, 'a')} x {_nome_lado(j, 'b')}", f"{c.nome}. Acompanhe o placar.", f"jogo-vivo:{j.id}")
     s.commit()
     return j
 
@@ -994,7 +994,7 @@ def encerrar(s: SessaoORM, campeonato_id: int, jogo_id: int, por: Usuario, vence
     j.ponto_a = j.ponto_b = 0
     vencedor = j.equipe_a if j.vencedor_id == j.equipe_a_id else j.equipe_b if j.vencedor_id == j.equipe_b_id else None
     parciais = " (" + ", ".join(f"{x.pontos_a}-{x.pontos_b}" for x in _sets_do_jogo(s, j) if x.encerrado) + ")" if modo_sets(c) else ""
-    texto = f"Fim de jogo: {j.placar_a} x {j.placar_b}{parciais}" + (f" — {_nome(vencedor)} vence no desempate" if j.desempate else "")
+    texto = f"Fim de jogo: {j.placar_a} x {j.placar_b}{parciais}" + (f", {_nome(vencedor)} vence no desempate" if j.desempate else "")
     _evento(s, j, "fim", por, texto)
     auditoria.registrar(s, por.id, "jogo_encerrar", "jogo", j.id, placar=f"{j.placar_a}x{j.placar_b}", vencedor=j.vencedor_id)
     _avancar(s, j)

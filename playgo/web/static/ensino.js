@@ -131,7 +131,7 @@
         (f.descricao ? '<div class="en-bloco"><p>' + esc(f.descricao).replace(/\n/g, '<br>') + '</p></div>' : '') +
         '<div class="en-bloco"><h3>Valores</h3><div class="en-precos">' + (precos.length ? precos.map(([k, v]) => '<div><span>' + esc(k) + '</span><b>' + esc(v) + '</b></div>').join('') : '<p class="en-meta">Valores a combinar com o profissional.</p>') + '</div></div>' +
         (f.horarios.length ? '<div class="en-bloco"><h3>Horários</h3><div class="en-horarios">' + f.horarios.map((h) => '<span class="tag cinza">' + esc(h.dia) + ' · ' + esc(h.hora_inicio) + ' (' + h.duracao_min + ' min)</span>').join('') + '</div></div>' : '') +
-        '<div class="en-bloco"><h3>Local</h3><p>' + esc([f.local_texto, f.endereco].filter(Boolean).join(' — ') || 'A combinar') + (f.distancia ? '<br><span class="en-meta">a ' + esc(f.distancia) + ' de você</span>' : '') + '</p>' +
+        '<div class="en-bloco"><h3>Local</h3><p>' + esc([f.local_texto, f.endereco].filter(Boolean).join(', ') || 'A combinar') + (f.distancia ? '<br><span class="en-meta">a ' + esc(f.distancia) + ' de você</span>' : '') + '</p>' +
         (f.latitude != null ? '<a href="https://www.openstreetmap.org/directions?to=' + f.latitude + '%2C' + f.longitude + '" target="_blank" rel="noopener">Como chegar</a>' : '') + '</div>' +
         '<div class="en-bloco"><h3>Profissional</h3><a class="en-card" href="' + esc(o.href('profissional', p.id)) + '"><span class="en-foto">' + (p.foto_url ? '<img src="' + esc(p.foto_url) + '" alt="">' : esc((p.nome || '?').slice(0, 2).toUpperCase())) +
         '</span><div class="en-card-corpo"><b>' + esc(p.nome) + '</b> ' + (p.verificado ? '<span class="tag verde">✅ Verificado</span>' : '') + '</div></a>' + contatos(p, o) + '</div></div>';

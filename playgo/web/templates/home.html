@@ -2,33 +2,21 @@
 {% import "_cards.html" as c %}
 {% from "_ico.html" import ic %}
 {% block conteudo %}
-<div class="hero">
-  <div>
-    <h1>Tem gente jogando perto de você. Bora completar o time?</h1>
-    <p>Descubra jogos, grupos, campeonatos e arenas — com vagas atualizadas em tempo real.</p>
-    <form class="hero-busca" action="/explorar" method="get" role="search">
-      {{ ic('map-pin') }}<input name="q" placeholder="Futebol, vôlei, arena… onde você quer jogar?" aria-label="Buscar no mapa">
-      <a class="btn lime" href="/explorar?raio=5&quando=hoje">{{ ic('map') }} Abrir mapa</a>
-    </form>
-    <p class="hero-ao-vivo"><span class="pulse"></span><strong>{{ feed.oportunidades_agora }} oportunidade{{ 's' if feed.oportunidades_agora != 1 }} agora</strong> em até 5 km de você</p>
-  </div>
-</div>
-
 {% if not feed.centro.informada %}
-<p class="aviso" style="background:#fff6dd;border:1px solid #ffe29a;margin-top:20px">
-  📍 Ainda não sabemos onde você está — mostrando Campo Grande.
+<p class="aviso" style="background:#fff6dd;border:1px solid #ffe29a">
+  {{ ic('map-pin') }} Ainda não sabemos onde você está. Mostrando Campo Grande.
   <button class="btn soft pequeno" data-localizar>Usar minha localização</button>
 </p>
 {% endif %}
 
 {% if feed.ao_vivo %}
-<div class="section-title"><h2><span class="pulse"></span> Ao vivo agora</h2><a href="/campeonatos">Ver campeonatos</a></div>
+<div class="section-title" style="margin-top:0"><h2><span class="pulse"></span> Ao vivo agora</h2><a href="/campeonatos">Ver campeonatos</a></div>
 <div class="grid">
   {% for j in feed.ao_vivo %}
-  <div class="card" style="border:2px solid #ff3d81">
+  <div class="card" style="border:2px solid var(--rosa)">
     <a class="cobre" href="{{ j.link }}" aria-label="Acompanhar {{ j.a }} contra {{ j.b }}"></a>
-    <span class="tag rosa">🔴 AO VIVO</span> <span class="tag cinza">{{ j.icone }} {{ j.campeonato }}</span>
-    <h3 style="margin-top:8px">{{ j.a }} <b style="color:#ff3d81">{{ j.placar_a }}</b> × <b style="color:#ff3d81">{{ j.placar_b }}</b> {{ j.b }}</h3>
+    <span class="tag rosa">AO VIVO</span> <span class="tag cinza">{{ j.icone }} {{ j.campeonato }}</span>
+    <h3 style="margin-top:8px">{{ j.a }} <b style="color:var(--rosa)">{{ j.placar_a }}</b> × <b style="color:var(--rosa)">{{ j.placar_b }}</b> {{ j.b }}</h3>
     <div class="meta">{{ j.rodada }}{% if j.local %} · {{ j.local }}{% endif %}{% if j.sets_a is not none %} · sets {{ j.sets_a }} × {{ j.sets_b }}{% endif %}</div>
     <p style="margin:10px 0 0"><span class="btn purple pequeno">Acompanhar agora →</span></p>
   </div>
@@ -36,49 +24,84 @@
 </div>
 {% endif %}
 
+<div class="bento">
+  <section class="b b-onde" aria-labelledby="t-onde">
+    <span class="b-pill"><span class="pulse" style="margin:0"></span>{{ feed.oportunidades_agora }} oportunidade{{ 's' if feed.oportunidades_agora != 1 }} agora em até 5 km</span>
+    <h2 id="t-onde">Onde você quer jogar?</h2>
+    <form class="b-busca" action="/explorar" method="get" role="search">
+      <label>{{ ic('search') }}<input name="q" placeholder="Esporte, arena ou bairro" aria-label="Buscar esporte, arena ou bairro"></label>
+      <button class="btn purple">Buscar</button>
+    </form>
+    <div class="sports" role="group" aria-label="Filtrar por esporte">
+      <a class="sport {{ 'on' if not esporte }}" href="/" aria-pressed="{{ 'true' if not esporte else 'false' }}">Todos</a>
+      {% for m in modalidades[:8] %}<a class="sport {{ 'on' if esporte == m.codigo }}" href="/?esporte={{ m.codigo }}" aria-pressed="{{ 'true' if esporte == m.codigo else 'false' }}"><span class="ico">{{ m.icone }}</span>{{ m.nome }}</a>{% endfor %}
+    </div>
+    <div class="b-mapa" id="mapa-home" role="region" aria-label="Mapa de arenas e partidas próximas"></div>
+    <div class="b-acoes" style="margin-top:0"><a class="btn soft" href="/explorar?raio=5&quando=hoje">{{ ic('map') }} Abrir mapa ao vivo</a></div>
+  </section>
+
+  <section class="b b-rol" aria-labelledby="t-rol">
+    <div class="b-topo"><h2 id="t-rol">Rolando perto de você</h2>{% if feed.perto %}<a href="/explorar">Ver no mapa</a>{% endif %}</div>
+    {% if feed.perto %}
+    <div class="b-cards">{% for a in feed.perto[:3] %}{{ c.atividade(a) }}{% endfor %}</div>
+    {% else %}
+    <div class="vazio-rico leve">
+      <span class="vazio-ico">{{ ic('radio') }}</span>
+      <h3>{{ 'Nenhuma partida desse esporte agora' if esporte else 'Nenhuma partida rolando agora' }}</h3>
+      <p>Crie a sua e chame a galera.</p>
+      {% if pode.atividade %}<a class="btn lime" href="/atividades/nova">{{ ic('plus') }} Criar partida</a>
+      {% else %}<a class="btn lime" href="/explorar">{{ ic('compass') }} Explorar no mapa</a>{% endif %}
+    </div>
+    {% endif %}
+  </section>
+
+  <section class="b b-grp" aria-labelledby="t-grp">
+    <div class="b-topo"><h2 id="t-grp">Seus grupos</h2><a href="/grupos">Ver todos {{ ic('chevron-right') }}</a></div>
+    {% if feed.grupos %}
+    <div class="b-lista">{% for g in feed.grupos[:3] %}
+      <a class="b-linha" href="/grupos/{{ g.id }}"><span class="ico-b">{{ ic('users') }}</span><b>{{ g.nome }}<small>{{ g.membros }} membro{{ 's' if g.membros != 1 }}{% if g.proxima %} · próxima {{ g.proxima.quando|lower }}{% endif %}</small></b>{{ ic('chevron-right') }}</a>
+    {% endfor %}</div>
+    {% else %}
+    <p style="margin:0;font-size:14px;line-height:1.5">Você ainda não está em nenhum grupo. Entre em um para combinar jogos com a mesma turma.</p>
+    <div class="b-acoes"><a class="btn lime" href="/grupos">{{ ic('users') }} Achar um grupo</a></div>
+    {% endif %}
+  </section>
+
+  <section class="b b-are" aria-labelledby="t-are">
+    <div class="b-topo"><h2 id="t-are">Arenas próximas</h2><a href="/explorar" style="color:var(--roxo-escuro)">Ver todas</a></div>
+    {% if feed.arenas %}
+    <div class="b-lista">{% for a in feed.arenas[:5] %}
+      <a class="b-linha" href="/arenas/{{ a.id }}"><span class="ico-b">{{ ic('map-pin') }}</span><b>{{ a.nome }}<small style="display:block;font-weight:400;color:var(--texto-2)">{{ a.distancia or a.cidade }}{% if a.horarios_disponiveis %} · {{ a.horarios_disponiveis }} horário{{ 's' if a.horarios_disponiveis != 1 }} livre{{ 's' if a.horarios_disponiveis != 1 }} hoje{% endif %}</small></b><small>Ver horários</small>{{ ic('chevron-right') }}</a>
+    {% endfor %}</div>
+    {% else %}{{ c.vazio('Nenhuma arena cadastrada por perto ainda.') }}{% endif %}
+  </section>
+
+  <section class="b b-cam" aria-labelledby="t-cam">
+    <span class="b-selo">{{ ic('trophy') }}</span>
+    <h2 id="t-cam">Campeonatos</h2>
+    {% if feed.campeonatos %}
+    <div class="b-lista">{% for x in feed.campeonatos[:3] %}
+      <a class="b-linha" href="/campeonatos/{{ x.id }}"><b>{{ x.nome }}<small style="display:block">{{ x.situacao }} · {{ x.data_inicio_texto }}</small></b>{{ ic('chevron-right') }}</a>
+    {% endfor %}</div>
+    {% else %}<p>Tabela, chaves e placar ao vivo para o seu torneio.</p>{% endif %}
+    <div class="b-acoes"><a class="btn" href="/campeonatos">Ver campeonatos</a></div>
+  </section>
+</div>
+
 {% if feed.urgentes %}
-<div class="section-title"><h2>🔥 Precisam de jogadores agora</h2><a href="/explorar?com_vagas=1&ordem=relevancia">Ver todas as vagas</a></div>
+<div class="section-title"><h2>Precisam de jogadores agora</h2><a href="/explorar?com_vagas=1&ordem=relevancia">Ver todas as vagas</a></div>
 <div class="urgent-grid">{% for a in feed.urgentes %}{{ c.urgente(a) }}{% endfor %}</div>
 {% endif %}
 
-<div class="section-title"><h2>O que você quer praticar?</h2><a href="/explorar">Ver todos</a></div>
-<div class="sports" role="group" aria-label="Filtrar por modalidade">
-  <a class="sport {{ 'on' if not esporte }}" href="/">Todos</a>
-  {% for m in modalidades[:8] %}<a class="sport {{ 'on' if esporte == m.codigo }}" href="/?esporte={{ m.codigo }}" aria-pressed="{{ 'true' if esporte == m.codigo else 'false' }}"><span class="ico">{{ m.icone }}</span>{{ m.nome }}</a>{% endfor %}
-</div>
-
-<div class="section-title"><h2>Rolando perto de você 🔥</h2><a href="/explorar">Ver no mapa</a></div>
-{% if feed.perto %}<div class="grid">{% for a in feed.perto %}{{ c.atividade(a) }}{% endfor %}</div>
-{% else %}
-<div class="vazio-rico">
-  <span class="vazio-ico">{{ ic('radio') }}</span>
-  <h3>{{ 'Nenhum jogo desse esporte por perto agora' if esporte else 'Nada marcado por perto ainda' }}</h3>
-  <p>Seja o primeiro a marcar e chame a galera.</p>
-  {% if pode.atividade %}<a class="btn lime" href="/atividades/nova">{{ ic('plus') }} Criar partida</a>
-  {% else %}<a class="btn lime" href="/explorar">{{ ic('compass') }} Explorar no mapa</a>{% endif %}
-</div>
-{% endif %}
-
-{% if feed.campeonatos %}
-<div class="section-title"><h2>🏆 Campeonatos com inscrições abertas</h2><a href="/campeonatos">Ver todos</a></div>
-<div class="grid">{% for x in feed.campeonatos[:3] %}{{ c.campeonato(x, loop.first) }}{% endfor %}</div>
-{% endif %}
-
-{% if feed.grupos %}
-<div class="section-title"><h2>👥 Seus grupos</h2><a href="/grupos">Ver todos</a></div>
-<div class="grid">{% for g in feed.grupos[:3] %}{{ c.grupo(g) }}{% endfor %}</div>
-{% endif %}
-
 {% if feed.recomendados %}
-<div class="section-title"><h2>🎯 Recomendados para você</h2></div>
+<div class="section-title"><h2>Recomendados para você</h2></div>
 <div class="grid">{% for a in feed.recomendados[:3] %}{{ c.atividade(a) }}{% endfor %}</div>
 {% elif not usuario.esportes %}
-<div class="section-title"><h2>🎯 Recomendados para você</h2></div>
+<div class="section-title"><h2>Recomendados para você</h2></div>
 <p class="vazio">Conte quais esportes você pratica para receber indicações. <a href="/perfil">Completar meu perfil</a></p>
 {% endif %}
 
-{% if feed.arenas %}
-<div class="section-title"><h2>🏟️ Arenas próximas</h2><a href="/explorar">Ver todas</a></div>
-<div class="grid">{% for a in feed.arenas %}{{ c.arena(a) }}{% endfor %}</div>
-{% endif %}
+<script>
+  window.addEventListener('load', () => mapaPontos('mapa-home', {{ feed.centro|tojson }}, {{ pontos|tojson }}));
+</script>
 {% endblock %}

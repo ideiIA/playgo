@@ -1,0 +1,9 @@
+{# Logo do PlayGo: bola de futebol com rastro verde-limão. Uso: {% from "_logo.html" import simbolo, horizontal %}  {{ simbolo(32) }}  {{ horizontal(32, 'escuro') }}
+   Temas: claro (padrão, fundo claro: bola com contorno) e escuro (fundo escuro: bola sem contorno, "Go" em lima). Geometria igual à de scripts/gerar_marca.py. #}
+{% macro simbolo(h=32, tema='claro') -%}
+<svg class="pg-simbolo" width="{{ h }}" height="{{ h }}" viewBox="0 0 120 120" aria-hidden="true" focusable="false"><defs><clipPath id="pg-bola"><circle cx="62" cy="58" r="40"/></clipPath></defs><circle cx="62" cy="58" r="40" fill="#fff"{% if tema != 'escuro' %} stroke="#14213d" stroke-width="3"{% endif %}/><g clip-path="url(#pg-bola)" fill="#14213d" stroke="#14213d" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"><path d="M62.0 45.2L62.0 30.2 M74.1 54.1L88.5 49.4 M69.5 68.3L78.4 80.5 M54.5 68.3L45.6 80.5 M49.9 54.1L35.5 49.4" fill="none"/><polygon points="62.0,30.2 47.1,19.4 52.8,1.9 71.2,1.9 76.9,19.4"/><polygon points="88.5,49.4 94.2,31.9 112.6,31.9 118.2,49.4 103.4,60.2"/><polygon points="78.4,80.5 96.8,80.5 102.4,98.0 87.6,108.8 72.7,98.0"/><polygon points="45.6,80.5 51.3,98.0 36.4,108.8 21.6,98.0 27.2,80.5"/><polygon points="35.5,49.4 20.6,60.2 5.8,49.4 11.4,31.9 29.8,31.9"/></g><polygon points="62.0,45.2 74.1,54.1 69.5,68.3 54.5,68.3 49.9,54.1" fill="#14213d" stroke="#14213d" stroke-width="3" stroke-linejoin="round"/><path d="M16 76A48 48 0 0 0 66 108" fill="none" stroke="#b7f34b" stroke-width="9" stroke-linecap="round"/></svg>
+{%- endmacro %}
+
+{% macro horizontal(h=32, tema='claro') -%}
+<span class="pg-logo pg-{{ tema }}" role="img" aria-label="PlayGo" style="--h: {{ h }}px">{{ simbolo(h, tema) }}<span class="pg-palavra" aria-hidden="true"><span class="play">Play</span><span class="go">Go</span></span></span>
+{%- endmacro %}

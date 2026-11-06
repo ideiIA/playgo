@@ -148,7 +148,7 @@ def papel_membro(comunidade_id: int, usuario_id: int, s: Sessao, usuario: Atual,
 
 @app.get("/convites")
 def tela_convites(request: Request, s: Sessao, usuario: Atual):
-    return pagina(request, s, usuario, "convites.html", "", convites=convites.pendentes(s, usuario))
+    return pagina(request, s, usuario, "convites.html", "convites", convites=convites.pendentes(s, usuario))
 
 
 @app.post("/convites/{convite_id}/responder")

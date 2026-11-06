@@ -29,7 +29,7 @@
         : '<p class="vazio">Nenhuma publicação aguardando para o Instagram.</p>';
       if (f.recentes.length) {
         h += '<h3 style="margin:18px 0 8px">Últimas</h3>' + f.recentes.map((i) => '<div class="pessoa" style="flex-wrap:wrap;gap:8px;padding:8px 0;border-top:1px solid #e9eaf0" data-ig="' + i.id + '">' +
-          '<span><b>' + esc(i.autor) + '</b> · ' + esc(ROTULO[i.status] || i.status) + (i.erro ? ' — ' + esc(i.erro) : '') + '</span>' +
+          '<span><b>' + esc(i.autor) + '</b> · ' + esc(ROTULO[i.status] || i.status) + (i.erro ? ': ' + esc(i.erro) : '') + '</span>' +
           (i.link ? ' <a href="' + esc(i.link) + '" target="_blank" rel="noopener">ver no Instagram ↗</a>' : '') +
           (i.status === 'erro' ? ' <button class="btn suave pequeno" data-ig-a="aprovar">Tentar de novo</button>' : '') + '</div>').join('');
       }

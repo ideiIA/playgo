@@ -8,7 +8,7 @@ from .db import Base, Session, criar_tabelas, engine
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="playgo", description="PlayGo — encontre onde jogar, encontre com quem jogar")
+    parser = argparse.ArgumentParser(prog="playgo", description="PlayGo: encontre onde jogar, encontre com quem jogar")
     sub = parser.add_subparsers(dest="comando", required=True)
     sub.add_parser("init-db", help="cria as tabelas e as modalidades iniciais")
     p = sub.add_parser("demo", help="popula dados de demonstração (Campo Grande)")

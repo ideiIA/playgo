@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% import "_cards.html" as c %}
 {% from "_camp_abas.html" import abas %}
-{% block titulo %}{{ k.nome }} — PlayGo{% endblock %}
+{% block titulo %}{{ k.nome }} | PlayGo{% endblock %}
 {% block conteudo %}
 {% set ms = k.minha_situacao %}
 <div class="detalhe-topo">
@@ -34,7 +34,7 @@
       <div class="fato"><small>Formato</small><b>{{ k.atletas_por_equipe }} atletas por equipe</b></div>
       {% if k.premiacao %}<div class="fato"><small>Premiação</small><b>{{ k.premiacao }}</b></div>{% endif %}
     </div>
-    <b>{{ k.equipes }}/{{ k.max_equipes }} equipes inscritas — {{ k.vagas }} vaga{{ 's' if k.vagas != 1 }}</b>
+    <b>{{ k.equipes }}/{{ k.max_equipes }} equipes inscritas · {{ k.vagas }} vaga{{ 's' if k.vagas != 1 }}</b>
     <div class="barra"><i style="width:{{ (100 * k.equipes / k.max_equipes)|round|int }}%"></i></div>
     {% if k.descricao %}<h3 style="margin-top:18px">Sobre</h3><p>{{ k.descricao }}</p>{% endif %}
     {% if k.regulamento_pdf %}<h3 style="margin-top:14px">Regulamento</h3>

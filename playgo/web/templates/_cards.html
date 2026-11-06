@@ -75,7 +75,7 @@
   <a class="cobre" href="/arenas/{{ h.arena_id }}" aria-label="Quadra disponível"></a>
   <span class="tag verde">🏟️ QUADRA DISPONÍVEL</span>
   <h3>{{ h.modalidade.icone if h.modalidade else '' }} {{ h.modalidade.nome if h.modalidade else 'Quadra' }} • {{ h.quando }}</h3>
-  <div class="meta">{{ h.arena_nome }} — {{ h.quadra_nome }}{% if h.distancia %} • {{ h.distancia }}{% endif %}<br><b>{{ h.valor_texto }}</b></div>
+  <div class="meta">{{ h.arena_nome }} · {{ h.quadra_nome }}{% if h.distancia %} • {{ h.distancia }}{% endif %}<br><b>{{ h.valor_texto }}</b></div>
 </div>
 {% endmacro %}
 
@@ -84,7 +84,7 @@
 {# Campo de local com mapa clicável. Preenche latitude/longitude (hidden). #}
 {% macro seletor_local(centro, lat='', lng='') %}
 <div class="field full">
-  <label>Ponto no mapa <span class="suave">— clique no mapa para marcar</span></label>
+  <label>Ponto no mapa <span class="suave">(clique no mapa para marcar)</span></label>
   <div id="mapa-local" class="map formulario"></div>
   <input type="hidden" name="latitude" id="campo-lat" value="{{ lat }}">
   <input type="hidden" name="longitude" id="campo-lng" value="{{ lng }}">

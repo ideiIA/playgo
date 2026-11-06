@@ -19,13 +19,44 @@
   }
   window.api = api;
 
-  // Menu lateral recolhível: a escolha fica guardada neste navegador
-  document.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-menu-toggle]');
-    if (!b) return;
-    const min = document.body.classList.toggle('menu-min');
-    try { localStorage.setItem('pg-menu', min ? 'min' : 'max'); } catch (err) { /* sem armazenamento */ }
-  });
+  // Menu hambúrguer: recolhido mostra só os ícones, aberto mostra ícone + texto.
+  // Desktop (>= 1280): empurra o conteúdo e a escolha fica guardada. Tablet e celular: abre por cima do conteúdo (gaveta) e fecha ao tocar fora, em um link ou no Esc.
+  (function menu() {
+    const corpo = document.body, desktop = matchMedia('(min-width: 1280px)');
+    const fundo = document.querySelector('.menu-fundo');
+    const botoes = () => document.querySelectorAll('[data-menu-toggle]');
+    const aberto = () => (desktop.matches ? !corpo.classList.contains('menu-min') : corpo.classList.contains('menu-aberto'));
+    function atualizar() {
+      const a = aberto();
+      botoes().forEach((b) => {
+        b.setAttribute('aria-expanded', a ? 'true' : 'false');
+        b.setAttribute('aria-label', a ? (desktop.matches ? 'Recolher menu' : 'Fechar menu') : 'Abrir menu');
+      });
+      if (fundo) fundo.hidden = desktop.matches || !a;
+    }
+    function definir(a) {
+      if (desktop.matches) {
+        corpo.classList.toggle('menu-min', !a);
+        try { localStorage.setItem('pg-menu', a ? 'max' : 'min'); } catch (err) { /* sem armazenamento */ }
+      } else corpo.classList.toggle('menu-aberto', a);
+      atualizar();
+    }
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('[data-menu-toggle]')) { definir(!aberto()); return; }
+      if (e.target.closest('[data-menu-fechar]') || (!desktop.matches && aberto() && e.target.closest('.sidebar .nav a'))) definir(false);
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !desktop.matches && aberto()) { definir(false); const b = botoes()[1]; if (b) b.focus(); } });
+    // no tablet e no celular o estado "recolhido" é o padrão (a gaveta abre por cima); no desktop vale a escolha guardada
+    function sincronizar() {
+      corpo.classList.remove('menu-aberto');
+      let min = true;
+      if (desktop.matches) { try { min = localStorage.getItem('pg-menu') === 'min'; } catch (err) { min = false; } }
+      corpo.classList.toggle('menu-min', min);
+      atualizar();
+    }
+    desktop.addEventListener('change', sincronizar);
+    sincronizar();
+  })();
 
   // API com o cookie de sessão do site (multipart quando há `form`)
   window.webApi = async function (caminho, { metodo = 'GET', corpo, form } = {}) {
@@ -163,7 +194,7 @@
         if (campo.value.trim().length < 2) { lista.innerHTML = ''; return; }
         try {
           const r = await webApi('/atletas?q=' + encodeURIComponent(campo.value.trim()));
-          lista.innerHTML = r.length ? r.map((u) => '<button type="button" class="btn soft pequeno" data-u="' + escHtml(u.usuario) + '" style="text-align:left">' + escHtml(u.arroba) + ' — ' + rotulo + '</button>').join('') : '<span class="suave">Ninguém encontrado com esse @.</span>';
+          lista.innerHTML = r.length ? r.map((u) => '<button type="button" class="btn soft pequeno" data-u="' + escHtml(u.usuario) + '" style="text-align:left">' + escHtml(u.arroba) + ': ' + rotulo + '</button>').join('') : '<span class="suave">Ninguém encontrado com esse @.</span>';
         } catch (e) { lista.innerHTML = ''; }
       }, 250);
     });

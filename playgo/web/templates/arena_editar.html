@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% import "_cards.html" as c %}
-{% block titulo %}Editar arena — PlayGo{% endblock %}
+{% block titulo %}Editar arena | PlayGo{% endblock %}
 {% block conteudo %}
 <div class="section-title"><h2>Editar arena</h2></div>
 <form class="panel" method="post" action="/gestao/arenas/{{ arena.id }}/editar">
@@ -22,7 +22,7 @@
       <select name="pagamento_reserva" id="pagamento_reserva">
         <option value="local" {{ 'selected' if arena.pagamento_reserva == 'local' }}>Na arena (o app só segura o horário)</option>
         <option value="online" {{ 'selected' if arena.pagamento_reserva == 'online' }}>Pelo app (Pix ou cartão)</option>
-        <option value="ambos" {{ 'selected' if arena.pagamento_reserva == 'ambos' }}>Os dois — o atleta escolhe</option>
+        <option value="ambos" {{ 'selected' if arena.pagamento_reserva == 'ambos' }}>Os dois: o atleta escolhe</option>
       </select>
       <span class="suave">{% if online_pronto %}Seu recebimento pelo app está ativo.{% else %}<b>Atenção:</b> com “Pelo app” escolhido e o recebimento ainda não aprovado, o atleta não consegue reservar. Use “Na arena” ou “Os dois” até a aprovação. Pagamento pelo app só funciona depois de ativar e ter aprovado o “Receber pelo app”; até lá o atleta só vê “na arena”.{% endif %}</span></div>
     <div class="field"><label for="cancel_horas">Cancelamento com devolução até (horas antes)</label><input type="number" name="cancel_horas" id="cancel_horas" min="0" max="720" value="{{ arena.cancel_horas }}" required></div>

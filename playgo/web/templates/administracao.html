@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% block titulo %}Administração — PlayGo{% endblock %}
+{% block titulo %}Administração | PlayGo{% endblock %}
 {% block conteudo %}
-<div class="section-title"><h2>⚙ Administração — perfis de acesso</h2></div>
+<div class="section-title"><h2>⚙ Administração: perfis de acesso</h2></div>
 <div class="stats" id="resumo" style="margin-bottom:18px"></div>
 <div class="panel" style="margin-bottom:18px">
   <h2>O que cada perfil faz</h2>
@@ -10,7 +10,7 @@
     <div class="pessoa"><span class="tag verde">Moderador geral</span><span>Vê e decide a fila de moderação e oculta conteúdo em qualquer mural. Não gere usuários nem perfis e não desfaz o que um administrador ocultou.</span></div>
     <div class="pessoa"><span class="tag cinza">Usuário</span><span>Comum. Organizadores e donos de comunidade moderam os próprios murais, sem precisar de perfil especial.</span></div>
   </div>
-  <p class="suave" style="margin-top:10px">Ninguém — nem administrador — edita o texto de outra pessoa. Toda mudança de perfil fica registrada na trilha de auditoria e a pessoa é avisada.</p>
+  <p class="suave" style="margin-top:10px">Ninguém, nem administrador, edita o texto de outra pessoa. Toda mudança de perfil fica registrada na trilha de auditoria e a pessoa é avisada.</p>
 </div>
 <div class="panel" style="margin-bottom:18px">
   <h2>💳 Planos e mensalidades</h2>
@@ -89,8 +89,8 @@
       const linha = (p) => `<tr data-plano-cod="${p.codigo}">
         <td><b>${esc(p.nome)}</b></td>
         <td class="num"><input name="valor_mensal" value="${p.valor_mensal}" aria-label="R$/mês de ${esc(p.nome)}"></td>
-        <td class="num">${p.codigo !== 'gratuito' ? `<input name="valor_anual" value="${p.valor_anual ?? ''}" placeholder="sem anual" title="Valor do plano anual (deixe vazio para não oferecer)" aria-label="R$/ano de ${esc(p.nome)}">${p.desconto_anual ? `<small>≈ ${p.desconto_anual}% de desconto</small>` : ''}` : '<span class="nada">—</span>'}</td>
-        <td class="num">${p.codigo === 'organizador' ? `<input name="valor_evento" value="${p.valor_evento || ''}" placeholder="não vende" title="Preço de 1 campeonato avulso (vale 12 meses)" aria-label="R$ por evento avulso">` : '<span class="nada">—</span>'}</td>
+        <td class="num">${p.codigo !== 'gratuito' ? `<input name="valor_anual" value="${p.valor_anual ?? ''}" placeholder="sem anual" title="Valor do plano anual (deixe vazio para não oferecer)" aria-label="R$/ano de ${esc(p.nome)}">${p.desconto_anual ? `<small>≈ ${p.desconto_anual}% de desconto</small>` : ''}` : '<span class="nada">-</span>'}</td>
+        <td class="num">${p.codigo === 'organizador' ? `<input name="valor_evento" value="${p.valor_evento || ''}" placeholder="não vende" title="Preço de 1 campeonato avulso (vale 12 meses)" aria-label="R$ por evento avulso">` : '<span class="nada">-</span>'}</td>
         <td class="lim"><input name="max_participantes" value="${p.max_participantes ?? ''}" placeholder="∞" aria-label="Máximo de participantes"></td>
         <td class="lim"><input name="max_atividades_abertas" value="${p.max_atividades_abertas ?? ''}" placeholder="∞" aria-label="Atividades abertas"></td>
         <td class="chk"><input type="checkbox" name="pode_atividade" ${p.pode_atividade ? 'checked' : ''} aria-label="Pode organizar atividades"></td>

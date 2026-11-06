@@ -69,8 +69,8 @@
         : '<div class="tl-espera"><h3>' + (D.ultimos.length || D.proximos.length ? 'Intervalo entre os jogos' : 'Em breve, o placar ao vivo') + '</h3><p>' + esc(c.nome) + '</p>' +
           (p ? '<div class="tl-proximo">Próximo jogo<br><b>' + esc(p.a.nome) + ' × ' + esc(p.b.nome) + '</b><small>' + esc([p.rodada_nome, p.local, quando(p.inicio_previsto)].filter(Boolean).join(' · ')) + '</small></div>' : '') + '</div>';
       t('pontos').innerHTML = jogos.length > 1 ? jogos.map((_, i) => '<b class="' + (i === idx ? 'on' : '') + '"></b>').join('') : '';
-      t('rodape').innerHTML = '<div><h4>Próximos jogos</h4>' + (D.proximos.slice(0, 3).map((x) => linhaMini(x, false)).join('') || '<div class="tl-linha"><span>—</span></div>') + '</div>' +
-        '<div><h4>Últimos resultados</h4>' + (D.ultimos.slice(0, 3).map((x) => linhaMini(x, true)).join('') || '<div class="tl-linha"><span>—</span></div>') + '</div>';
+      t('rodape').innerHTML = '<div><h4>Próximos jogos</h4>' + (D.proximos.slice(0, 3).map((x) => linhaMini(x, false)).join('') || '<div class="tl-linha"><span>-</span></div>') + '</div>' +
+        '<div><h4>Últimos resultados</h4>' + (D.ultimos.slice(0, 3).map((x) => linhaMini(x, true)).join('') || '<div class="tl-linha"><span>-</span></div>') + '</div>';
       t('w-class').hidden = !D.classificacao;
       const sel = t('sel');
       if (document.activeElement !== sel) {
@@ -136,10 +136,10 @@
         (k.sou_gestor ? '<label class="tl-op"><input type="checkbox" data-t="declaro"><span>' + esc(yt.declaracao || 'Declaro que os participantes foram avisados e autorizam a filmagem e a transmissão dos jogos.') + '</span></label>' +
           '<button class="btn roxo bloco" type="button" data-t="liberar">🎥 Liberar transmissão deste campeonato</button>' : '<p class="suave">Peça à organização do campeonato para liberar a transmissão.</p>');
     } else {
-      transmissao = '<details class="tut-embutido" data-t="tut"><summary>📘 Como transmitir — passo a passo para iniciantes</summary><div class="tut-dentro" data-t="tut-corpo"><p class="carregando">Abra para ver o passo a passo.</p></div></details>' +
+      transmissao = '<details class="tut-embutido" data-t="tut"><summary>📘 Como transmitir: passo a passo para iniciantes</summary><div class="tut-dentro" data-t="tut-corpo"><p class="carregando">Abra para ver o passo a passo.</p></div></details>' +
         '<p class="suave">O vídeo vai <b>direto do seu celular ou computador para o YouTube</b>: o PlayGo só prepara a transmissão e a chave de cada jogo. Quem assiste vê no Ao vivo, no telão e na tela inicial. A gravação fica no canal e entra no book.' +
         (yt.privacidade ? (yt.privacidade === 'unlisted' ? ' Hoje as transmissões são <b>não listadas</b> (só quem tem o link do PlayGo assiste).' : ' Hoje as transmissões são <b>públicas</b> no canal.') : '') + '</p>' +
-        '<div class="campo"><label>Jogo</label><select data-t="jogo-yt">' + p.ao_vivo.concat(p.proximos).map((j) => '<option value="' + j.id + '">' + (j.status === 'ao_vivo' ? '🔴 ' : '') + esc(j.a) + ' × ' + esc(j.b) + ' — ' + esc(j.rodada) + (j.local ? ' · ' + esc(j.local) : '') + '</option>').join('') + '</select></div>' +
+        '<div class="campo"><label>Jogo</label><select data-t="jogo-yt">' + p.ao_vivo.concat(p.proximos).map((j) => '<option value="' + j.id + '">' + (j.status === 'ao_vivo' ? '🔴 ' : '') + esc(j.a) + ' × ' + esc(j.b) + ': ' + esc(j.rodada) + (j.local ? ' · ' + esc(j.local) : '') + '</option>').join('') + '</select></div>' +
         '<button class="btn roxo bloco" type="button" data-t="preparar"' + (p.ao_vivo.length || p.proximos.length ? '' : ' disabled') + '>🎥 Preparar transmissão deste jogo</button>' +
         (k.sou_gestor ? '<p style="margin-top:8px"><button class="btn perigo pequeno" type="button" data-t="bloquear">Bloquear transmissões</button></p>' : '') +
         '<div class="tl-yt" data-t="cartao" hidden>' +
@@ -165,7 +165,7 @@
       '<form class="painel" data-t="f-jogo"><h3>2 · Escolha o que aparece</h3>' +
       (p.tem_classificacao ? '<label class="tl-op"><input type="checkbox" data-t="mostrar-class"' + (p.mostrar_classificacao ? ' checked' : '') + '><span><b>📊 Mostrar a classificação geral no telão</b> <span class="suave">· alterna com o placar</span></span></label>' : '') +
       '<p class="suave" style="margin:6px 0 10px">No <b>automático</b> o telão mostra o jogo que estiver ao vivo (e alterna entre eles se houver mais de um). Ou fixe um jogo específico, mesmo antes de começar.</p>' +
-      '<label class="tl-op"><input type="radio" name="jogo" value=""' + (p.escolhido ? '' : ' checked') + '><span><b>🤖 Automático</b> — o jogo ao vivo</span></label>' +
+      '<label class="tl-op"><input type="radio" name="jogo" value=""' + (p.escolhido ? '' : ' checked') + '><span><b>🤖 Automático</b>: o jogo ao vivo</span></label>' +
       grupo('🔴 Ao vivo agora', p.ao_vivo) + grupo('⏭ Próximos jogos', p.proximos) + grupo('🏁 Últimos resultados', p.encerrados) +
       (temJogos ? '' : '<p class="vazio">Ainda não há jogos. Faça o sorteio na aba Sorteio.</p>') +
       '<button class="btn roxo bloco" type="submit" style="margin-top:12px">Aplicar no telão</button></form>' +
@@ -222,7 +222,7 @@
         if (!d.estado) return;
         if (cam) cam.mostrar(d);
         t('yt-titulo').textContent = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : '';
-        t('yt-estado').textContent = rotuloEstado[d.estado] || d.estado || '—';
+        t('yt-estado').textContent = rotuloEstado[d.estado] || d.estado || '-';
         t('yt-sinal').textContent = d.sinal ? (rotuloSinal[d.sinal.estado] || d.sinal.estado) + (d.sinal.saude && d.sinal.saude !== 'noData' ? ' · qualidade ' + d.sinal.saude : '') : 'sem sinal';
         t('yt-endereco').value = (d.envio && d.envio.endereco) || '';
         t('yt-chave').value = (d.envio && d.envio.chave) || '';

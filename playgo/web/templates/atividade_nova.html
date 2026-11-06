@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% import "_cards.html" as c %}
-{% block titulo %}Criar atividade — PlayGo{% endblock %}
+{% block titulo %}Criar atividade | PlayGo{% endblock %}
 {% block conteudo %}
 <div class="section-title"><h2>Criar nova atividade</h2></div>
 <form class="panel" method="post" action="/atividades" enctype="multipart/form-data">
@@ -15,10 +15,10 @@
     <div class="field"><label for="data">Data</label><input type="date" name="data" id="data" required min="{{ hoje }}" value="{{ v.data or '' }}"></div>
     <div class="field"><label for="hora">Horário</label><input type="time" name="hora" id="hora" required value="{{ v.hora or '' }}"></div>
 
-    <div class="field full" id="bloco-arena"><label for="arena_id">Arena <span class="suave">(opcional — atividades como corrida e ciclismo usam um ponto de encontro)</span></label>
+    <div class="field full" id="bloco-arena"><label for="arena_id">Arena <span class="suave">(opcional: atividades como corrida e ciclismo usam um ponto de encontro)</span></label>
       <select name="arena_id" id="arena_id" onchange="aoTrocarArena(this)">
-        <option value="">Sem arena — informar o local abaixo</option>
-        {% for a in arenas %}<option value="{{ a.id }}" data-lat="{{ a.latitude }}" data-lng="{{ a.longitude }}" {{ 'selected' if v.arena_id == a.id|string }}>{{ a.nome }}{% if a.distancia %} — {{ a.distancia }}{% endif %}</option>{% endfor %}
+        <option value="">Sem arena: informar o local abaixo</option>
+        {% for a in arenas %}<option value="{{ a.id }}" data-lat="{{ a.latitude }}" data-lng="{{ a.longitude }}" {{ 'selected' if v.arena_id == a.id|string }}>{{ a.nome }}{% if a.distancia %} · {{ a.distancia }}{% endif %}</option>{% endfor %}
       </select></div>
     <div class="field full"><label for="local_nome">Local ou ponto de encontro</label><input name="local_nome" id="local_nome" placeholder="Digite a arena, quadra, parque ou endereço" value="{{ v.local_nome or '' }}"></div>
     {{ c.seletor_local(centro, v.latitude or '', v.longitude or '') }}
@@ -30,9 +30,9 @@
     <div class="field"><label for="valor">Valor por pessoa (R$)</label><input name="valor" id="valor" inputmode="decimal" placeholder="0,00" value="{{ v.valor or '' }}"></div>
     <div class="field full"><label for="visibilidade">Quem pode participar</label>
       <select name="visibilidade" id="visibilidade" onchange="dicaVisibilidade(this)">
-        <option value="publica">Pública — qualquer pessoa se inscreve (aparece na busca e no mapa)</option>
-        <option value="autorizados" {{ 'selected' if v.exige_aprovacao }}>Só autorizados — aparece na busca, mas você aprova cada pessoa</option>
-        <option value="link">Só por link — não aparece em lugar nenhum; entra quem receber o link (como num grupo de WhatsApp)</option>
+        <option value="publica">Pública: qualquer pessoa se inscreve (aparece na busca e no mapa)</option>
+        <option value="autorizados" {{ 'selected' if v.exige_aprovacao }}>Só autorizados: aparece na busca, mas você aprova cada pessoa</option>
+        <option value="link">Só por link: não aparece em lugar nenhum; entra quem receber o link (como num grupo de WhatsApp)</option>
       </select>
       <span class="suave" id="dica-vis"></span></div>
     <div class="field"><label for="categoria">Categoria</label>
@@ -41,12 +41,12 @@
     <div class="field"><label for="idade_min">Idade mínima <span class="suave">(opcional)</span></label><input type="number" name="idade_min" id="idade_min" min="5" max="100" value="{{ v.idade_min or '' }}"></div>
     <div class="field"><label for="idade_max">Idade máxima <span class="suave">(opcional)</span></label><input type="number" name="idade_max" id="idade_max" min="5" max="100" value="{{ v.idade_max or '' }}"></div>
     {% if meus_grupos %}
-    <div class="field full"><label for="grupo_id">Grupo <span class="suave">(opcional — avisa os membros)</span></label>
+    <div class="field full"><label for="grupo_id">Grupo <span class="suave">(opcional: avisa os membros)</span></label>
       <select name="grupo_id" id="grupo_id"><option value="">Atividade aberta, sem grupo</option>{% for g in meus_grupos %}<option value="{{ g.id }}" {{ 'selected' if v.grupo_id == g.id|string }}>{{ g.nome }}</option>{% endfor %}</select></div>
     {% endif %}
     <div class="field full"><label for="descricao">Descrição</label><textarea name="descricao" id="descricao" placeholder="Conte como vai ser">{{ v.descricao or '' }}</textarea></div>
     <div class="field full"><label for="regras">Regras</label><textarea name="regras" id="regras" placeholder="Ex.: chegar 10 min antes, levar camisa de cor diferente">{{ v.regras or '' }}</textarea></div>
-    <div class="field full"><label class="rotulo" style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="falta_gente" value="1" style="width:auto" {{ 'checked' if v.falta_gente }}> 🔥 Falta gente — destacar a atividade e avisar atletas compatíveis por perto</label></div>
+    <div class="field full"><label class="rotulo" style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="falta_gente" value="1" style="width:auto" {{ 'checked' if v.falta_gente }}> 🔥 Falta gente: destacar a atividade e avisar atletas compatíveis por perto</label></div>
   </div>
   <div class="field full" style="margin-top:14px"><label for="capa">Arte ou imagem da atividade (opcional)</label><input type="file" name="capa" id="capa" accept="image/*">
     <span class="suave">Vira a capa do book da atividade. JPG, PNG ou WebP.</span></div>
@@ -82,13 +82,13 @@
     const o = sel.selectedOptions[0];
     if (!o.dataset.lat) return;
     const local = document.getElementById('local_nome');
-    if (!local.value) local.value = o.textContent.split(' — ')[0].trim();
+    if (!local.value) local.value = o.textContent.split(' · ')[0].trim();
     if (window._seletor) window._seletor.por(+o.dataset.lat, +o.dataset.lng, true);
   }
   function dicaVisibilidade(sel) {
     const d = {
       publica: 'O mural da atividade é só dos participantes; você escolhe, post a post, se quer mostrar no feed geral.',
-      autorizados: 'Depois de criar, você também pode convidar pessoas pelo @usuario — o convite dispensa a aprovação. Os posts não vão para o feed geral.',
+      autorizados: 'Depois de criar, você também pode convidar pessoas pelo @usuario. O convite dispensa a aprovação. Os posts não vão para o feed geral.',
       link: 'Depois de criar, você recebe o link para compartilhar. Ninguém é avisado nem encontra a atividade na busca. Os posts não vão para o feed geral.'
     };
     document.getElementById('dica-vis').textContent = d[sel.value];

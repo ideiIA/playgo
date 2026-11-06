@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_camp_abas.html" import abas %}
-{% block titulo %}Telão — {{ k.nome }} — PlayGo{% endblock %}
+{% block titulo %}Telão | {{ k.nome }} | PlayGo{% endblock %}
 {% block conteudo %}
 <div class="detalhe-topo"><div><span class="tag {{ k.modalidade.cor }}">{{ k.modalidade.icone }} {{ k.modalidade.nome }}</span><h1>📺 Telão: {{ k.nome }}</h1>
   <div class="meta">Uma tela só com o placar, para deixar numa TV, telão ou tablet no local do jogo.</div></div></div>
@@ -24,7 +24,7 @@
   <h2>2 · Escolha o que aparece</h2>
   <p class="suave">No <b>automático</b> o telão mostra o jogo que estiver ao vivo (e alterna entre eles se houver mais de um). Ou fixe um jogo específico, mesmo antes de começar.</p>
   <form id="f-jogo">
-    <label class="opcao"><input type="radio" name="jogo" value="" {{ 'checked' if not p.escolhido }}> <b>🤖 Automático</b> — o jogo ao vivo</label>
+    <label class="opcao"><input type="radio" name="jogo" value="" {{ 'checked' if not p.escolhido }}> <b>🤖 Automático</b>: o jogo ao vivo</label>
     {% for titulo, lista in (('🔴 Ao vivo agora', p.ao_vivo), ('⏭ Próximos jogos', p.proximos), ('🏁 Últimos resultados', p.encerrados)) %}
       {% if lista %}<h3 style="margin:16px 0 6px;font-size:14px">{{ titulo }}</h3>
       {% for j in lista %}
@@ -41,7 +41,7 @@
 <link rel="stylesheet" href="/static/tutorial.css">
 <div class="panel" style="margin-top:18px" id="transmissao">
   <h2>3 · Transmissão ao vivo no YouTube do PlayGo</h2>
-  <details class="tut-embutido"><summary>📘 Como transmitir — passo a passo para iniciantes</summary>
+  <details class="tut-embutido"><summary>📘 Como transmitir: passo a passo para iniciantes</summary>
     <div class="tut-dentro">{% with embutido = true %}{% include "_tut_transmissao.html" %}{% endwith %}
       <p class="suave" style="margin:8px 4px 0"><a href="/tutorial/transmissao">Abrir o tutorial em tela cheia →</a></p></div>
   </details>
@@ -58,7 +58,7 @@
       {% if yt.privacidade == 'unlisted' %}Hoje as transmissões são <b>não listadas</b> (só quem tem o link do PlayGo assiste).{% else %}Hoje as transmissões são <b>públicas</b> no canal.{% endif %}</p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <select id="jogo-yt" style="border:1px solid var(--border);border-radius:10px;padding:10px;min-width:280px">
-        {% for j in p.ao_vivo + p.proximos %}<option value="{{ j.id }}">{{ '🔴 ' if j.status == 'ao_vivo' else '' }}{{ j.a }} × {{ j.b }} — {{ j.rodada }}{% if j.local %} · {{ j.local }}{% endif %}</option>{% endfor %}
+        {% for j in p.ao_vivo + p.proximos %}<option value="{{ j.id }}">{{ '🔴 ' if j.status == 'ao_vivo' else '' }}{{ j.a }} × {{ j.b }} · {{ j.rodada }}{% if j.local %} · {{ j.local }}{% endif %}</option>{% endfor %}
       </select>
       <button class="btn purple" id="bt-preparar" type="button">🎥 Preparar transmissão deste jogo</button>
       {% if k.sou_gestor %}<button class="btn perigo pequeno" id="bt-bloquear" type="button">Bloquear transmissões</button>{% endif %}
@@ -128,7 +128,7 @@
       if (!d.estado) return;
       if (cam) cam.mostrar(d);
       document.getElementById('yt-titulo').textContent = sel.options[sel.selectedIndex].textContent;
-      document.getElementById('yt-estado').textContent = rotuloEstado[d.estado] || d.estado || '—';
+      document.getElementById('yt-estado').textContent = rotuloEstado[d.estado] || d.estado || '-';
       document.getElementById('yt-sinal').textContent = d.sinal ? (rotuloSinal[d.sinal.estado] || d.sinal.estado) + (d.sinal.saude && d.sinal.saude !== 'noData' ? ' · qualidade ' + d.sinal.saude : '') : 'sem sinal';
       document.getElementById('yt-endereco').value = (d.envio && d.envio.endereco) || '';
       document.getElementById('yt-chave').value = (d.envio && d.envio.chave) || '';

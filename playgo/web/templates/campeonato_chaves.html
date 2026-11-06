@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_camp_abas.html" import abas %}
-{% block titulo %}{{ {'chaves': 'Chaves', 'ao_vivo': 'Ao vivo', 'jogo': 'Jogo', 'sorteio': 'Sorteio', 'editar': 'Editar'}[modo] }} — {{ k.nome }} — PlayGo{% endblock %}
+{% block titulo %}{{ {'chaves': 'Chaves', 'ao_vivo': 'Ao vivo', 'jogo': 'Jogo', 'sorteio': 'Sorteio', 'editar': 'Editar'}[modo] }} | {{ k.nome }} | PlayGo{% endblock %}
 {% block conteudo %}
 <link rel="stylesheet" href="/static/chaves.css">
 <div class="detalhe-topo">

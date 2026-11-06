@@ -1,16 +1,16 @@
 {% extends "base.html" %}
-{% block titulo %}Criar comunidade — PlayGo{% endblock %}
+{% block titulo %}Criar comunidade | PlayGo{% endblock %}
 {% block conteudo %}
 <div class="section-title"><h2>Criar comunidade</h2></div>
 <form class="panel" method="post" action="/comunidades">
   <div class="form-grid">
-    <div class="field"><label for="nome">Nome</label><input name="nome" id="nome" required maxlength="120" placeholder="Ex.: Mães que correm — Campo Grande"></div>
+    <div class="field"><label for="nome">Nome</label><input name="nome" id="nome" required maxlength="120" placeholder="Ex.: Mães que correm (Campo Grande)"></div>
     <div class="field"><label for="cidade">Cidade</label><input name="cidade" id="cidade" value="{{ usuario.cidade or '' }}"></div>
     <div class="field full"><label for="visibilidade">Quem pode entrar</label>
       <select name="visibilidade" id="visibilidade">
-        <option value="publica">Pública — qualquer pessoa entra e a comunidade aparece na busca</option>
-        <option value="autorizados">Só autorizados — aparece na busca, mas você ou um moderador aprova cada pedido</option>
-        <option value="link">Só por link — não aparece em lugar nenhum; entra quem recebe o link ou um convite</option>
+        <option value="publica">Pública: qualquer pessoa entra e a comunidade aparece na busca</option>
+        <option value="autorizados">Só autorizados: aparece na busca, mas você ou um moderador aprova cada pedido</option>
+        <option value="link">Só por link: não aparece em lugar nenhum; entra quem recebe o link ou um convite</option>
       </select></div>
     <div class="field full"><label for="descricao">Descrição</label><textarea name="descricao" id="descricao" placeholder="Do que se trata esta comunidade?"></textarea></div>
     <div class="field full"><label for="regras">Regras</label><textarea name="regras" id="regras" placeholder="Ex.: respeito sempre; nada de propaganda; fotos de terceiros só com autorização"></textarea></div>

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% import "_cards.html" as c %}
-{% block titulo %}{{ a.nome }} — PlayGo{% endblock %}
+{% block titulo %}{{ a.nome }} | PlayGo{% endblock %}
 {% block conteudo %}
 {% set pct = (100 * a.confirmados / a.max_participantes)|round|int %}
 <div class="detalhe-topo">
@@ -36,13 +36,13 @@
       <div class="fato"><small>Duração</small><b>{{ a.duracao_min }} min</b></div>
       <div class="fato"><small>Quem participa</small><b>{{ {'publica': 'Pública', 'autorizados': 'Só autorizados', 'link': 'Só por link'}[a.visibilidade] }}</b></div>
     </div>
-    <b>{{ a.confirmados }}/{{ a.max_participantes }} confirmados — {{ a.vagas }} vaga{{ 's' if a.vagas != 1 }} disponíve{{ 'is' if a.vagas != 1 else 'l' }}</b>
+    <b>{{ a.confirmados }}/{{ a.max_participantes }} confirmados · {{ a.vagas }} vaga{{ 's' if a.vagas != 1 }} disponíve{{ 'is' if a.vagas != 1 else 'l' }}</b>
     <div class="barra"><i style="width:{{ pct }}%"></i></div>
     {% if a.descricao %}<h3 style="margin-top:20px">Sobre</h3><p>{{ a.descricao }}</p>{% endif %}
     {% if a.regras %}<h3 style="margin-top:14px">Regras</h3><p>{{ a.regras }}</p>{% endif %}
     {% if a.percurso %}<h3 style="margin-top:14px">Percurso</h3><p>{{ a.percurso }}</p>{% endif %}
     {% if a.categoria != 'misto' or a.idade_min or a.idade_max %}
-    <p class="suave">{% if a.categoria != 'misto' %}Categoria {{ a.categoria }}. {% endif %}{% if a.idade_min or a.idade_max %}Faixa etária: {{ a.idade_min or '—' }} a {{ a.idade_max or '—' }} anos.{% endif %}</p>{% endif %}
+    <p class="suave">{% if a.categoria != 'misto' %}Categoria {{ a.categoria }}. {% endif %}{% if a.idade_min or a.idade_max %}Faixa etária: {{ a.idade_min or '-' }} a {{ a.idade_max or '-' }} anos.{% endif %}</p>{% endif %}
 
     {% if a.sou_organizador and not a.encerrada %}
     <h3 style="margin-top:22px">Organização</h3>

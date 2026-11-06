@@ -138,7 +138,7 @@ def criar(s: SessaoORM, organizador: Usuario, d: NovaAtividade) -> Atividade:
     lat, lng, local = d.latitude, d.longitude, d.local_nome.strip()
     if arena is not None:
         lat, lng = (lat if lat is not None else arena.latitude), (lng if lng is not None else arena.longitude)
-        local = local or (f"{arena.nome} — {quadra.nome}" if quadra else arena.nome)
+        local = local or (f"{arena.nome} · {quadra.nome}" if quadra else arena.nome)
     if lat is None or lng is None:
         raise ErroNegocio("Marque o local no mapa ou escolha uma arena." if modalidade.usa_quadra else "Marque o ponto de encontro no mapa.")
     if not local:
@@ -182,7 +182,7 @@ def criar(s: SessaoORM, organizador: Usuario, d: NovaAtividade) -> Atividade:
             if m.usuario.notif_grupos:
                 notificacoes.avisar(
                     s, m.usuario_id, "grupo", f"{modalidade.icone} {grupo.nome} criou uma atividade",
-                    f"{a.nome} — {a.inicio.strftime('%d/%m às %H:%M')}", f"/atividades/{a.id}", a.id, f"grp:{a.id}",
+                    f"{a.nome} · {a.inicio.strftime('%d/%m às %H:%M')}", f"/atividades/{a.id}", a.id, f"grp:{a.id}",
                 )
     auditoria.registrar(s, organizador.id, "atividade_criar", "atividade", a.id, visibilidade=visibilidade, falta_gente=a.falta_gente)
     s.commit()
