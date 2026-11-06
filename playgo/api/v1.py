@@ -349,8 +349,8 @@ def buscar_atletas(u: AtualApi, s: Sessao, q: str = Query(min_length=2)):
 
 
 @router.get("/feed")
-def obter_feed(u: AtualApi, s: Sessao, lat: float | None = None, lng: float | None = None):
-    return feed.montar(s, u, lat, lng)
+def obter_feed(u: AtualApi, s: Sessao, lat: float | None = None, lng: float | None = None, modalidade: str | None = None):
+    return feed.montar(s, u, lat, lng, modalidade or None)
 
 
 @router.get("/explorar")

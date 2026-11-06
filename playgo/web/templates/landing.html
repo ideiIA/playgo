@@ -1,3 +1,5 @@
+{% from "_logo.html" import horizontal %}
+{% from "_ico.html" import ic %}
 <!doctype html>
 <html lang="pt-BR">
 <head>
@@ -13,13 +15,16 @@
   <meta property="og:title" content="PlayGo: encontre onde jogar, encontre com quem jogar">
   <meta property="og:description" content="Vagas em tempo real, campeonatos com chaves e placar ao vivo, arenas e comunidades. Tudo no celular.">
   <meta property="og:image" content="/static/marca/og-playgo.png">
+  <link rel="preload" href="/static/fonts/outfit-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/tokens.css">
   <link rel="stylesheet" href="/static/landing.css">
   <script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"PlayGo","applicationCategory":"SportsApplication","operatingSystem":"Web, Android, iOS","description":"Plataforma para encontrar jogos, organizar campeonatos e gerir arenas."}</script>
 </head>
 <body>
 <header class="topo">
   <div class="wrap">
-    <a class="marca" href="/"><img src="/static/marca/icone.svg" alt="" width="38" height="38"><span>Play<b>Go</b></span></a>
+    <a class="marca" href="/" aria-label="PlayGo, página inicial">{{ horizontal(40) }}</a>
     <nav class="menu" aria-label="Seções">
       <a href="#funcionalidades">Funcionalidades</a>
       <a href="#campeonatos">Campeonatos</a>
@@ -39,13 +44,13 @@
   <div class="heroi">
     <div class="wrap">
       <div>
-        <span class="chip">🏐 ⚽ 🎾 Esporte perto de você</span>
+        <span class="chip">Atividades, grupos, campeonatos e arenas</span>
         <h1>Encontre onde jogar.<br><span class="grad">Encontre com quem jogar.</span></h1>
         <p class="sub">O PlayGo reúne atletas, organizadores e arenas em um só lugar: vagas atualizadas em tempo real, campeonatos com chaves e placar ao vivo, e quadras com agenda. Tudo no celular, sem baixar nada.</p>
         <div class="cta">
-          <a class="btn primario grande" href="/cadastro">Criar minha conta</a>
+          <a class="btn lima grande" href="/cadastro">Criar minha conta</a>
           <a class="btn contorno grande" href="/entrar">Já tenho conta</a>
-          <a class="btn contorno grande" href="/app/">📱 Abrir o app</a>
+          <a class="btn contorno grande" href="/app/">{{ ic('smartphone') }} Abrir o app</a>
         </div>
         <p class="nota">Funciona no navegador e instala na tela inicial do Android e do iPhone, como um aplicativo.</p>
       </div>
@@ -237,7 +242,7 @@
         <div class="cta">
           <a class="btn lima grande" href="/cadastro">Criar minha conta</a>
           <a class="btn contorno grande" href="/entrar">Entrar</a>
-          <a class="btn contorno grande" href="/app/">📱 Abrir o app</a>
+          <a class="btn contorno grande" href="/app/">{{ ic('smartphone') }} Abrir o app</a>
         </div>
       </div>
     </div>

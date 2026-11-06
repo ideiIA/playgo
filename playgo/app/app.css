@@ -262,3 +262,99 @@ h3 { font-size: 16px; }
 #menu-pop .m-item i { display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: #f1eeff; color: var(--roxo-2); font-size: 0; }
 #menu-pop .m-item i .i { width: 18px; height: 18px; }
 .card.champ .i { color: #fff; }
+
+
+/* =====================================================================================================================
+   Design system (nov/2026) no app: tokens em /static/tokens.css, logo nova, menu hambúrguer em gaveta, barra inferior de 4 atalhos,
+   início em blocos (Bento, uma coluna) e chips de esporte. Vem por último para ajustar o que está acima.
+   ===================================================================================================================== */
+body { font-family: var(--fonte-texto); background: var(--fundo); }
+h1, h2, h3, .marca { font-family: var(--fonte-titulo); }
+:focus-visible { outline: 2px solid var(--roxo); outline-offset: 2px; }
+
+/* marca */
+.pg-logo { display: inline-flex; align-items: center; gap: calc(var(--h) * .16); line-height: 1; }
+.pg-simbolo { display: block; flex: none; }
+.pg-palavra { font-family: var(--fonte-titulo); font-weight: 800; letter-spacing: -.04em; font-size: calc(var(--h) * .6); line-height: 1; white-space: nowrap; }
+.pg-palavra .play { color: var(--tinta); } .pg-palavra .go { color: var(--roxo); }
+.pg-escuro .pg-palavra .play { color: #fff; } .pg-escuro .pg-palavra .go { color: var(--lima); }
+#abertura .pg-simbolo { width: 190px; height: 190px; }
+
+/* topo: hambúrguer, logo e ações */
+#topo { gap: 4px; padding-left: 8px; padding-right: 8px; justify-content: flex-start; }
+#topo .marca { display: inline-flex; margin-right: auto; }
+#topo .hamb { width: 44px; height: 44px; border-radius: var(--raio-12); }
+.icone { width: 44px; height: 44px; }
+.icone:active { background: var(--lilas); }
+.sino b { top: 4px; right: 2px; }
+
+/* gaveta do menu */
+#menu-fundo { position: fixed; inset: 0; z-index: 38; background: rgb(20 33 61 / .45); }
+#menu-pop { position: fixed; inset: 0 auto 0 0; z-index: 40; width: min(320px, 88vw); max-height: none; padding: env(safe-area-inset-top) 12px calc(12px + env(safe-area-inset-bottom)); background: #fff; border: 0; border-radius: 0 var(--raio-24) var(--raio-24) 0; box-shadow: var(--sombra-3); overflow-y: auto; display: flex; flex-direction: column; gap: 8px; animation: gaveta var(--duracao) var(--ease); }
+#menu-pop[hidden] { display: none; }
+@keyframes gaveta { from { transform: translateX(-100%); } to { transform: none; } }
+#menu-pop .m-topo { display: flex; align-items: center; justify-content: space-between; padding: 14px 4px 8px; }
+#menu-pop .m-cab { display: flex; align-items: center; gap: 12px; padding: 10px; margin: 0 0 4px; border: 0; border-radius: var(--raio-18); background: var(--fundo); color: var(--tinta); }
+#menu-pop .m-nome b { font-size: 15px; font-weight: 700; }
+#menu-pop .m-lista { display: flex; flex-direction: column; gap: 2px; }
+#menu-pop .m-item { min-height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: var(--raio-12); color: var(--tinta); font-weight: 500; font-size: 15px; }
+#menu-pop .m-item i { width: 22px; display: grid; place-items: center; font-style: normal; color: inherit; }
+#menu-pop .m-item .i { width: 20px; height: 20px; }
+#menu-pop .m-item:active { background: #f4f1ff; }
+#menu-pop .m-item.ativo { background: var(--lilas); color: var(--roxo-escuro); font-weight: 600; }
+#menu-pop .m-sep { border: 0; border-top: 1px solid var(--borda); margin: 8px 6px; }
+body.menu-aberto { overflow: hidden; }
+
+/* barra inferior: 4 atalhos */
+#abas { grid-template-columns: repeat(4, 1fr); border-top-color: var(--borda); box-shadow: none; }
+#abas a { min-height: 52px; font-weight: 600; color: var(--texto-2); }
+#abas a.ativa { color: var(--roxo-escuro); font-weight: 700; }
+#abas a i { display: grid; place-items: center; }
+
+/* chips de esporte */
+.chip { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 16px; border-radius: var(--raio-pilula); border: 1px solid var(--borda); background: #fff; color: var(--tinta); font: 600 14px var(--fonte-texto); cursor: pointer; transition: all var(--duracao) var(--ease); }
+.chip.on { background: var(--roxo); border-color: var(--roxo); color: #fff; }
+.chips.rolagem { display: flex; flex-wrap: nowrap; overflow-x: auto; gap: 8px; scrollbar-width: none; padding-bottom: 4px; }
+.chips.rolagem::-webkit-scrollbar { display: none; }
+.chips.rolagem .chip { flex: none; }
+
+/* Bento: uma coluna no celular */
+.bento { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+.b { background: #fff; border: 1px solid var(--borda); border-radius: var(--raio-24); padding: 20px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.b h2 { font: var(--texto-22); letter-spacing: -.01em; }
+.b-grande { font: 800 26px/1.1 var(--fonte-titulo); letter-spacing: -.02em; }
+.b-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.b-topo a { font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; color: var(--roxo-escuro); }
+.b-pill { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; background: var(--lilas); color: var(--roxo-escuro); font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: var(--raio-pilula); }
+.b-pill .pulse { margin: 0; }
+.b-busca { display: flex; gap: 8px; }
+.b-busca label { flex: 1; min-width: 0; height: 52px; display: flex; align-items: center; gap: 10px; padding: 0 16px; border-radius: var(--raio-pilula); background: var(--fundo); border: 1px solid var(--borda); color: var(--texto-2); }
+.b-busca input { flex: 1; min-width: 0; border: 0; background: transparent; outline: 0; font: 400 15px var(--fonte-texto); color: var(--tinta); }
+.b-busca label:focus-within { border-color: var(--roxo); box-shadow: 0 0 0 3px rgb(108 76 255 / .18); }
+.b-busca .btn { height: 52px; border-radius: var(--raio-pilula); padding: 0 18px; }
+.b-mapa { min-height: 200px; height: 200px; border-radius: var(--raio-18); overflow: hidden; background: repeating-linear-gradient(135deg, var(--lilas) 0 12px, #f4f1ff 12px 24px); position: relative; z-index: 1; }
+.b-vazio { display: grid; justify-items: start; gap: 8px; }
+.b-vazio-ico { width: 56px; height: 56px; border-radius: 50%; background: var(--lilas); color: var(--roxo); display: grid; place-items: center; }
+.b-vazio-ico .i { width: 24px; height: 24px; }
+.b-vazio b { font-size: 16px; font-weight: 600; }
+.b-lista { display: flex; flex-direction: column; gap: 4px; }
+.b-linha { min-height: 52px; display: flex; align-items: center; gap: 12px; padding: 4px 8px; border-radius: var(--raio-12); color: inherit; border-top: 1px solid var(--borda); }
+.b-linha:first-child { border-top: 0; }
+.b-linha b { flex: 1; min-width: 0; font-weight: 600; font-size: 15px; }
+.b-linha small { display: block; font-size: 14px; font-weight: 400; color: var(--texto-2); }
+.b-linha .ico-b { width: 40px; height: 40px; border-radius: var(--raio-12); background: var(--lilas); color: var(--roxo); display: grid; place-items: center; flex: none; }
+.b-grp { background: var(--roxo); border-color: var(--roxo); color: #fff; }
+.b-grp a, .b-grp .b-topo a { color: #fff; }
+.b-grp .b-linha { background: rgb(255 255 255 / .12); border: 0; border-radius: var(--raio-18); padding: 12px; }
+.b-grp .b-linha .ico-b { background: var(--lima); color: var(--tinta); width: 48px; height: 48px; }
+.b-grp .b-linha small { color: #fff; }
+.b-cam { background: var(--tinta); border-color: var(--tinta); color: #fff; }
+.b-cam p { margin: 0; font-size: 15px; line-height: 1.5; color: #dfe3ee; }
+.b-cam .b-linha { border-color: rgb(255 255 255 / .16); color: #fff; }
+.b-cam .b-linha small { color: var(--lima); }
+.b-cam .btn { background: transparent; color: #fff; border: 1px solid rgb(255 255 255 / .35); }
+.b-selo { width: 48px; height: 48px; border-radius: var(--raio-12); background: rgb(183 243 75 / .14); color: var(--lima); display: grid; place-items: center; }
+.b-selo .i { width: 24px; height: 24px; }
+.b .btn { min-height: 44px; border-radius: var(--raio-12); }
+.btn.lima { background: var(--lima); color: var(--tinta); }
+@media (prefers-reduced-motion: reduce) { #menu-pop { animation: none; } .chip { transition: none; } }

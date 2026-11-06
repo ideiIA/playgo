@@ -244,60 +244,96 @@
   }
 
   // ------------------------------------------------------------ início
-  // Menu da conta (foto ao lado do sino): todas as opções do antigo menu do perfil, num menu suspenso
+  // Menu hambúrguer (gaveta à esquerda): mesmos itens do site, com ícone e texto; a barra inferior guarda só os 4 atalhos principais
   function itensMenuEu(u) {
+    const p = u.permissoes || {};
     return [
-      ['#/perfil', 'user-round', 'Meu perfil'], ['#/campeonatos', 'trophy', 'Campeonatos'], ...((u.permissoes && u.permissoes.ensino_menu) ? [['#/aulas', 'graduation-cap', 'Aulas e Treinamentos'], ['#/ensino', 'clipboard-list', u.permissoes.perfil_prof ? 'Minhas aulas' : 'Dar aulas']] : []), ['#/reservas', 'calendar-check', 'Minhas reservas'], ['#/planos', 'credit-card', 'Meu plano'], ['#/tutoriais', 'book-open', 'Tutoriais'],
-      ['#/notificacoes', 'bell', 'Notificações'], ['#/comunidades', 'users-round', 'Comunidades'], ['#/convites', 'mail', 'Convites'],
+      ['#/', 'home', 'Início'], ['#/feed', 'pen-line', 'Feed'], ['#/explorar', 'compass', 'Explorar'],
+      ...(pode('atividade') ? [['#/criar', 'circle-plus', 'Criar atividade']] : []),
+      ['#/grupos', 'users', 'Meus grupos'], ['#/comunidades', 'users-round', 'Comunidades'], ['#/campeonatos', 'trophy', 'Campeonatos'], null,
       ...(pode('arena') ? [['#/gestao', 'building-2', 'Minha Arena']] : []),
+      ...(p.ensino_menu ? [['#/aulas', 'graduation-cap', 'Aulas e Treinamentos'], ['#/ensino', 'clipboard-list', p.perfil_prof ? 'Minhas aulas' : 'Dar aulas']] : []),
+      ['#/reservas', 'calendar-check', 'Minhas reservas'], ['#/planos', 'credit-card', 'Meu plano'], ['#/tutoriais', 'book-open', 'Tutoriais'],
+      ['#/notificacoes', 'bell', 'Notificações'], ['#/convites', 'mail', 'Convites'],
       ...(u.equipe_moderacao ? [['#/moderacao', 'shield-check', 'Moderação']] : []),
       ...(u.admin ? [['#/admin', 'settings', 'Administração']] : []),
-      ['#/privacidade', 'lock', 'Meus dados e privacidade'],
+      ['#/perfil', 'user-round', 'Meu perfil'], ['#/privacidade', 'lock', 'Meus dados e privacidade'],
     ];
   }
 
   function atualizarMenuEu() {
     const u = estado.usuario;
     if (!u) return;
-    $('#eu-avatar').innerHTML = u.foto_url ? `<img src="${esc(u.foto_url)}" alt="Menu da conta">` : esc(u.iniciais);
-    $('#menu-pop').innerHTML = `<a class="m-cab" href="#/perfil"><span class="avatar grande">${u.foto_url ? `<img src="${esc(u.foto_url)}" alt="">` : esc(u.iniciais)}</span><span class="m-nome"><b>${esc(u.arroba)}</b><small>${esc(u.nome)}</small></span></a>
-      ${itensMenuEu(u).map(([h, i, n]) => `<a class="m-item" role="menuitem" href="${h}"><i>${ic(i)}</i>${esc(n)}</a>`).join('')}`;
+    const atual = location.hash.split('?')[0] || '#/';
+    $('#menu-pop').innerHTML = `<div class="m-topo"><a class="marca" href="#/" aria-label="PlayGo, página inicial">${logoH(36)}</a><button type="button" class="icone" data-menu-fechar aria-label="Fechar menu">${ic('x')}</button></div>
+      <a class="m-cab" href="#/perfil"><span class="avatar grande">${u.foto_url ? `<img src="${esc(u.foto_url)}" alt="">` : esc(u.iniciais)}</span><span class="m-nome"><b>${esc(u.arroba)}</b><small>${esc(u.nome)}</small></span></a>
+      <nav class="m-lista" aria-label="Menu principal">${itensMenuEu(u).map((i) => (i ? `<a class="m-item ${atual === i[0] || (i[0] !== '#/' && atual.startsWith(i[0])) ? 'ativo' : ''}" href="${i[0]}"${atual === i[0] ? ' aria-current="page"' : ''}><i>${ic(i[1])}</i><span>${esc(i[2])}</span></a>` : '<hr class="m-sep">')).join('')}</nav>`;
   }
 
-  function fecharMenuEu() { $('#menu-pop').hidden = true; $('#eu-btn').setAttribute('aria-expanded', 'false'); }
+  // logo horizontal (bola + PlayGo) em SVG inline, para o topo, a gaveta e a abertura
+  function logoH(h, escuro) {
+    return `<span class="pg-logo${escuro ? ' pg-escuro' : ''}" role="img" aria-label="PlayGo" style="--h:${h}px">${document.querySelector('#topo .pg-simbolo') ? document.querySelector('#topo .pg-simbolo').outerHTML.replace(/width="\d+"/, `width="${h}"`).replace(/height="\d+"/, `height="${h}"`) : ''}<span class="pg-palavra" aria-hidden="true"><span class="play">Play</span><span class="go">Go</span></span></span>`;
+  }
+
+  function fecharMenuEu() {
+    $('#menu-pop').hidden = true; $('#menu-fundo').hidden = true; document.body.classList.remove('menu-aberto');
+    $('#eu-btn').setAttribute('aria-expanded', 'false'); $('#eu-btn').setAttribute('aria-label', 'Abrir menu');
+  }
 
   function ligarMenuEu() {
-    $('#eu-btn').addEventListener('click', (ev) => {
-      ev.stopPropagation();
+    $('#eu-btn').addEventListener('click', () => {
       const abrir = $('#menu-pop').hidden;
-      if (abrir) atualizarMenuEu();
-      $('#menu-pop').hidden = !abrir;
-      $('#eu-btn').setAttribute('aria-expanded', abrir ? 'true' : 'false');
+      if (!abrir) return fecharMenuEu();
+      atualizarMenuEu();
+      $('#menu-pop').hidden = false; $('#menu-fundo').hidden = false; document.body.classList.add('menu-aberto');
+      $('#eu-btn').setAttribute('aria-expanded', 'true'); $('#eu-btn').setAttribute('aria-label', 'Fechar menu');
+      const primeiro = $('#menu-pop .m-item'); if (primeiro) primeiro.focus();
     });
-    document.addEventListener('click', (ev) => { if (!$('#menu-pop').hidden && !ev.target.closest('#eu-btn')) fecharMenuEu(); });  // clicou fora ou numa opção
-    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') fecharMenuEu(); });
+    document.addEventListener('click', (ev) => {
+      if (ev.target.closest('#menu-fundo') || ev.target.closest('[data-menu-fechar]') || (!$('#menu-pop').hidden && ev.target.closest('#menu-pop a'))) fecharMenuEu();
+    });
+    document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !$('#menu-pop').hidden) { fecharMenuEu(); $('#eu-btn').focus(); } });
   }
 
   async function vInicio() {
     carregando();
     try {
-      const f = await api('/feed?' + comPos());
+      const esporte = estado.esporteHome || '';
+      const f = await api('/feed?' + comPos(esporte ? { modalidade: esporte } : {}));
       const u = estado.usuario;
+      const pontos = [...f.perto, ...f.urgentes].map((a) => ({ tipo: 'atividade', id: a.id, latitude: a.latitude, longitude: a.longitude, rotulo: a.nome, distancia: a.distancia, urgente: !!a.falta_gente }))
+        .concat(f.arenas.map((a) => ({ tipo: 'arena', id: a.id, latitude: a.latitude, longitude: a.longitude, rotulo: a.nome, distancia: a.distancia }))).filter((p) => p.latitude != null);
+      const chip = (rot, on, v) => `<button type="button" class="chip ${on ? 'on' : ''}" aria-pressed="${on}" data-acao="home-esporte" data-v="${v}">${rot}</button>`;
+      const vazio = `<div class="b-vazio"><span class="b-vazio-ico">${ic('radio')}</span><b>${esporte ? 'Nenhuma partida desse esporte agora' : 'Nenhuma partida rolando agora'}</b><span class="suave">Crie a sua e chame a galera.</span>${pode('atividade') ? `<a class="btn lima" href="#/criar">${ic('plus')} Criar partida</a>` : `<a class="btn lima" href="#/explorar">${ic('compass')} Explorar no mapa</a>`}</div>`;
       montar(`
-        <div class="hero"><h1>Olá, ${esc(u.nome.split(' ')[0])}! Bora completar o time?</h1><p>Jogos, grupos, campeonatos e arenas com vagas em tempo real.</p></div>
-        ${u.aviso_plano ? `<a class="aviso erro" href="#/planos" style="display:block">⏳ ${esc(u.aviso_plano.texto)} <b>Ver planos</b></a>` : ''}
-        ${!f.centro.informada ? '<p class="aviso alerta">📍 Não sabemos onde você está. Mostrando Campo Grande. <button class="btn suave pequeno" data-acao="localizar">Usar minha localização</button></p>' : ''}
-        <div class="livebar"><div><span class="pulse"></span><strong>${f.oportunidades_agora} oportunidade${f.oportunidades_agora !== 1 ? 's' : ''} agora</strong> em até 5 km</div><a class="btn lima pequeno" href="#/explorar?mapa=1">Mapa</a></div>
-        ${(f.ao_vivo || []).length ? secao('🔴 Ao vivo agora') + lista(f.ao_vivo, cardVivo) : ''}
-        ${f.urgentes.length ? secao('🔥 Precisam de jogadores agora') + `<div class="carrossel">${f.urgentes.map(cardUrg).join('')}</div>` : ''}
-        ${secao('O que você quer praticar?', '<a href="#/explorar">Ver todos</a>')}
-        <div class="esportes">${estado.mods.slice(0, 6).map((m) => `<a class="esporte" href="#/explorar?modalidades=${m.codigo}"><span>${esc(m.icone)}</span>${esc(m.nome)}</a>`).join('')}</div>
-        ${secao('Rolando perto de você 🔥', '<a href="#/explorar">Ver no mapa</a>')}
-        ${lista(f.perto, (a) => cardAtv(a), 'Nada marcado por perto. Que tal criar a primeira atividade?')}
-        ${f.campeonatos.length ? secao('🏆 Campeonatos abertos', '<a href="#/campeonatos">Ver todos</a>') + `<div class="carrossel">${f.campeonatos.map((c, i) => cardCamp(c, i === 0)).join('')}</div>` : ''}
-        ${f.grupos.length ? secao('👥 Seus grupos', '<a href="#/grupos">Ver todos</a>') + lista(f.grupos, cardGrupo) : ''}
-        ${f.recomendados.length ? secao('🎯 Recomendados para você') + lista(f.recomendados, (a) => cardAtv(a)) : (!u.esportes.length ? secao('🎯 Recomendados para você') + '<p class="vazio">Conte quais esportes você pratica para receber indicações.<br><br><a class="btn suave" href="#/perfil">Completar perfil</a></p>' : '')}
-        ${f.arenas.length ? secao('🏟️ Arenas próximas', '<a href="#/explorar">Ver todas</a>') + lista(f.arenas, cardArena) : ''}`);
+        ${u.aviso_plano ? `<a class="aviso erro" href="#/planos" style="display:block">${esc(u.aviso_plano.texto)} <b>Ver planos</b></a>` : ''}
+        ${!f.centro.informada ? `<p class="aviso alerta">${ic('map-pin')} Não sabemos onde você está. Mostrando Campo Grande. <button class="btn suave pequeno" data-acao="localizar">Usar minha localização</button></p>` : ''}
+        ${(f.ao_vivo || []).length ? secao('Ao vivo agora') + lista(f.ao_vivo, cardVivo) : ''}
+        <div class="bento">
+          <section class="b b-onde" aria-labelledby="t-onde">
+            <span class="b-pill"><span class="pulse"></span>${f.oportunidades_agora} oportunidade${f.oportunidades_agora !== 1 ? 's' : ''} agora em até 5 km</span>
+            <h2 id="t-onde" class="b-grande">Onde você quer jogar?</h2>
+            <form class="b-busca" id="f-home" role="search"><label>${ic('search')}<input name="q" placeholder="Esporte, arena ou bairro" aria-label="Buscar esporte, arena ou bairro" enterkeyhint="search"></label><button class="btn roxo">Buscar</button></form>
+            <div class="chips rolagem" role="group" aria-label="Filtrar por esporte">${chip('Todos', !esporte, '')}${estado.mods.slice(0, 8).map((m) => chip(`${esc(m.icone)} ${esc(m.nome)}`, esporte === m.codigo, m.codigo)).join('')}</div>
+            <div class="b-mapa" id="mapa-home" role="region" aria-label="Mapa de arenas e partidas próximas"></div>
+            <a class="btn suave bloco" href="#/explorar?mapa=1">${ic('map')} Abrir mapa ao vivo</a>
+          </section>
+          <section class="b" aria-labelledby="t-rol"><div class="b-topo"><h2 id="t-rol">Rolando perto de você</h2>${f.perto.length ? '<a href="#/explorar">Ver no mapa</a>' : ''}</div>${f.perto.length ? `<div class="lista">${f.perto.slice(0, 3).map((a) => cardAtv(a)).join('')}</div>` : vazio}</section>
+          <section class="b b-grp" aria-labelledby="t-grp"><div class="b-topo"><h2 id="t-grp">Seus grupos</h2><a href="#/grupos">Ver todos ${ic('chevron-right')}</a></div>
+            ${f.grupos.length ? `<div class="b-lista">${f.grupos.slice(0, 3).map((g) => `<a class="b-linha" href="#/grupo/${g.id}"><span class="ico-b">${ic('users')}</span><b>${esc(g.nome)}<small>${g.membros} membro${g.membros !== 1 ? 's' : ''}</small></b>${ic('chevron-right')}</a>`).join('')}</div>`
+              : `<p>Você ainda não está em nenhum grupo. Entre em um para combinar jogos com a mesma turma.</p><a class="btn lima" href="#/grupos">${ic('users')} Achar um grupo</a>`}</section>
+          <section class="b" aria-labelledby="t-are"><div class="b-topo"><h2 id="t-are">Arenas próximas</h2><a href="#/explorar">Ver todas</a></div>
+            ${f.arenas.length ? `<div class="b-lista">${f.arenas.slice(0, 5).map((a) => `<a class="b-linha" href="#/arena/${a.id}"><span class="ico-b">${ic('map-pin')}</span><b>${esc(a.nome)}<small class="mudo">${esc(a.distancia || a.cidade || '')}${a.horarios_disponiveis ? ' · ' + a.horarios_disponiveis + ' horário' + (a.horarios_disponiveis !== 1 ? 's' : '') + ' livre' + (a.horarios_disponiveis !== 1 ? 's' : '') + ' hoje' : ''}</small></b>${ic('chevron-right')}</a>`).join('')}</div>` : '<p class="suave">Nenhuma arena cadastrada por perto ainda.</p>'}</section>
+          <section class="b b-cam" aria-labelledby="t-cam"><span class="b-selo">${ic('trophy')}</span><h2 id="t-cam">Campeonatos</h2>
+            ${f.campeonatos.length ? `<div class="b-lista">${f.campeonatos.slice(0, 3).map((c) => `<a class="b-linha" href="#/campeonato/${c.id}"><b>${esc(c.nome)}<small>${esc(c.situacao)} · ${esc(c.data_inicio_texto || '')}</small></b>${ic('chevron-right')}</a>`).join('')}</div>` : '<p>Tabela, chaves e placar ao vivo para o seu torneio.</p>'}
+            <a class="btn" href="#/campeonatos">Ver campeonatos</a></section>
+        </div>
+        ${f.urgentes.length ? secao('Precisam de jogadores agora') + `<div class="carrossel">${f.urgentes.map(cardUrg).join('')}</div>` : ''}
+        ${f.recomendados.length ? secao('Recomendados para você') + lista(f.recomendados, (a) => cardAtv(a)) : (!u.esportes.length ? secao('Recomendados para você') + '<p class="vazio">Conte quais esportes você pratica para receber indicações.<br><br><a class="btn suave" href="#/perfil">Completar perfil</a></p>' : '')}`,
+      () => {
+        $('#f-home').onsubmit = (ev) => { ev.preventDefault(); const q = (dadosForm(ev.target).q || '').trim(); estado.filtros.q = q; location.hash = '#/explorar'; };
+        iniciarMapa('mapa-home', f.centro, pontos);
+      });
     } catch (e) { erroTela(e); }
   }
 
@@ -1408,6 +1444,7 @@
       };
     },
     async 'convidar-1'(el) { try { await post(`/equipes/${el.dataset.id}/convidar`, { usuario_id: Number(el.dataset.v) }); toast('Convite enviado.'); fecharFolha(); } catch (e) { toast(e.message); } },
+    'home-esporte'(el) { estado.esporteHome = el.dataset.v; vInicio(); },
     async localizar() { try { await pegarLocalizacao(); toast('Localização atualizada.'); rotear(); } catch (e) { /* aviso já mostrado */ } },
     async 'local-arena'() { try { await pegarLocalizacao(); if (estado.seletorArena) { estado.seletorArena.definir(estado.pos.lat, estado.pos.lng); if (estado.seletorArena.mapa) estado.seletorArena.mapa.setView([estado.pos.lat, estado.pos.lng], 17); } } catch (e) { /* aviso já mostrado */ } },
     async 'marcar-local'() { try { await pegarLocalizacao(); toast('Localização marcada.'); const i = $('#info-local'); if (i) i.textContent = 'Local marcado ✓'; } catch (e) { /* aviso já mostrado */ } },
@@ -1493,7 +1530,7 @@
     $('#topo').hidden = false; $('#abas').hidden = false;
     fecharMenuEu(); atualizarMenuEu();
     atualizarSino();
-    destacarAba({ '': 'inicio', explorar: 'explorar', criar: 'criar', 'nova-atividade': 'criar', 'novo-grupo': 'grupos', grupos: 'grupos', grupo: 'grupos', comunidades: 'grupos', comunidade: 'grupos', 'nova-comunidade': 'grupos', campeonatos: 'campeonatos', campeonato: 'campeonatos', 'novo-campeonato': 'campeonatos' }[rota] || '');
+    destacarAba({ '': 'inicio', explorar: 'explorar', criar: 'criar', 'nova-atividade': 'criar', reservas: 'reservas' }[rota] || '');
     switch (rota) {
       case '': return vInicio();
       case 'explorar': return vExplorar(parametros);

@@ -1,9 +1,11 @@
+{% from "_logo.html" import horizontal %}
+{% from "_ico.html" import ic %}
 <!doctype html>
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ 'Criar conta' if modo == 'cadastro' else 'Entrar' }} · PlayGo</title>
+  <title>{{ 'Criar conta' if modo == 'cadastro' else 'Entrar' }} | PlayGo</title>
   <meta name="theme-color" content="#6c4cff">
   <link rel="icon" href="/static/marca/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/static/marca/favicon.ico" sizes="any">
@@ -11,40 +13,83 @@
   <meta property="og:title" content="PlayGo: encontre onde jogar, encontre com quem jogar">
   <meta property="og:description" content="Atividades, campeonatos com chaves e placar ao vivo, arenas e comunidades para quem pratica esporte.">
   <meta property="og:image" content="/static/marca/og-playgo.png">
-  <link rel="stylesheet" href="/static/app.css">
+  <link rel="preload" href="/static/fonts/outfit-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/inter-var.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/tokens.css">
+  <link rel="stylesheet" href="/static/entrada.css">
 </head>
-<body class="entrada">
+<body class="entrada com-painel">
+  <aside class="painel-marca" aria-label="PlayGo">
+    <a class="painel-logo" href="/" aria-label="PlayGo, página inicial">{{ horizontal(52, 'escuro') }}</a>
+    <div class="painel-texto">
+      <h2>Encontre onde jogar. Encontre com quem jogar.</h2>
+      <ul>
+        <li><span>{{ ic('map-pin') }}</span>Jogos com vaga perto de você, atualizados na hora</li>
+        <li><span>{{ ic('trophy') }}</span>Grupos e campeonatos com placar ao vivo</li>
+        <li><span>{{ ic('calendar') }}</span>Reserva de quadra com Pix, cartão ou na arena</li>
+      </ul>
+    </div>
+  </aside>
+  <header class="cabeca-marca">
+    <a href="/" aria-label="PlayGo, página inicial">{{ horizontal(40, 'escuro') }}</a>
+    <h2>Encontre onde jogar. Encontre com quem jogar.</h2>
+  </header>
+
+  <main class="entrada-principal">
   <form class="cartao-entrada" method="post" action="{{ '/cadastro' if modo == 'cadastro' else '/entrar' }}">
-    <a class="logo" href="/"><img class="logo-ico" src="/static/marca/icone.svg" alt="" width="40" height="40">Play<span style="color:var(--purple)">Go</span></a>
-    {% if modo == 'cadastro' %}
-    <h1>Crie sua conta</h1>
-    <p class="suave" style="margin:0">Encontre onde jogar. Encontre com quem jogar.</p>
-    {% else %}
-    <h1>Entrar</h1>
-    {% endif %}
-    {% if erro %}<p class="aviso erro" style="margin:0">{{ erro }}</p>{% endif %}
-    {% if modo == 'cadastro' %}
-    <label>Seu nome <input name="nome" value="{{ nome or '' }}" required autofocus autocomplete="name"></label>
-    <label>Nome de usuário <input name="usuario" value="{{ usuario or '' }}" required minlength="3" maxlength="20" pattern="[A-Za-z0-9_.@]{3,21}" placeholder="ex.: carlos.cg" autocomplete="username"></label>
-    <p class="suave" style="margin:-6px 0 0">É o que aparece nas suas publicações e como as pessoas te encontram para convites.</p>
-    {% endif %}
+    <div class="ent-titulo">
+      {% if modo == 'cadastro' %}
+      <h1>Criar conta</h1>
+      <p>Leva menos de um minuto. Você pode completar o perfil depois.</p>
+      {% else %}
+      <h1>Entrar</h1>
+      <p>Acesse sua conta para ver seus jogos, grupos e reservas.</p>
+      {% endif %}
+    </div>
+    {% if erro %}<div class="ent-erro" role="alert">{{ ic('circle-alert') }}<span>{{ erro }}</span></div>{% endif %}
     {% if google_ativo() %}
-    <a class="btn soft" href="/auth/google/iniciar" style="text-align:center;display:block">Continuar com Google</a>
-    <p class="suave" style="margin:0;text-align:center">ou {{ 'crie a conta' if modo == 'cadastro' else 'use seu e-mail' }}</p>
+    <a class="ent-google" href="/auth/google/iniciar">
+      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M23.49 12.27c0-.79-.07-1.54-.19-2.27H12v4.51h6.47c-.29 1.48-1.14 2.73-2.4 3.58v3h3.86c2.26-2.09 3.56-5.17 3.56-8.82z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.86-3c-1.08.72-2.45 1.16-4.07 1.16-3.13 0-5.78-2.11-6.73-4.96H1.29v3.09C3.26 21.3 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.27 14.29c-.25-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.98-3.09z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.98 3.09c.95-2.85 3.6-4.96 6.73-4.96z"/></svg>
+      Continuar com Google
+    </a>
+    <div class="ent-divisor"><span></span>ou use seu e-mail<span></span></div>
     {% endif %}
-    <label>E-mail <input type="email" name="email" value="{{ email or '' }}" required autocomplete="{{ 'email' if modo == 'cadastro' else 'username' }}" {{ 'autofocus' if modo != 'cadastro' }}></label>
-    <label>Senha <input type="password" name="senha" required {% if modo == 'cadastro' %}minlength="8" autocomplete="new-password"{% else %}autocomplete="current-password"{% endif %}></label>
+
     {% if modo == 'cadastro' %}
-    <p class="suave" style="margin:-6px 0 0">Mínimo de 8 caracteres.</p>
-    <label style="display:flex;gap:10px;align-items:flex-start;font-weight:600;font-size:13px"><input type="checkbox" name="aceito_termos" value="1" required style="margin-top:3px">
-      <span>Li e aceito os <a href="/termos" target="_blank" rel="noopener">Termos de Uso</a> e a <a href="/politica-de-privacidade" target="_blank" rel="noopener">Política de Privacidade</a>, inclusive as regras de publicação e de moderação.</span></label>
-    <label style="display:flex;gap:10px;align-items:flex-start;font-weight:600;font-size:13px"><input type="checkbox" name="consent_localizacao" value="1" style="margin-top:3px"> <span>{{ declaracoes.localizacao }}</span></label>
+    <label class="ent-campo"><span class="ent-rotulo">Seu nome</span>
+      <span class="ent-entrada">{{ ic('user-round') }}<input name="nome" value="{{ nome or '' }}" required autofocus autocomplete="name" placeholder="Como você quer ser chamado"></span></label>
+    <label class="ent-campo"><span class="ent-rotulo">Nome de usuário</span>
+      <span class="ent-entrada">{{ ic('at-sign') }}<input name="usuario" value="{{ usuario or '' }}" required minlength="3" maxlength="20" pattern="[A-Za-z0-9_.@]{3,21}" placeholder="ex.: carlos.cg" autocomplete="username"></span>
+      <span class="ent-apoio">É o nome que aparece nas suas publicações e como as pessoas te encontram para convites.</span></label>
     {% endif %}
-    <button class="btn purple">{{ 'Criar conta' if modo == 'cadastro' else 'Entrar' }}</button>
-    <p class="suave" style="margin:0;text-align:center">
-      {% if modo == 'cadastro' %}Já tem conta? <a href="/entrar">Entrar</a>{% else %}Ainda não tem conta? <a href="/cadastro">Criar conta</a>{% endif %}
-      · <a href="/app/">Abrir versão app</a>
-    </p>
+    <label class="ent-campo"><span class="ent-rotulo">E-mail</span>
+      <span class="ent-entrada{{ ' invalido' if erro }}">{{ ic('mail') }}<input type="email" name="email" value="{{ email or '' }}" required placeholder="nome@email.com" autocomplete="{{ 'email' if modo == 'cadastro' else 'username' }}" {{ 'autofocus' if modo != 'cadastro' }}></span></label>
+    <label class="ent-campo"><span class="ent-rotulo">Senha</span>
+      <span class="ent-entrada{{ ' invalido' if erro }}">{{ ic('lock') }}<input type="password" name="senha" required placeholder="{{ 'Crie uma senha' if modo == 'cadastro' else 'Sua senha' }}" {% if modo == 'cadastro' %}minlength="8" autocomplete="new-password"{% else %}autocomplete="current-password"{% endif %}>
+        <button type="button" class="ent-olho" data-mostrar-senha aria-label="Mostrar senha">{{ ic('eye') }}</button></span>
+      {% if modo == 'cadastro' %}<span class="ent-apoio">Mínimo de 8 caracteres.</span>{% endif %}</label>
+
+    {% if modo == 'cadastro' %}
+    <div class="ent-marcas">
+      <label class="ent-marca"><input type="checkbox" name="aceito_termos" value="1" required>
+        <span>Li e aceito os <a href="/termos" target="_blank" rel="noopener">Termos de Uso</a> e a <a href="/politica-de-privacidade" target="_blank" rel="noopener">Política de Privacidade</a>, inclusive as regras de publicação e de moderação.</span></label>
+      <label class="ent-marca com-fundo"><input type="checkbox" name="consent_localizacao" value="1">
+        <span>{{ declaracoes.localizacao }}</span></label>
+    </div>
+    {% endif %}
+    <button class="ent-botao">{{ 'Criar conta' if modo == 'cadastro' else 'Entrar' }}</button>
+    <div class="ent-rodape">
+      {% if modo == 'cadastro' %}<p>Já tem conta? <a href="/entrar">Entrar</a></p>{% else %}<p>Ainda não tem conta? <a href="/cadastro">Criar conta</a></p>{% endif %}
+      <a class="ent-app" href="/app/">{{ ic('smartphone') }} Abrir versão app</a>
+    </div>
   </form>
+  </main>
+  <script>
+    document.querySelectorAll('[data-mostrar-senha]').forEach((b) => b.addEventListener('click', () => {
+      const campo = b.parentElement.querySelector('input'), ver = campo.type === 'password';
+      campo.type = ver ? 'text' : 'password';
+      b.setAttribute('aria-label', ver ? 'Ocultar senha' : 'Mostrar senha');
+    }));
+  </script>
 </body>
 </html>

@@ -171,3 +171,30 @@ footer a:hover { color: var(--ink); }
 }
 
 section[id] { scroll-margin-top: 76px; }
+
+/* =====================================================================================================================
+   Design system (nov/2026): fontes e cores do tokens.css, logo nova, botões e títulos. Vem por último para ajustar o que está acima.
+   ===================================================================================================================== */
+:root { --ink: var(--tinta); --muted: var(--texto-2); --purple: var(--roxo); --pink: var(--rosa); --lime: var(--lima); --line: var(--borda); --soft: var(--fundo); --raio: 24px; }
+body { font-family: var(--fonte-texto); }
+h1, h2, h3, .marca { font-family: var(--fonte-titulo); }
+h1 { font-weight: 800; letter-spacing: -.03em; }
+h2 { font-weight: 800; letter-spacing: -.02em; }
+.topo { background: rgb(247 248 252 / .88); }
+.marca { gap: 0; }
+.marca .pg-logo { display: inline-flex; align-items: center; gap: calc(var(--h) * .16); line-height: 1; }
+.pg-simbolo { display: block; flex: none; }
+.pg-palavra { font-family: var(--fonte-titulo); font-weight: 800; letter-spacing: -.04em; font-size: calc(var(--h) * .6); line-height: 1; white-space: nowrap; }
+.pg-palavra .play { color: var(--tinta); } .pg-palavra .go { color: var(--roxo); }
+.pg-escuro .pg-palavra .play { color: #fff; } .pg-escuro .pg-palavra .go { color: var(--lima); }
+.grad { background: none; color: var(--roxo); -webkit-text-fill-color: currentColor; }
+.btn { border-radius: var(--raio-12); font-weight: 600; }
+.btn.grande { border-radius: var(--raio-12); }
+.btn.primario { background: var(--roxo); box-shadow: none; }
+.btn.primario:hover { background: var(--roxo-escuro); filter: none; }
+.btn.lima { background: var(--lima); color: var(--tinta); box-shadow: none; }
+.btn.lima:hover { background: var(--lima-hover); }
+.btn.contorno { border-color: var(--borda); }
+.btn .i { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.chip { background: var(--lilas); color: var(--roxo-escuro); font-weight: 600; }
+:focus-visible { outline: 2px solid var(--roxo); outline-offset: 2px; }

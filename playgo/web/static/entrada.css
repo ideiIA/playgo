@@ -1,0 +1,93 @@
+/* PlayGo: telas de entrada (entrar, criar conta, completar cadastro, aceitar termos) no design system.
+   Painel de marca à esquerda no desktop e cabeçalho compacto no celular; formulário em cartão. Usa os tokens de tokens.css. */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font-family: var(--fonte-texto); color: var(--tinta); background: var(--fundo); }
+a { color: var(--roxo); }
+a:hover { color: var(--roxo-escuro); }
+h1, h2, h3 { font-family: var(--fonte-titulo); margin: 0; }
+.ico, .i { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+/* logo (macros de _logo.html) */
+.pg-logo { display: inline-flex; align-items: center; gap: calc(var(--h) * .16); line-height: 1; }
+.pg-simbolo { display: block; flex: none; }
+.pg-palavra { font-family: var(--fonte-titulo); font-weight: 800; letter-spacing: -.04em; font-size: calc(var(--h) * .6); line-height: 1; white-space: nowrap; }
+.pg-palavra .play { color: var(--tinta); } .pg-palavra .go { color: var(--roxo); }
+.pg-escuro .pg-palavra .play { color: #fff; } .pg-escuro .pg-palavra .go { color: var(--lima); }
+
+/* cartão de formulário (também usado por completar cadastro e aceite dos termos) */
+body.entrada { min-height: 100vh; }
+body.entrada:not(.com-painel) { display: grid; place-items: center; padding: 20px; background: linear-gradient(160deg, #5a3df0 0%, #6c4cff 48%, #b43fc4 82%, #ff3d81 118%); }
+.cartao-entrada { background: #fff; border-radius: var(--raio-32); padding: 40px; width: min(440px, 100%); display: flex; flex-direction: column; gap: 20px; box-shadow: var(--sombra-3); }
+.cartao-entrada .logo { color: var(--tinta); margin: 0; font-family: var(--fonte-titulo); font-weight: 800; font-size: 28px; letter-spacing: -.04em; display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+.cartao-entrada .logo-ico { border-radius: 10px; }
+.cartao-entrada h1 { font-size: 32px; font-weight: 800; letter-spacing: -.02em; }
+.cartao-entrada label { display: flex; flex-direction: column; gap: 8px; font-size: 14px; font-weight: 600; }
+.cartao-entrada input:not([type="checkbox"]) { height: 48px; padding: 0 16px; border: 1.5px solid var(--borda); border-radius: var(--raio-12); font: 400 15px var(--fonte-texto); color: var(--tinta); background: #fff; outline: 0; width: 100%; }
+.cartao-entrada input:not([type="checkbox"]):focus { border-color: var(--roxo); box-shadow: var(--foco, 0 0 0 4px rgb(108 76 255 / .3)); }
+.cartao-entrada .btn { display: block; width: 100%; height: 52px; padding: 0; line-height: 52px; border: 0; border-radius: var(--raio-pilula); font: 600 16px var(--fonte-texto); text-align: center; text-decoration: none; cursor: pointer; }
+.cartao-entrada .btn.purple { background: var(--roxo); color: #fff; }
+.cartao-entrada .btn.purple:hover { background: var(--roxo-escuro); }
+.cartao-entrada .btn.soft { background: var(--lilas); color: var(--roxo-escuro); }
+.cartao-entrada .suave, .suave { color: var(--texto-2); font-size: 13px; }
+.cartao-entrada .aviso { padding: 12px 14px; border-radius: var(--raio-12); font-size: 14px; line-height: 1.45; }
+.cartao-entrada .aviso.erro { background: var(--erro-fundo); color: var(--erro-texto); }
+.link-botao { background: none; border: 0; padding: 0; color: var(--roxo); font: inherit; font-weight: 600; cursor: pointer; }
+
+/* entrar e criar conta: painel de marca + formulário */
+body.com-painel { display: flex; background: var(--fundo); }
+.painel-marca { flex: 0 0 500px; margin: 16px; border-radius: var(--raio-32); background: linear-gradient(160deg, #5a3df0 0%, #6c4cff 48%, #b43fc4 82%, #ff3d81 118%); padding: 48px; display: flex; flex-direction: column; justify-content: space-between; gap: 48px; color: #fff; position: relative; overflow: hidden; }
+.painel-marca::after { content: ""; position: absolute; right: -120px; bottom: -120px; width: 360px; height: 360px; border-radius: 50%; border: 44px solid rgb(255 255 255 / .07); }
+.painel-logo { text-decoration: none; position: relative; z-index: 1; align-self: flex-start; }
+.painel-texto { display: flex; flex-direction: column; gap: 40px; position: relative; z-index: 1; }
+.painel-texto h2 { font-weight: 800; font-size: 44px; line-height: 1.08; letter-spacing: -.03em; text-wrap: balance; }
+.painel-texto ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 16px; }
+.painel-texto li { display: flex; align-items: center; gap: 14px; font-size: 16px; line-height: 1.4; }
+.painel-texto li span { flex: none; width: 40px; height: 40px; border-radius: var(--raio-12); background: rgb(255 255 255 / .16); display: grid; place-items: center; }
+.cabeca-marca { display: none; }
+.entrada-principal { flex: 1 1 auto; display: flex; align-items: center; justify-content: center; padding: 48px; min-width: 0; }
+.entrada-principal .cartao-entrada { box-shadow: var(--sombra-2); }
+
+.ent-titulo { display: flex; flex-direction: column; gap: 6px; }
+.ent-titulo p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--texto-2); }
+.ent-erro { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: var(--raio-12); background: var(--erro-fundo); color: var(--erro-texto); font-size: 14px; line-height: 1.45; }
+.ent-erro .i { margin-top: 1px; }
+.ent-google { height: 52px; display: flex; align-items: center; justify-content: center; gap: 12px; border: 1.5px solid var(--borda); background: #fff; border-radius: var(--raio-pilula); font: 600 15px var(--fonte-texto); color: var(--tinta); text-decoration: none; transition: background var(--duracao), border-color var(--duracao); }
+.ent-google:hover { background: #f4f5fa; border-color: #d3d7e3; color: var(--tinta); }
+.ent-divisor { display: flex; align-items: center; gap: 12px; color: var(--texto-2); font-size: 13px; }
+.ent-divisor span { flex: 1; height: 1px; background: var(--borda); }
+.ent-campo { display: flex; flex-direction: column; gap: 8px; }
+.ent-rotulo { font-size: 14px; font-weight: 600; }
+.ent-apoio { font-size: 13px; line-height: 1.45; color: var(--texto-2); font-weight: 400; }
+.ent-entrada { position: relative; display: block; }
+.ent-entrada > .i { position: absolute; left: 16px; top: 14px; width: 18px; height: 18px; color: var(--texto-2); pointer-events: none; }
+.cartao-entrada .ent-entrada input { padding-left: 44px; }
+.ent-entrada.invalido input { border-color: var(--erro); box-shadow: 0 0 0 4px rgb(229 72 77 / .14); }
+.ent-olho { position: absolute; right: 2px; top: 2px; width: 44px; height: 44px; border: 0; background: transparent; border-radius: 10px; display: grid; place-items: center; color: var(--texto-2); cursor: pointer; }
+.ent-olho:hover { color: var(--tinta); }
+.ent-olho .i { width: 18px; height: 18px; }
+.ent-marcas { display: flex; flex-direction: column; gap: 4px; }
+.ent-marca { flex-direction: row !important; gap: 12px !important; align-items: flex-start; min-height: 44px; padding: 10px 0; font-size: 14px !important; font-weight: 400 !important; line-height: 1.45; cursor: pointer; }
+.ent-marca.com-fundo { padding: 12px 14px; background: var(--fundo); border-radius: var(--raio-12); }
+.ent-marca input { flex: none; width: 20px; height: 20px; margin: 0; accent-color: var(--roxo); cursor: pointer; }
+.ent-botao { height: 52px; margin-top: 4px; border: 0; border-radius: var(--raio-pilula); background: var(--roxo); color: #fff; font: 600 16px var(--fonte-texto); cursor: pointer; transition: background var(--duracao); }
+.ent-botao:hover { background: var(--roxo-escuro); }
+.ent-rodape { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 14px; color: var(--texto-2); }
+.ent-rodape p { margin: 0; min-height: 44px; display: flex; align-items: center; gap: 6px; }
+.ent-rodape a { font-weight: 600; text-decoration: none; }
+.ent-app { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border-radius: var(--raio-pilula); color: var(--tinta) !important; font-weight: 500 !important; }
+.ent-app:hover { background: var(--lilas); }
+.ent-app .i { width: 18px; height: 18px; }
+:focus-visible { outline: 2px solid var(--roxo); outline-offset: 2px; }
+.ent-botao:focus-visible, .ent-google:focus-visible { outline: 0; box-shadow: 0 0 0 4px rgb(108 76 255 / .3); }
+
+@media (max-width: 899px) {
+  body.com-painel { flex-direction: column; }
+  .painel-marca { display: none; }
+  .cabeca-marca { display: flex; flex-direction: column; gap: 20px; padding: 20px 20px 52px; border-radius: 0 0 var(--raio-32) var(--raio-32); background: linear-gradient(150deg, #5a3df0 0%, #6c4cff 60%, #a940c8 100%); color: #fff; }
+  .cabeca-marca a { text-decoration: none; align-self: flex-start; }
+  .cabeca-marca h2 { font-weight: 800; font-size: 26px; line-height: 1.12; letter-spacing: -.02em; }
+  .entrada-principal { padding: 0 12px 32px; margin-top: -32px; }
+  .cartao-entrada { padding: 28px 20px; border-radius: var(--raio-24); }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

@@ -30,5 +30,6 @@
   /* movimento */
   --duracao: 200ms; --ease: ease;
   /* pontos de quebra (usados nas media queries): celular < 768, tablet 768–1279, desktop ≥ 1280 */
+  --foco: 0 0 0 4px rgb(108 76 255 / .3);
   --menu-aberto: 256px; --menu-fechado: 76px; --topo-alt: 76px;
 }
