@@ -14,6 +14,12 @@
     return '<p class="rb-rodape">' + esc(a.texto || '') + (a.links || []).map((l) => ' · <a href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.texto) + '</a>').join('') + '</p>';
   }
 
+  // Deixa claro de qual arena é a tela (quem tem mais de uma não confunde os cadastros).
+  function titulo(d) {
+    const a = d && d.arena;
+    return '<h2>💰 Receber pelo app</h2>' + (a ? '<p class="rb-nota">Arena: <b>' + esc(a.nome) + '</b></p>' : '');
+  }
+
   function campo(rotulo, nome, extra) { return '<label class="rb-campo">' + rotulo + '<input name="' + nome + '" ' + (extra || '') + '></label>'; }
 
   function formCadastro(botao) {
@@ -65,7 +71,7 @@
 
     function telaAtivar(d) {
       const bloqueada = d.fase === 'avaliacao' && !d.liberada;
-      el.innerHTML = '<div class="rb-caixa"><h2>💰 Receber pelo app</h2>' +
+      el.innerHTML = '<div class="rb-caixa">' + titulo(d) +
         '<p>Receba o pagamento das reservas direto pelo PlayGo (Pix ou cartão). O dinheiro cai na <b>sua conta de recebimento</b>, você acompanha saldo e extrato aqui e pede o saque quando quiser. Você não precisa abrir conta nem entrar em nenhum outro site.</p>' +
         (bloqueada ? '<p class="rb-aviso">Sua arena ainda não foi liberada para esta função. Fale com a administração do PlayGo.</p>' : '<h3>Dados do titular da conta</h3>' + formCadastro('Ativar recebimento')) +
         rodape(d) + '</div>';
@@ -82,7 +88,7 @@
       const r = d.recebedor;
       const [rotulo, cor] = KYC[r.status_kyc] || [r.status_kyc, 'rb-azul'];
       const pend = r.documentos_pendentes || [];
-      el.innerHTML = '<div class="rb-caixa"><h2>💰 Receber pelo app</h2><p>Situação do cadastro: <span class="rb-tag ' + cor + '">' + esc(rotulo) + '</span></p>' +
+      el.innerHTML = '<div class="rb-caixa">' + titulo(d) + '<p>Situação do cadastro: <span class="rb-tag ' + cor + '">' + esc(rotulo) + '</span></p>' +
         (r.email_mascara && r.status_kyc !== 'aprovado' ? '<p class="rb-nota">O Asaas escreve para o e-mail do cadastro: <b>' + esc(r.email_mascara) + '</b> (veja também o spam). É por lá que chegam o link e os pedidos de documentos.</p>' : '') +
         (r.status_kyc === 'criando' || r.aguardar_s ? '<p class="rb-nota">Estamos preparando sua conta' + (r.aguardar_s ? ' (consulta em ' + r.aguardar_s + ' s)' : '') + '…</p>' : '') +
         (r.status_kyc === 'recusado' ? '<p class="rb-aviso">Seu cadastro foi recusado' + (r.motivo_recusa ? ': ' + esc(r.motivo_recusa) : '') + '. Fale com a administração do PlayGo.</p>' : '') +
@@ -118,7 +124,7 @@
 
     async function telaAprovada(d) {
       const r = d.recebedor;
-      el.innerHTML = '<div class="rb-caixa"><h2>💰 Receber pelo app</h2><p><span class="rb-tag rb-verde">Aprovado</span> Você já pode cobrar reservas pela agenda (botão “Cobrar”).</p>' +
+      el.innerHTML = '<div class="rb-caixa">' + titulo(d) + '<p><span class="rb-tag rb-verde">Aprovado</span> Você já pode cobrar reservas pela agenda (botão “Cobrar”).</p>' +
         (r.precisa_atualizar_dados ? '<div class="rb-aviso"><b>Atualize seus dados cadastrais.</b> O Asaas exige a confirmação anual. <button class="rb-btn pequeno" id="rb-abrir-dados">Atualizar dados</button><div id="rb-dados" hidden></div></div>' : '') +
         '<div class="rb-saldo"><span>Saldo disponível</span><b id="rb-saldo">…</b><span class="rb-nota" id="rb-div"></span></div>' +
         '<h3>Sacar</h3><div id="rb-destino"></div>' +

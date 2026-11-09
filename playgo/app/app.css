@@ -358,3 +358,10 @@ body.menu-aberto { overflow: hidden; }
 .b .btn { min-height: 44px; border-radius: var(--raio-12); }
 .btn.lima { background: var(--lima); color: var(--tinta); }
 @media (prefers-reduced-motion: reduce) { #menu-pop { animation: none; } .chip { transition: none; } }
+
+/* Cards do Bento: ícone e título sempre na mesma linha */
+.b-cam, .b-vazio { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 12px; row-gap: 12px; justify-items: stretch; }
+.b-cam > :not(.b-selo):not(h2), .b-vazio > :not(.b-vazio-ico):not(b) { grid-column: 1 / -1; }
+.b-cam .b-selo, .b-vazio-ico { width: 44px; height: 44px; }
+.b-cam h2 { margin: 0; }
+.b-vazio > .btn { justify-self: start; }

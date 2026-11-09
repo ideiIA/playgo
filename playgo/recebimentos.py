@@ -232,7 +232,7 @@ def _destino(rec: Recebedor) -> dict | None:
 
 def estado(rec: Recebedor | None, arena: Arena | None = None) -> dict:
     """O que a tela mostra. Nunca inclui a apiKey nem a chave Pix inteira."""
-    base = {"fase": fase(), "liberada": bool(arena.recebimento_liberado) if arena is not None else None}
+    base = {"fase": fase(), "liberada": bool(arena.recebimento_liberado) if arena is not None else None, "arena": {"id": arena.id, "nome": arena.nome} if arena is not None else None}
     if rec is None:
         return com_rodape(base | {"ativo": False, "recebedor": None})
     espera = max(0, int((rec.consultar_apos - agora()).total_seconds()) + 1) if rec.consultar_apos and rec.consultar_apos > agora() else 0

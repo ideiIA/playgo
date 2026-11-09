@@ -914,7 +914,7 @@
         const corpo = { nome: d.nome, tipo_estabelecimento: d.tipo_estabelecimento || 'arena', endereco: d.endereco || '', abre: d.abre, fecha: d.fecha, estrutura: d.estrutura || null, descricao: d.descricao || null, regras: d.regras || null, latitude: local.lat, longitude: local.lng, cidade: (a && a.cidade) || estado.usuario.cidade };
         if (a) Object.assign(corpo, { pagamento_reserva: d.pagamento_reserva || 'local', cancel_horas: Number(d.cancel_horas), reembolso_pct: Number(d.reembolso_pct), reembolso_pct_fora: Number(d.reembolso_pct_fora), acrescimo_cartao_pct: num(d.acrescimo_cartao_pct) || 0 });
         try {
-          if (a) { await api(`/gestao/arenas/${a.id}`, { metodo: 'PUT', corpo }); toast('Arena atualizada!'); } else { await post('/gestao/arenas', corpo); toast('Arena cadastrada!'); estado.arena = null; }
+          if (a) { await api(`/gestao/arenas/${a.id}`, { metodo: 'PUT', corpo }); toast('Arena atualizada!'); } else { const nova = await post('/gestao/arenas', corpo); toast('Arena cadastrada!'); estado.arena = (nova && nova.id) || null; if (estado.arena) guardar('playgo_arena', estado.arena); }
           location.hash = '#/gestao';
         }
         catch (e) { $('#erro').innerHTML = `<p class="aviso erro">${esc(e.message)}</p>`; }
