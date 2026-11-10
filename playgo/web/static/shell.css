@@ -118,8 +118,8 @@ body.menu-min:not(.menu-aberto) .sb-perfil { justify-content: center; }
 .b-rol { grid-column: span 4; }
 .b-grp { grid-column: span 4; background: var(--roxo); border-color: var(--roxo); color: #fff; }
 .b-grp a { color: #fff; }
-.b-are { grid-column: span 7; }
-.b-cam { grid-column: span 5; background: var(--tinta); border-color: var(--tinta); color: #fff; }
+.b-are { grid-column: span 8; }
+.b-cam { grid-column: span 4; align-content: start; background: var(--tinta); border-color: var(--tinta); color: #fff; }
 .b-cam a.btn { color: #fff; border: 1px solid rgb(255 255 255 / .35); background: transparent; }
 .b-pill { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; background: var(--lilas); color: var(--roxo-escuro); font-size: 13px; font-weight: 600; padding: 6px 12px; border-radius: var(--raio-pilula); }
 .b-busca { display: flex; gap: 8px; }
