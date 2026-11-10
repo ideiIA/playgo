@@ -546,6 +546,21 @@ def criar_cobranca_reserva(s: SessaoORM, reserva_id: int, u: Usuario, valor: Dec
     return resposta
 
 
+def _garantir_chave_pix(rec: Recebedor) -> None:
+    """Sem chave Pix na subconta o Asaas não oferece Pix (a fatura diz "não há formas de pagamento"). Cria uma chave aleatória (EVP) se ela ainda não tem."""
+    try:
+        ativas = _chamar(rec, "GET", "/pix/addressKeys?status=ACTIVE&limit=1")
+    except ErroNegocio:
+        ativas = {}
+    if (ativas.get("data") or []):
+        return
+    try:
+        _chamar(rec, "POST", "/pix/addressKeys", {"type": "EVP"})
+    except ErroNegocio as e:
+        log.warning("Recebimentos: não foi possível criar a chave Pix da subconta %s: %s", rec.id, e)
+        raise ErroNegocio("A conta de recebimento da arena ainda não tem chave Pix ativa. Tente de novo em alguns minutos ou fale com a administração do PlayGo.") from None
+
+
 def _emitir_cobranca(s: SessaoORM, reserva: Reserva, quadra: Quadra, rec: Recebedor, valor: Decimal, pagador: dict, vence_em_dias: int | None = None, tipo_cobranca: str = "UNDEFINED") -> dict:
     """Cria o cliente e a cobrança no Asaas (subconta da arena) e grava na reserva. Quem chama confere permissão, trava a reserva e dá o commit."""
     if valor <= 0:
@@ -556,6 +571,8 @@ def _emitir_cobranca(s: SessaoORM, reserva: Reserva, quadra: Quadra, rec: Recebe
     doc = cobranca._cpf_cnpj(pagador.get("cpf_cnpj", ""))
     _checar_nova_cobranca(s, rec, valor)
     split = _split(valor)
+    if tipo_cobranca in ("PIX", "UNDEFINED"):
+        _garantir_chave_pix(rec)
     cliente = _chamar(rec, "POST", "/customers", {"name": nome, "email": email or None, "cpfCnpj": doc, "externalReference": f"reserva:{reserva.id}", "notificationDisabled": False})
     vencimento = min(agora().date() + timedelta(days=3), max(agora().date() + timedelta(days=1), reserva.inicio.date()))
     if vence_em_dias is not None:

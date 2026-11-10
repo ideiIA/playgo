@@ -38,6 +38,7 @@ class FakeAsaas:
         self.transfer_status = "PENDING"
         self.falhar: set[str] = set()  # "METODO caminho-final" que devolve 400
         self.contas = 0
+        self.chave_pix = False
 
     def __call__(self, req: httpx.Request) -> httpx.Response:
         caminho = req.url.path.removeprefix("/v3")
@@ -61,6 +62,11 @@ class FakeAsaas:
             return httpx.Response(200, json={})
         if req.method == "GET" and caminho == "/finance/balance":
             return httpx.Response(200, json={"balance": self.balance})
+        if req.method == "GET" and caminho == "/pix/addressKeys":
+            return httpx.Response(200, json={"data": [{"id": "k1", "status": "ACTIVE"}] if self.chave_pix else []})
+        if req.method == "POST" and caminho == "/pix/addressKeys":
+            self.chave_pix = True
+            return httpx.Response(200, json={"id": "k1", "status": "AWAITING_ACTIVATION"})
         if req.method == "POST" and caminho == "/customers":
             return httpx.Response(200, json={"id": "cus_" + uuid.uuid4().hex[:6]})
         if req.method == "POST" and caminho == "/payments":
