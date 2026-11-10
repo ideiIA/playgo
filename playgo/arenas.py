@@ -168,6 +168,23 @@ def criar_quadra(s: SessaoORM, arena: Arena, usuario: Usuario, nome: str, modali
     return q
 
 
+def editar_quadra(s: SessaoORM, quadra_id: int, usuario: Usuario, nome: str, modalidades: list[str], capacidade: int | None, valor_hora: Decimal, tipo: str = "quadra") -> Quadra:
+    """Edita um espaço já cadastrado (nome, tipo, valor da hora, capacidade, modalidades). Reservas e horários já divulgados continuam como estão."""
+    q = quadra_do_gestor(s, quadra_id, usuario)
+    planos.exigir(s, usuario, "arena")
+    if not nome.strip():
+        raise ErroNegocio("Informe o nome do espaço.")
+    if tipo not in TIPOS_ESPACO:
+        raise ErroNegocio("Escolha o tipo do espaço: quadra, sala, piscina, campo ou outro.")
+    if valor_hora < 0:
+        raise ErroNegocio("O valor da hora não pode ser negativo.")
+    codigos = set(s.scalars(select(Modalidade.codigo).where(Modalidade.codigo.in_(modalidades or ["-"]))))
+    q.nome, q.tipo, q.modalidades, q.capacidade, q.valor_hora = nome.strip(), tipo, sorted(codigos), capacidade, valor_hora
+    auditoria.registrar(s, usuario.id, "quadra_editar", "quadra", q.id)
+    s.commit()
+    return q
+
+
 def quadra_do_gestor(s: SessaoORM, quadra_id: int, usuario: Usuario) -> Quadra:
     q = s.get(Quadra, quadra_id)
     if q is None:

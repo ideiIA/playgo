@@ -674,3 +674,14 @@ def test_arena_com_tipo_e_quadra_como_espaco(s, fabrica):
         arenas.criar(s, admin, "X", *PERTO, tipo_estabelecimento="cassino")
     with pytest.raises(ErroNegocio):
         arenas.criar_quadra(s, a, admin, "Y", [], None, Decimal(0), tipo="pista")
+
+
+def test_editar_quadra_ja_lancada(s, fabrica):
+    admin = _admin(fabrica, s)
+    a = arenas.criar(s, admin, "Arena Edita", *PERTO)
+    q = arenas.criar_quadra(s, a, admin, "Quadra 1", [], 4, Decimal(80))
+    arenas.editar_quadra(s, q.id, admin, "Quadra Central", ["futsal"], 10, Decimal("95.5"), "campo")
+    s.refresh(q)
+    assert (q.nome, q.tipo, q.capacidade, float(q.valor_hora)) == ("Quadra Central", "campo", 10, 95.5)
+    with pytest.raises(ErroNegocio):
+        arenas.editar_quadra(s, q.id, admin, " ", [], None, Decimal(0), "quadra")

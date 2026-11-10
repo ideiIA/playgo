@@ -655,6 +655,18 @@ def criar_quadra(arena_id: int, corpo: QuadraIn, u: AtualApi, s: Sessao):
     return detalhes.arena_publica(s, arenas.obter(s, arena_id), u)
 
 
+@router.get("/gestao/quadras/{quadra_id}")
+def ver_quadra(quadra_id: int, u: AtualApi, s: Sessao):
+    q = arenas.quadra_do_gestor(s, quadra_id, u)
+    return {"id": q.id, "arena_id": q.arena_id, "nome": q.nome, "tipo": q.tipo, "modalidades": q.modalidades, "capacidade": q.capacidade, "valor_hora": float(q.valor_hora or 0)}
+
+
+@router.put("/gestao/quadras/{quadra_id}")
+def editar_quadra(quadra_id: int, corpo: QuadraIn, u: AtualApi, s: Sessao):
+    q = arenas.editar_quadra(s, quadra_id, u, **corpo.model_dump())
+    return {"id": q.id, "nome": q.nome}
+
+
 def _dia(dia: date | None) -> date:
     return dia or agora().date()
 

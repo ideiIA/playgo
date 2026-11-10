@@ -49,7 +49,7 @@
 <div class="panel">
   {% if agenda.quadras %}
   <table class="schedule">
-    <thead><tr><th>Horário</th>{% for q in agenda.quadras %}<th>{{ q.nome }}<div class="suave" style="text-transform:none;font-weight:600">{{ q.modalidades|join(', ')|replace('_', ' ') }}</div></th>{% endfor %}</tr></thead>
+    <thead><tr><th>Horário</th>{% for q in agenda.quadras %}<th>{{ q.nome }} <a href="/gestao/quadras/{{ q.id }}/editar" title="Editar {{ q.nome }}" aria-label="Editar {{ q.nome }}" style="text-transform:none;font-weight:600;font-size:12px">✏️ Editar</a><div class="suave" style="text-transform:none;font-weight:600">{{ q.modalidades|join(', ')|replace('_', ' ') }}</div></th>{% endfor %}</tr></thead>
     <tbody>
     {% for l in agenda.linhas %}
     <tr><td>{{ l.hora }}</td>

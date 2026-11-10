@@ -873,6 +873,21 @@ def criar_quadra(arena_id: int, request: Request, s: Sessao, usuario: Atual, nom
     return _volta_gestao(arena_id)
 
 
+@app.get("/gestao/quadras/{quadra_id}/editar")
+def editar_quadra_tela(quadra_id: int, request: Request, s: Sessao, usuario: Atual):
+    if (r := _sem_plano(request, s, usuario, "arena")) is not None:
+        return r
+    q = arenas.quadra_do_gestor(s, quadra_id, usuario)
+    return pagina(request, s, usuario, "quadra_editar.html", "gestao", quadra=q, arena=q.arena, tipos=arenas.TIPOS_ESPACO)
+
+
+@app.post("/gestao/quadras/{quadra_id}/editar")
+def editar_quadra(quadra_id: int, request: Request, s: Sessao, usuario: Atual, nome: str = Form(), tipo: str = Form("quadra"), valor_hora: str = Form(""), capacidade: str = Form(""), modalidades: list[str] = Form(default=[])):
+    q = arenas.editar_quadra(s, quadra_id, usuario, nome, modalidades, _num(capacidade, int), _num(valor_hora) or Decimal(0), tipo)
+    request.session["ok"] = "Espaço atualizado."
+    return _volta_gestao(q.arena_id)
+
+
 @app.post("/gestao/{arena_id}/divulgar-ociosos")
 def divulgar_ociosos(arena_id: int, request: Request, s: Sessao, usuario: Atual):
     n = arenas.divulgar_ociosos(s, arenas.obter(s, arena_id), usuario)
