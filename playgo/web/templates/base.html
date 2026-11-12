@@ -44,6 +44,7 @@
 ] %}
 {% set menu_gestao = [
   ('gestao', '/gestao', 'building-2', 'Minha Arena', pode.arena),
+  ('relatorios', '/relatorios', 'chart-column', 'Relatórios', pode.arena or usuario.admin),
   ('aulas', '/aulas', 'graduation-cap', 'Aulas e Treinamentos', pode.ensino_menu),
   ('ensino', '/ensino', 'clipboard-list', 'Minhas aulas' if pode.perfil_prof else 'Dar aulas', pode.ensino_menu),
   ('reservas', '/reservas', 'calendar-check', 'Minhas reservas', true),
@@ -53,7 +54,7 @@
   ('administracao', '/administracao', 'settings', 'Administração', usuario.admin),
   ('moderacao', '/moderacao', 'shield-check', 'Moderação', usuario.equipe_moderacao),
 ] %}
-{% set titulos = {'home': 'Início', 'mural': 'Feed', 'explorar': 'Explorar', 'criar': 'Criar atividade', 'grupos': 'Meus grupos', 'comunidades': 'Comunidades', 'campeonatos': 'Campeonatos', 'gestao': 'Minha Arena', 'aulas': 'Aulas e Treinamentos', 'ensino': 'Aulas', 'reservas': 'Minhas reservas', 'planos': 'Meu plano', 'tutorial': 'Tutoriais', 'locais': 'Guia de locais', 'administracao': 'Administração', 'moderacao': 'Moderação', 'perfil': 'Meu perfil', 'notificacoes': 'Notificações', 'convites': 'Convites', 'privacidade': 'Privacidade'} %}
+{% set titulos = {'home': 'Início', 'mural': 'Feed', 'explorar': 'Explorar', 'criar': 'Criar atividade', 'grupos': 'Meus grupos', 'comunidades': 'Comunidades', 'campeonatos': 'Campeonatos', 'gestao': 'Minha Arena', 'relatorios': 'Relatórios', 'aulas': 'Aulas e Treinamentos', 'ensino': 'Aulas', 'reservas': 'Minhas reservas', 'planos': 'Meu plano', 'tutorial': 'Tutoriais', 'locais': 'Guia de locais', 'administracao': 'Administração', 'moderacao': 'Moderação', 'perfil': 'Meu perfil', 'notificacoes': 'Notificações', 'convites': 'Convites', 'privacidade': 'Privacidade'} %}
 <body>
 <script>try { if (!matchMedia('(min-width: 1280px)').matches || localStorage.getItem('pg-menu') === 'min') document.body.classList.add('menu-min'); } catch (e) { /* sem armazenamento */ }</script>
 <a class="pular" href="#conteudo-principal">Ir para o conteúdo</a>

@@ -19,7 +19,7 @@ home pen-line compass circle-plus plus users users-round trophy building-2 credi
 lock video tv radio dices pencil calendar calendar-days clock ticket crown camera search share-2 heart message-circle message-square play square
 key-round circle-check circle-alert triangle-alert info chevron-right chevron-down chevron-left arrow-left arrow-right log-out x check flag medal swords store
 trees dumbbell layers locate-fixed navigation gift sparkles zap flame eye eye-off upload download external-link link copy trash-2 refresh-cw send image
-scroll-text clipboard-list star list-checks qr-code wifi smartphone monitor hourglass timer rotate-ccw ellipsis user-round-plus user-check handshake
+scroll-text chart-column clipboard-list star list-checks qr-code wifi smartphone monitor hourglass timer rotate-ccw ellipsis user-round-plus user-check handshake
 megaphone book-marked graduation-cap target award coins banknote wallet receipt landmark badge-check circle-play circle-stop activity bike footprints
 volleyball goal party-popper bookmark filter sliders-horizontal image-plus file-text file-down mic mic-off video-off power maximize minimize
 phone laptop bot rocket shopping-bag pin thumbs-up satellite clapperboard ban lock-open file-pen

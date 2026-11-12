@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block titulo %}Relatórios | PlayGo{% endblock %}
+{% block conteudo %}
+<link rel="stylesheet" href="/static/relatorios.css">
+<div class="section-title"><h2>Relatórios</h2></div>
+{% if not lista and not usuario.admin %}
+<div class="panel"><p class="suave">Você ainda não tem arena cadastrada. Cadastre uma em <a href="/gestao">Minha Arena</a> para acompanhar reservas, valores e estatísticas.</p></div>
+{% else %}
+<div class="rl-barra">
+  <div class="rl-abas" role="tablist">
+    <button type="button" class="on" data-aba="arena" role="tab">Por arena</button>
+    {% if usuario.admin %}<button type="button" data-aba="plataforma" role="tab">Plataforma</button>{% endif %}
+  </div>
+  <form class="rl-filtro" id="rl-filtro">
+    <label id="rl-arena-cx">Arena <select id="rl-arena">{% for a in lista %}<option value="{{ a.id }}" {{ 'selected' if a.id == escolhida }}>{{ a.nome }}</option>{% endfor %}</select></label>
+    <label>De <input type="date" id="rl-ini"></label>
+    <label>Até <input type="date" id="rl-fim"></label>
+    <button class="btn purple pequeno">Atualizar</button>
+    <span class="rl-atalhos"><button type="button" data-dias="7">7 dias</button><button type="button" data-dias="30">30 dias</button><button type="button" data-dias="90">90 dias</button></span>
+  </form>
+</div>
+<div id="rl-corpo" aria-live="polite"><p class="suave">Carregando…</p></div>
+<script src="/static/relatorios.js"></script>
+<script>window.addEventListener('load', () => Relatorios.montar(document.getElementById('rl-corpo'), { api: (c, o) => webApi(c, o), admin: {{ 'true' if usuario.admin else 'false' }} }));</script>
+{% endif %}
+{% endblock %}

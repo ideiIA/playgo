@@ -1,0 +1,43 @@
+/* Relatórios (site): cartões de números, barras em CSS puro e tabelas. Usa os tokens de tokens.css. */
+.rl-barra { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end; justify-content: space-between; margin-bottom: 16px; }
+.rl-abas { display: inline-flex; gap: 4px; padding: 4px; background: var(--lilas); border-radius: var(--raio-pilula); }
+.rl-abas button { border: 0; background: transparent; padding: 8px 16px; min-height: 40px; border-radius: var(--raio-pilula); font: 600 14px var(--fonte-texto); color: var(--roxo-escuro); cursor: pointer; }
+.rl-abas button.on { background: #fff; box-shadow: var(--sombra-1); }
+.rl-filtro { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.rl-filtro label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--texto-2); }
+.rl-filtro input, .rl-filtro select { height: 40px; padding: 0 10px; border: 1.5px solid var(--borda); border-radius: var(--raio-12); font: 400 14px var(--fonte-texto); background: #fff; color: var(--tinta); }
+.rl-atalhos { display: inline-flex; gap: 6px; }
+.rl-atalhos button { border: 1px solid var(--borda); background: #fff; border-radius: var(--raio-pilula); height: 40px; padding: 0 12px; font: 600 13px var(--fonte-texto); cursor: pointer; }
+.rl-atalhos button:hover { background: var(--lilas); }
+.rl-numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.rl-num { background: #fff; border: 1px solid var(--borda); border-radius: var(--raio-18); padding: 16px; display: flex; flex-direction: column; gap: 4px; }
+.rl-num span { font-size: 13px; color: var(--texto-2); }
+.rl-num b { font: 800 26px/1.1 var(--fonte-titulo); letter-spacing: -.02em; }
+.rl-num small { font-size: 12px; color: var(--texto-2); }
+.rl-num.destaque { background: var(--roxo); border-color: var(--roxo); color: #fff; }
+.rl-num.destaque span, .rl-num.destaque small { color: #e4defe; }
+.rl-num.lima { background: var(--lima); border-color: var(--lima); color: var(--tinta); }
+.rl-num.lima span, .rl-num.lima small { color: #33410f; }
+.rl-grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; }
+.rl-cartao { background: #fff; border: 1px solid var(--borda); border-radius: var(--raio-24); padding: 20px; min-width: 0; }
+.rl-cartao h3 { margin: 0 0 12px; font: 700 18px var(--fonte-titulo); }
+.rl-cartao.cheio { grid-column: 1 / -1; }
+.rl-barras { display: flex; flex-direction: column; gap: 8px; }
+.rl-linha { display: grid; grid-template-columns: 110px minmax(0, 1fr) 90px; gap: 10px; align-items: center; font-size: 14px; }
+.rl-linha .rot { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rl-trilho { height: 12px; background: var(--fundo); border-radius: var(--raio-pilula); overflow: hidden; }
+.rl-trilho i { display: block; height: 100%; background: var(--roxo); border-radius: var(--raio-pilula); }
+.rl-linha .val { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+.rl-serie { display: flex; align-items: flex-end; gap: 2px; height: 140px; padding-top: 8px; }
+.rl-serie i { flex: 1; min-width: 2px; background: var(--roxo); border-radius: 3px 3px 0 0; opacity: .85; }
+.rl-serie i:hover { opacity: 1; background: var(--rosa); }
+.rl-eixo { display: flex; justify-content: space-between; font-size: 12px; color: var(--texto-2); margin-top: 4px; }
+.rl-tabela { width: 100%; border-collapse: collapse; font-size: 14px; }
+.rl-tabela th { text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--texto-2); padding: 8px 6px; border-bottom: 1px solid var(--borda); }
+.rl-tabela td { padding: 10px 6px; border-bottom: 1px solid var(--borda); }
+.rl-tabela .n { text-align: right; font-variant-numeric: tabular-nums; }
+.rl-rolar { overflow-x: auto; }
+.rl-acoes { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.rl-nota { font-size: 13px; color: var(--texto-2); margin: 8px 0 0; }
+@media (max-width: 899px) { .rl-grade { grid-template-columns: minmax(0, 1fr); } .rl-linha { grid-template-columns: 84px minmax(0, 1fr) 78px; } }
+.rl-filtro label[hidden] { display: none; }
