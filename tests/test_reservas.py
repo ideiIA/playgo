@@ -169,3 +169,13 @@ def test_online_so_pix_ou_cartao_e_cartao_leva_o_acrescimo(s, fabrica, asaas):
     reservas.reservar_horario(s, fabrica.atleta("Pix"), h2.id, "online", PAGADOR, "pix")
     pg2 = asaas.chamou("POST", "/payments")[-1][3]
     assert pg2["billingType"] == "PIX" and pg2["value"] == 100.0
+
+
+def test_cartao_sem_acrescimo_nao_quebra_a_conta():
+    from types import SimpleNamespace
+
+    for pct in (None, 0, Decimal("0"), Decimal("0.00")):
+        arena = SimpleNamespace(acrescimo_cartao_pct=pct)
+        assert reservas.valor_com_acrescimo(arena, Decimal("5"), "cartao") == Decimal("5.00")
+    assert reservas.valor_com_acrescimo(SimpleNamespace(acrescimo_cartao_pct=Decimal("5")), Decimal("100"), "cartao") == Decimal("105.00")
+    assert reservas.valor_com_acrescimo(SimpleNamespace(acrescimo_cartao_pct=Decimal("5")), Decimal("100"), "pix") == Decimal("100.00")

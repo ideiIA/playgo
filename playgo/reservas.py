@@ -94,7 +94,7 @@ TIPO_COBRANCA = recebimentos.TIPO_COBRANCA
 
 def valor_com_acrescimo(arena: Arena, valor: Decimal, metodo: str) -> Decimal:
     if metodo == "cartao":
-        return _dinheiro(valor * (1 + (arena.acrescimo_cartao_pct or 0) / 100))
+        return _dinheiro(_dinheiro(valor) * (1 + Decimal(str(arena.acrescimo_cartao_pct or 0)) / 100))
     return _dinheiro(valor)
 
 
