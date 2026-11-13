@@ -293,8 +293,7 @@ def inicio(request: Request, s: Sessao, usuario: Opcional, esporte: str = ""):
     if pendencia:
         raise PrecisaCompletar(pendencia)
     inicio_ = feed.montar(s, usuario, modalidade=esporte or None)
-    pontos = descoberta.pontos_do_mapa({"atividades": inicio_["perto"] + inicio_["urgentes"], "arenas": inicio_["arenas"]})
-    return pagina(request, s, usuario, "home.html", "home", feed=inicio_, esporte=esporte, pontos=pontos)
+    return pagina(request, s, usuario, "home.html", "home", feed=inicio_, esporte=esporte, pontos=inicio_["pontos"])
 
 
 @app.get("/explorar")

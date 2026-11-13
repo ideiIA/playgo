@@ -308,8 +308,7 @@
       const esporte = estado.esporteHome || '';
       const f = await api('/feed?' + comPos(esporte ? { modalidade: esporte } : {}));
       const u = estado.usuario;
-      const pontos = [...f.perto, ...f.urgentes].map((a) => ({ tipo: 'atividade', id: a.id, latitude: a.latitude, longitude: a.longitude, rotulo: a.nome, distancia: a.distancia, urgente: !!a.falta_gente }))
-        .concat(f.arenas.map((a) => ({ tipo: 'arena', id: a.id, latitude: a.latitude, longitude: a.longitude, rotulo: a.nome, distancia: a.distancia }))).filter((p) => p.latitude != null);
+      const pontos = f.pontos || [];  // os mesmos pontos do Explorar (com parceira em destaque e filtro de camadas)
       const chip = (rot, on, v) => `<button type="button" class="chip ${on ? 'on' : ''}" aria-pressed="${on}" data-acao="home-esporte" data-v="${v}">${rot}</button>`;
       const vazio = `<div class="b-vazio"><span class="b-vazio-ico">${ic('radio')}</span><b>${esporte ? 'Nenhuma partida desse esporte agora' : 'Nenhuma partida rolando agora'}</b><span class="suave">Crie a sua e chame a galera.</span>${pode('atividade') ? `<a class="btn lima" href="#/criar">${ic('plus')} Criar partida</a>` : `<a class="btn lima" href="#/explorar">${ic('compass')} Explorar no mapa</a>`}</div>`;
       montar(`

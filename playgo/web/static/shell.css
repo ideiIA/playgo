@@ -203,3 +203,9 @@ body.menu-min:not(.menu-aberto) .sb-perfil { justify-content: center; }
 .card.discreta { background: #f7f8fc; box-shadow: none; opacity: .9; }
 .card.discreta h3 { font-size: 15px; color: #4a5468; font-weight: 600; }
 .card.discreta .meta { color: #7b8496; }
+
+/* Explorar: mapa e "Mais próximos" seguem a mesma grade de 3 colunas dos cartões abaixo (mapa = 2 colunas, lista = 1) */
+@media (min-width: 1051px) {
+  .two.explorar { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+  .two.explorar > :first-child { grid-column: span 2; }
+}

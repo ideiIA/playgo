@@ -67,5 +67,7 @@ def montar(s: SessaoORM, usuario: Usuario, lat: float | None = None, lng: float 
         "recomendados": recomendados,
         "arenas": descoberta.buscar_arenas(s, la, ln, f_perto, limite=6),
         "horarios": descoberta.buscar_horarios(s, la, ln, Filtros(raio_km=raio, quando="hoje"), limite=6),
+        # mesmos pontos do Explorar (arenas com parceiras em destaque, locais públicos, clubes, lojas e eventos), para o mapa da home ter o mesmo filtro de camadas
+        "pontos": descoberta.explorar(s, usuario, la, ln, Filtros(raio_km=raio, modalidades=[modalidade] if modalidade else [], tipos=("atividade", "campeonato", "arena", "grupo", "horario", "local")))["pontos"],
         "esportes": [{"id": e.modalidade_id, "nome": e.modalidade.nome, "icone": e.modalidade.icone, "nivel": e.nivel} for e in usuario.esportes],
     }
