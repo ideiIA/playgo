@@ -152,6 +152,108 @@ def editar(
     return arena
 
 
+MAX_FOTOS = 12
+
+
+def _arena_do_gestor_com_plano(s: SessaoORM, arena_id: int, usuario: Usuario) -> Arena:
+    arena = obter(s, arena_id)
+    exigir_gestor(arena, usuario)
+    planos.exigir(s, usuario, "arena")
+    return arena
+
+
+def definir_capa(s: SessaoORM, arena_id: int, usuario: Usuario, dados: bytes, ajuste: str = "recortar") -> Arena:
+    """Foto de capa da arena em 16:9, com o enquadramento que a arena escolheu (recortar, auto ou inteira). Substitui a anterior. Só gestor da arena ou admin."""
+    from . import armazenamento, midia
+
+    arena = _arena_do_gestor_com_plano(s, arena_id, usuario)
+    novo = midia.salvar_capa(midia.processar_capa(dados, ajuste=ajuste))
+    anterior, arena.capa = arena.capa, novo
+    auditoria.registrar(s, usuario.id, "arena_capa", "arena", arena.id)
+    s.commit()
+    if anterior:
+        armazenamento.remover(f"capas/{anterior}")
+    return arena
+
+
+def definir_logo(s: SessaoORM, arena_id: int, usuario: Usuario, dados: bytes) -> Arena:
+    """Logo/brasão da arena (a "foto de perfil" dela): sai nos cartões, na página, nos horários divulgados e nos relatórios. Substitui a anterior."""
+    from . import armazenamento, midia
+
+    arena = _arena_do_gestor_com_plano(s, arena_id, usuario)
+    novo = midia.salvar_logo(midia.processar_logo(dados))
+    anterior, arena.logo = arena.logo, novo
+    auditoria.registrar(s, usuario.id, "arena_logo", "arena", arena.id)
+    s.commit()
+    if anterior:
+        armazenamento.remover(f"logos/{anterior}")
+    return arena
+
+
+def remover_logo(s: SessaoORM, arena_id: int, usuario: Usuario) -> Arena:
+    from . import armazenamento
+
+    arena = _arena_do_gestor_com_plano(s, arena_id, usuario)
+    anterior, arena.logo = arena.logo, None
+    if anterior:
+        auditoria.registrar(s, usuario.id, "arena_logo_remover", "arena", arena.id)
+    s.commit()
+    if anterior:
+        armazenamento.remover(f"logos/{anterior}")
+    return arena
+
+
+def analisar_capa(s: SessaoORM, arena_id: int, usuario: Usuario, dados: bytes) -> dict:
+    """Antes de enviar: diz se a foto está no padrão da capa e mostra os enquadramentos possíveis. Não grava nada."""
+    from . import midia
+
+    _arena_do_gestor_com_plano(s, arena_id, usuario)
+    return midia.analisar_capa(dados) | {"previas": midia.previas_capa(dados)}
+
+
+def remover_capa(s: SessaoORM, arena_id: int, usuario: Usuario) -> Arena:
+    from . import armazenamento
+
+    arena = _arena_do_gestor_com_plano(s, arena_id, usuario)
+    anterior, arena.capa = arena.capa, None
+    if anterior:
+        auditoria.registrar(s, usuario.id, "arena_capa_remover", "arena", arena.id)
+    s.commit()
+    if anterior:
+        armazenamento.remover(f"capas/{anterior}")
+    return arena
+
+
+def adicionar_foto(s: SessaoORM, arena_id: int, usuario: Usuario, dados: bytes) -> Arena:
+    """Foto da galeria "Conheça nosso espaço" (mantém a proporção; até MAX_FOTOS)."""
+    from . import midia
+
+    arena = _arena_do_gestor_com_plano(s, arena_id, usuario)
+    atuais = list(arena.fotos or [])
+    if len(atuais) >= MAX_FOTOS:
+        raise ErroNegocio(f"A galeria aceita até {MAX_FOTOS} fotos. Remova alguma para enviar outra.")
+    nome = midia.salvar_capa(midia.processar_capa(dados, recortar=False))
+    arena.fotos = atuais + [nome]
+    auditoria.registrar(s, usuario.id, "arena_foto", "arena", arena.id)
+    s.commit()
+    return arena
+
+
+def remover_foto(s: SessaoORM, arena_id: int, usuario: Usuario, nome: str) -> Arena:
+    from . import armazenamento
+
+    arena = _arena_do_gestor_com_plano(s, arena_id, usuario)
+    atuais = list(arena.fotos or [])
+    if nome not in atuais:
+        raise NaoEncontrado("Foto não encontrada.")
+    atuais.remove(nome)
+    arena.fotos = atuais
+    auditoria.registrar(s, usuario.id, "arena_foto_remover", "arena", arena.id)
+    s.commit()
+    armazenamento.remover(f"capas/{nome}")
+    return arena
+
+
 def criar_quadra(s: SessaoORM, arena: Arena, usuario: Usuario, nome: str, modalidades: list[str], capacidade: int | None, valor_hora: Decimal, tipo: str = "quadra") -> Quadra:
     exigir_gestor(arena, usuario)
     planos.exigir(s, usuario, "arena")

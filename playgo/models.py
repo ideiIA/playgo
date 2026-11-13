@@ -180,7 +180,9 @@ class Arena(Base):
     longitude: Mapped[float] = mapped_column(Float)
     estrutura: Mapped[str | None] = mapped_column(Text)  # vestiário, bar, estacionamento…
     regras: Mapped[str | None] = mapped_column(Text)
-    fotos: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)
+    fotos: Mapped[list[str]] = mapped_column(ARRAY(Text), default=list)  # galeria "Conheça nosso espaço": nomes de arquivo em capas/ (arenas.adicionar_foto)
+    logo: Mapped[str | None] = mapped_column(String(60))  # logo/brasão da arena, quadrado com fundo transparente (nome do arquivo .png em logos/): "foto de perfil" da arena
+    capa: Mapped[str | None] = mapped_column(String(60))  # foto de capa da arena, 16:9 (nome do arquivo em capas/); aparece nos cartões e no topo da página
     abre: Mapped[time] = mapped_column(Time, default=time(6, 0))
     fecha: Mapped[time] = mapped_column(Time, default=time(23, 0))
     tipo_estabelecimento: Mapped[str] = mapped_column(String(12), default="arena")  # arena | academia | clube | escola

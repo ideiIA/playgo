@@ -41,3 +41,9 @@
 .rl-nota { font-size: 13px; color: var(--texto-2); margin: 8px 0 0; }
 @media (max-width: 899px) { .rl-grade { grid-template-columns: minmax(0, 1fr); } .rl-linha { grid-template-columns: 84px minmax(0, 1fr) 78px; } }
 .rl-filtro label[hidden] { display: none; }
+
+.rl-cab { display: flex; align-items: center; gap: 14px; background: #fff; border: 1px solid var(--borda); border-radius: var(--raio-24); padding: 14px 18px; margin-bottom: 14px; }
+.rl-cab h3 { margin: 0; font: 800 22px var(--fonte-titulo); letter-spacing: -.01em; }
+.rl-cab p { margin: 2px 0 0; font-size: 14px; color: var(--texto-2); }
+.rl-logo { width: 64px; height: 64px; object-fit: contain; border-radius: 16px; border: 1px solid var(--borda); background: #fff; flex: none; }
+.rl-mini { width: 26px; height: 26px; object-fit: contain; border-radius: 7px; vertical-align: middle; margin-right: 8px; border: 1px solid var(--borda); background: #fff; }

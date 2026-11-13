@@ -2,11 +2,15 @@
 {% import "_cards.html" as c %}
 {% block titulo %}{{ ar.nome }} | PlayGo{% endblock %}
 {% block conteudo %}
+{% if ar.capa_url %}<img src="{{ ar.capa_url }}" alt="{{ ar.nome }}" style="width:100%;aspect-ratio:16/6;object-fit:cover;border-radius:24px;display:block;margin-bottom:16px">{% endif %}
 <div class="detalhe-topo">
-  <div>
+  <div style="display:flex;gap:16px;align-items:center">
+    {% if ar.logo_url %}<img src="{{ ar.logo_url }}" alt="Logo de {{ ar.nome }}" style="width:84px;height:84px;object-fit:contain;border-radius:20px;border:1px solid var(--borda);background:#fff;flex:none">{% endif %}
+    <div>
     <span class="tag verde">🏟️ ARENA</span>
     <h1>{{ ar.nome }}</h1>
     <div class="meta">{{ ar.endereco }}{% if ar.cidade %} • {{ ar.cidade }}{% endif %}{% if ar.distancia %} • a {{ ar.distancia }} de você{% endif %}<br>Aberta das {{ ar.abre }} às {{ ar.fecha }}</div>
+    </div>
   </div>
   {% if ar.sou_gestor %}<a class="btn purple" href="/gestao?arena={{ ar.id }}">Gerenciar</a>{% endif %}
 </div>
@@ -19,6 +23,10 @@
       {% if ar.estrutura %}<p class="suave" style="margin-top:14px">Estrutura: {{ ar.estrutura }}</p>{% endif %}
       {% if ar.regras %}<p class="suave">Regras: {{ ar.regras }}</p>{% endif %}
     </div>
+    {% if ar.fotos %}<div class="panel" style="margin-bottom:18px">
+      <h2>Conheça nosso espaço</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">{% for f in ar.fotos %}<a href="{{ f }}" target="_blank" rel="noopener" aria-label="Abrir foto {{ loop.index }} de {{ ar.nome }}"><img src="{{ f }}" alt="Foto {{ loop.index }} de {{ ar.nome }}" loading="lazy" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;display:block"></a>{% endfor %}</div>
+    </div>{% endif %}
     <div class="section-title" style="margin-top:0"><h2>Horários disponíveis</h2><a class="suave" href="/reservas">Minhas reservas</a></div>
     {% if ar.horarios and not ar.reserva.aceita_reserva %}<p class="aviso">Esta arena ainda não aceita reservas pelo app{% if ar.sou_gestor %}: ela está configurada para receber só pelo app, mas o “Receber pelo app” ainda não foi aprovado. Em <a href="/gestao/arenas/{{ ar.id }}/editar">Editar arena</a>, escolha “Na arena” ou “Os dois” enquanto isso{% endif %}.</p>{% endif %}
     {% if ar.horarios %}<div class="grid" style="grid-template-columns:1fr 1fr">{% for h in ar.horarios %}

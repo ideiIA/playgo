@@ -155,8 +155,9 @@
     </a>`;
   const cardArena = (a) => `
     <a class="card" href="#/arena/${a.id}">
+      ${a.capa_url ? `<img src="${a.capa_url}" alt="" loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px;display:block;margin-bottom:8px">` : ''}
       <span class="tag verde">🏟️ ${a.quadras} quadra${a.quadras !== 1 ? 's' : ''}</span>${a.premium ? ' <span class="tag laranja">👑 Parceira</span>' : ''}
-      <h3>${esc(a.nome)}</h3>
+      <h3>${a.logo_url ? `<img src="${a.logo_url}" alt="" loading="lazy" style="width:28px;height:28px;object-fit:contain;border-radius:7px;vertical-align:middle;margin-right:8px;background:#fff;border:1px solid var(--borda)">` : ''}${esc(a.nome)}</h3>
       <div class="meta">${esc(a.endereco || a.cidade || '')}${a.distancia ? ' • ' + esc(a.distancia) : ''}${a.horarios_disponiveis ? `<br><b style="color:var(--green)">${a.horarios_disponiveis} horário(s) livre(s) hoje</b>` : ''}</div>
     </a>`;
   const cardVivo = (j) => `
@@ -744,11 +745,13 @@
     try {
       const a = await api('/arenas/' + id);
       montar(`<a href="javascript:history.back()" class="suave">← Voltar</a>
-        <span class="tag verde" style="margin-top:10px">🏟️ Arena</span><h1 style="margin:8px 0 4px">${esc(a.nome)}</h1>
+        ${a.capa_url ? `<img src="${a.capa_url}" alt="${esc(a.nome)}" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:16px;display:block;margin:10px 0 0">` : ''}
+        <div style="display:flex;gap:12px;align-items:center;margin-top:10px">${a.logo_url ? `<img src="${a.logo_url}" alt="Logo de ${esc(a.nome)}" style="width:64px;height:64px;object-fit:contain;border-radius:16px;border:1px solid var(--borda);background:#fff;flex:none">` : ''}<div><span class="tag verde">🏟️ Arena</span><h1 style="margin:6px 0 0">${esc(a.nome)}</h1></div></div>
         <p class="suave">${esc(a.endereco || '')}${a.cidade ? ' • ' + esc(a.cidade) : ''}${a.distancia ? ' • a ' + esc(a.distancia) : ''}<br>Aberta das ${esc(a.abre)} às ${esc(a.fecha)}</p>
         ${a.sou_gestor ? `<a class="btn roxo pequeno" style="margin-top:10px" href="#/gestao">Gerenciar</a>` : ''}
         ${a.descricao ? `<p style="margin:12px 0">${esc(a.descricao)}</p>` : ''}
         <div class="mapa pequeno" id="mapa" style="margin:12px 0"></div>
+        ${(a.fotos || []).length ? `<div class="painel"><h3>Conheça nosso espaço</h3><div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px">${a.fotos.map((f, i) => `<a href="${f}" target="_blank" rel="noopener"><img src="${f}" alt="Foto ${i + 1} de ${esc(a.nome)}" loading="lazy" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;display:block"></a>`).join('')}</div></div>` : ''}
         <div class="painel"><h3>Quadras</h3>${a.quadras_lista.map((q) => `<div class="pessoa"><b>${esc(q.nome)}</b><span class="suave">${esc(q.modalidades.join(', ').replace(/_/g, ' '))}</span><span class="acoes"><b>${esc(q.valor_texto)}</b></span></div>`).join('') || '<p class="suave">Nenhuma quadra cadastrada.</p>'}</div>
         ${secao('Horários disponíveis')}${lista(a.horarios, (h) => `<div class="card"><span class="tag verde">🏟️ Livre</span><h3>${modIcone(h.modalidade)} ${esc(h.modalidade ? h.modalidade.nome : 'Quadra')} • ${esc(h.quando)}</h3><div class="meta">${esc(h.quadra_nome)} • <b>${esc(h.valor_texto)}</b></div>${(a.reserva.aceita_reserva || !h.valor) ? `<button class="btn roxo pequeno" style="margin-top:8px" data-reservar="${h.id}">Reservar</button>` : ''}</div>`, 'Nenhum horário divulgado no momento.')}
         ${a.horarios.length && !a.reserva.aceita_reserva ? '<p class="aviso">Esta arena ainda não aceita reservas pelo app.' + (a.sou_gestor ? ' Ela está configurada para receber só pelo app e o “Receber pelo app” ainda não foi aprovado: em Editar arena, escolha “Na arena” ou “Os dois”.' : '') + '</p>' : ''}
@@ -888,7 +891,29 @@
         <div class="mapa pequeno" id="mapa-arena" style="height:300px;margin-top:6px"></div>
         <span class="suave" id="info-local" style="display:block;margin-top:6px">Busque o endereço na lupa do mapa ou toque no ponto exato. Dá para arrastar o pino.</span>
         <button type="button" class="btn suave bloco" data-acao="local-arena" style="margin-top:8px">📍 Usar minha localização atual</button></div>
-      <button class="btn roxo bloco">${a ? 'Salvar alterações' : 'Cadastrar'}</button></form>`, () => {
+      <button class="btn roxo bloco">${a ? 'Salvar alterações' : 'Cadastrar'}</button></form>
+      ${a ? '<div class="painel" id="fotos-arena" style="margin-top:14px"></div>' : ''}`, () => {
+      const pintarFotos = () => {
+        const box = $('#fotos-arena'); if (!box) return;
+        const max = a.max_fotos || 12, fotos = a.fotos || [];
+        box.innerHTML = `<h3>Fotos da arena</h3><p class="suave">A capa aparece nos cartões e no topo da página. As fotos de “Conheça nosso espaço” formam a galeria.</p>
+          <h4 style="margin:12px 0 6px">Logo ou brasão</h4><p class="suave">É a “foto de perfil” da arena: aparece nos cartões, na página, nos horários e nos relatórios. Use uma imagem quadrada (400 × 400 px ou mais), de preferência PNG com fundo transparente. Ela não é cortada.</p>${a.logo_url ? `<img src="${a.logo_url}" alt="Logo" style="width:88px;height:88px;object-fit:contain;border-radius:16px;border:1px solid var(--borda);background:#fff;display:block;margin-bottom:8px">` : ''}
+          <input type="file" id="ar-logo" accept="image/png,image/jpeg,image/webp"> <button type="button" class="btn roxo pequeno" id="ar-logo-ok">${a.logo_url ? 'Trocar logo' : 'Enviar logo'}</button>${a.logo_url ? ' <button type="button" class="btn suave pequeno" id="ar-logo-rm">Remover</button>' : ''}
+          <h4 style="margin:16px 0 6px">Capa</h4><p class="suave">Dica: use uma foto na horizontal, de 1600 × 900 px (16:9). Se estiver fora do padrão, você escolhe como enquadrar (corte, nitidez leve ou fundo desfocado).</p>${a.capa_url ? `<img src="${a.capa_url}" alt="Capa" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px;display:block;margin-bottom:8px">` : '<p class="suave">Ainda sem capa. Use uma foto da fachada ou da quadra principal.</p>'}
+          <input type="file" id="ar-capa" accept="image/jpeg,image/png,image/webp"> <button type="button" class="btn roxo pequeno" id="ar-capa-ok">${a.capa_url ? 'Trocar capa' : 'Enviar capa'}</button>${a.capa_url ? ' <button type="button" class="btn suave pequeno" id="ar-capa-rm">Remover</button>' : ''}
+          <h4 style="margin:16px 0 6px">Conheça nosso espaço (${fotos.length}/${max})</h4>
+          ${fotos.length ? `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:8px">${fotos.map((f, i) => `<div><img src="${f}" alt="Foto ${i + 1}" loading="lazy" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:10px;display:block"><button type="button" class="btn suave pequeno bloco" data-ar-rm="${esc(f.split('/').pop())}" style="margin-top:4px">Remover</button></div>`).join('')}</div>` : '<p class="suave">Nenhuma foto ainda. Mostre as quadras, o vestiário e a estrutura.</p>'}
+          ${fotos.length < max ? '<input type="file" id="ar-fotos" accept="image/jpeg,image/png,image/webp" multiple> <button type="button" class="btn roxo pequeno" id="ar-fotos-ok">Adicionar fotos</button>' : ''}`;
+        const envia = async (caminho, arquivo, extra = {}) => { const form = new FormData(); form.append('arquivo', arquivo); Object.entries(extra).forEach(([k, v]) => form.append(k, v)); return api(caminho, { metodo: 'POST', form }); };
+        const ok = (r) => { if ('logo_url' in r) a.logo_url = r.logo_url; if ('capa_url' in r) a.capa_url = r.capa_url; if (r.fotos) a.fotos = r.fotos; pintarFotos(); };
+        $('#ar-capa-ok').onclick = async () => { const f = $('#ar-capa').files[0]; if (!f) { toast('Escolha a imagem da capa.'); return; } try { const ajuste = await window.CapaArena.escolher(f, { api, arenaId: a.id }); if (!ajuste) return; ok(await envia(`/gestao/arenas/${a.id}/capa`, f, { ajuste })); toast('Capa atualizada.'); } catch (e) { toast(e.message); } };
+        $('#ar-logo-ok').onclick = async () => { const f = $('#ar-logo').files[0]; if (!f) { toast('Escolha a imagem do logo.'); return; } try { ok(await envia(`/gestao/arenas/${a.id}/logo`, f)); toast('Logo atualizado.'); } catch (e) { toast(e.message); } };
+        const rml = $('#ar-logo-rm'); if (rml) rml.onclick = async () => { try { ok(await api(`/gestao/arenas/${a.id}/logo`, { metodo: 'DELETE' })); toast('Logo removido.'); } catch (e) { toast(e.message); } };
+        const rm = $('#ar-capa-rm'); if (rm) rm.onclick = async () => { try { ok(await api(`/gestao/arenas/${a.id}/capa`, { metodo: 'DELETE' })); toast('Capa removida.'); } catch (e) { toast(e.message); } };
+        const add = $('#ar-fotos-ok'); if (add) add.onclick = async () => { const fs = [...$('#ar-fotos').files]; if (!fs.length) { toast('Escolha ao menos uma foto.'); return; } try { for (const f of fs) ok(await envia(`/gestao/arenas/${a.id}/fotos`, f)); toast('Fotos adicionadas.'); } catch (e) { toast(e.message); pintarFotos(); } };
+        box.querySelectorAll('[data-ar-rm]').forEach((b) => { b.onclick = async () => { try { ok(await api(`/gestao/arenas/${a.id}/fotos/${b.dataset.arRm}`, { metodo: 'DELETE' })); toast('Foto removida.'); } catch (e) { toast(e.message); } }; });
+      };
+      pintarFotos();
       let local = null;
       const info = $('#info-local');
       const centro = estado.pos ? [estado.pos.lat, estado.pos.lng] : (estado.usuario && estado.usuario.latitude ? [estado.usuario.latitude, estado.usuario.longitude] : [-20.4697, -54.6201]);

@@ -147,6 +147,8 @@ def arena(a: Arena, dist: float | None = None, horarios_hoje: int = 0) -> dict:
         "distancia_km": round(dist, 2) if dist is not None else None,
         "distancia": formatar_km(dist),
         "horarios_disponiveis": horarios_hoje,
+        "capa_url": f"/capa/{a.capa}" if a.capa else None,
+        "logo_url": f"/logo/{a.logo}" if a.logo else None,
     }
 
 
@@ -178,6 +180,7 @@ def horario(h: HorarioDivulgado, agora: datetime, dist: float | None = None) -> 
         "quadra_nome": q.nome,
         "arena_id": q.arena_id,
         "arena_nome": q.arena.nome,
+        "arena_logo_url": f"/logo/{q.arena.logo}" if q.arena.logo else None,
         "modalidade": modalidade(h.modalidade),
         "latitude": q.arena.latitude,
         "longitude": q.arena.longitude,

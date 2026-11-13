@@ -34,4 +34,56 @@
   <p class="suave">Os dados da conta de recebimento (documento, e-mail e conta no Asaas) não mudam aqui.</p>
   <br><button class="btn purple">Salvar alterações</button> <a class="btn soft" href="/gestao?arena={{ arena.id }}">Cancelar</a>
 </form>
+<section class="panel" id="fotos" style="margin-top:20px">
+  <h2>Fotos da arena</h2>
+  <p class="suave">A <b>capa</b> aparece nos cartões e no topo da página da arena. As fotos de <b>Conheça nosso espaço</b> formam a galeria (até {{ max_fotos }}). JPG, PNG ou WebP.</p>
+  <h3>Logo ou brasão</h3>
+  <p class="suave">É a "foto de perfil" da arena: aparece nos cartões, no topo da página, nos horários divulgados e nos relatórios. Use uma imagem <b>quadrada</b> (400 × 400 px ou mais), de preferência PNG com fundo transparente. Ela não é cortada: aparece inteira.</p>
+  {% if arena.logo %}<img src="/logo/{{ arena.logo }}" alt="Logo de {{ arena.nome }}" style="width:96px;height:96px;object-fit:contain;border-radius:18px;border:1px solid var(--borda);background:#fff;display:block;margin-bottom:10px">{% endif %}
+  <form method="post" action="/gestao/arenas/{{ arena.id }}/logo" enctype="multipart/form-data" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <input type="file" name="logo" accept="image/png,image/jpeg,image/webp" required>
+    <button class="btn purple pequeno">{{ 'Trocar logo' if arena.logo else 'Enviar logo' }}</button>
+  </form>
+  {% if arena.logo %}<form method="post" action="/gestao/arenas/{{ arena.id }}/logo/remover" style="margin-top:8px"><button class="btn soft pequeno">Remover logo</button></form>{% endif %}
+  <h3 style="margin-top:22px">Capa</h3>
+  <p class="suave"><b>Dica:</b> use uma foto na <b>horizontal</b>, de <b>1600 × 900 px</b> (proporção 16:9), com a quadra ou a fachada no centro. Se a foto estiver fora desse padrão, mostramos opções de enquadramento e <b>você decide</b> qual usar (só corte, nitidez leve ou fundo desfocado, sem alterar a foto).</p>
+  {% if arena.capa %}<img src="/capa/{{ arena.capa }}" alt="Capa de {{ arena.nome }}" style="width:100%;max-width:520px;aspect-ratio:16/9;object-fit:cover;border-radius:16px;display:block;margin-bottom:10px">{% else %}<p class="suave">Ainda sem capa. Use uma foto da fachada ou da quadra principal (fica em 16:9).</p>{% endif %}
+  <form method="post" action="/gestao/arenas/{{ arena.id }}/capa" enctype="multipart/form-data" id="form-capa" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <input type="file" name="capa" accept="image/jpeg,image/png,image/webp" required>
+    <input type="hidden" name="ajuste" value="recortar">
+    <button class="btn purple pequeno">{{ 'Trocar capa' if arena.capa else 'Enviar capa' }}</button>
+  </form>
+  {% if arena.capa %}<form method="post" action="/gestao/arenas/{{ arena.id }}/capa/remover" style="margin-top:8px"><button class="btn soft pequeno">Remover capa</button></form>{% endif %}
+  <h3 style="margin-top:22px" id="galeria">Conheça nosso espaço <span class="suave">({{ (arena.fotos or [])|length }}/{{ max_fotos }})</span></h3>
+  {% if arena.fotos %}<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:12px">
+    {% for f in arena.fotos %}<div><img src="/capa/{{ f }}" alt="Foto {{ loop.index }} de {{ arena.nome }}" loading="lazy" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;display:block">
+      <form method="post" action="/gestao/arenas/{{ arena.id }}/fotos/{{ f }}/remover" onsubmit="return confirm('Remover esta foto?')"><button class="btn soft pequeno" style="width:100%;margin-top:6px">Remover</button></form></div>{% endfor %}
+  </div>{% else %}<p class="suave">Nenhuma foto ainda. Mostre as quadras, o vestiário, o bar e a estrutura.</p>{% endif %}
+  {% if (arena.fotos or [])|length < max_fotos %}<form method="post" action="/gestao/arenas/{{ arena.id }}/fotos" enctype="multipart/form-data" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <input type="file" name="fotos" accept="image/jpeg,image/png,image/webp" multiple required>
+    <button class="btn purple pequeno">Adicionar fotos</button>
+  </form>{% endif %}
+</section>
+<script src="/static/capa_arena.js"></script>
+<script>
+  (() => {
+    const f = document.getElementById('form-capa');
+    if (!f) return;
+    f.addEventListener('submit', async (ev) => {
+      if (f.dataset.pronto) return;
+      ev.preventDefault();
+      const arquivo = f.elements.capa.files[0];
+      if (!arquivo) return;
+      const botao = f.querySelector('button');
+      botao.disabled = true;
+      try {
+        const ajuste = await CapaArena.escolher(arquivo, { api: (c, o) => webApi(c, o), arenaId: {{ arena.id }} });
+        if (!ajuste) { botao.disabled = false; return; }
+        f.elements.ajuste.value = ajuste;
+        f.dataset.pronto = '1';
+        f.submit();
+      } catch (e) { botao.disabled = false; toast(e.message || 'Não foi possível analisar a foto.'); }
+    });
+  })();
+</script>
 {% endblock %}

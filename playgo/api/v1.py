@@ -634,6 +634,7 @@ def ver_arena(arena_id: int, u: AtualApi, s: Sessao):
 @router.get("/gestao/arenas")
 def minhas_arenas(u: AtualApi, s: Sessao):
     return [ser.arena(a) | {"abre": a.abre.strftime("%H:%M"), "fecha": a.fecha.strftime("%H:%M"), "descricao": a.descricao, "regras": a.regras,
+                                  "fotos": [f"/capa/{n}" for n in a.fotos or []], "max_fotos": arenas.MAX_FOTOS,
                                   "pagamento_reserva": a.pagamento_reserva, "cancel_horas": a.cancel_horas, "reembolso_pct": a.reembolso_pct, "reembolso_pct_fora": a.reembolso_pct_fora, "acrescimo_cartao_pct": float(a.acrescimo_cartao_pct or 0)} for a in arenas.minhas(s, u)]
 
 
@@ -653,6 +654,47 @@ def editar_arena(arena_id: int, corpo: ArenaIn, u: AtualApi, s: Sessao):
 def criar_quadra(arena_id: int, corpo: QuadraIn, u: AtualApi, s: Sessao):
     arenas.criar_quadra(s, arenas.obter(s, arena_id), u, **corpo.model_dump())
     return detalhes.arena_publica(s, arenas.obter(s, arena_id), u)
+
+
+@router.post("/gestao/arenas/{arena_id}/capa")
+def capa_arena(arena_id: int, u: AtualApi, s: Sessao, arquivo: UploadFile = File(), ajuste: str = Form("recortar")):
+    a = arenas.definir_capa(s, arena_id, u, midia.ler_upload(arquivo), ajuste)
+    return {"capa_url": f"/capa/{a.capa}", "fotos": [f"/capa/{n}" for n in a.fotos or []]}
+
+
+@router.post("/gestao/arenas/{arena_id}/logo")
+def logo_arena(arena_id: int, u: AtualApi, s: Sessao, arquivo: UploadFile = File()):
+    a = arenas.definir_logo(s, arena_id, u, midia.ler_upload(arquivo))
+    return {"logo_url": f"/logo/{a.logo}"}
+
+
+@router.delete("/gestao/arenas/{arena_id}/logo")
+def remover_logo_arena(arena_id: int, u: AtualApi, s: Sessao):
+    arenas.remover_logo(s, arena_id, u)
+    return {"logo_url": None}
+
+
+@router.post("/gestao/arenas/{arena_id}/capa/analisar")
+def analisar_capa_arena(arena_id: int, u: AtualApi, s: Sessao, arquivo: UploadFile = File()):
+    return arenas.analisar_capa(s, arena_id, u, midia.ler_upload(arquivo))
+
+
+@router.delete("/gestao/arenas/{arena_id}/capa")
+def remover_capa_arena(arena_id: int, u: AtualApi, s: Sessao):
+    arenas.remover_capa(s, arena_id, u)
+    return {"capa_url": None}
+
+
+@router.post("/gestao/arenas/{arena_id}/fotos", status_code=201)
+def foto_arena(arena_id: int, u: AtualApi, s: Sessao, arquivo: UploadFile = File()):
+    a = arenas.adicionar_foto(s, arena_id, u, midia.ler_upload(arquivo))
+    return {"capa_url": f"/capa/{a.capa}" if a.capa else None, "fotos": [f"/capa/{n}" for n in a.fotos or []]}
+
+
+@router.delete("/gestao/arenas/{arena_id}/fotos/{nome}")
+def remover_foto_arena(arena_id: int, nome: str, u: AtualApi, s: Sessao):
+    a = arenas.remover_foto(s, arena_id, u, nome)
+    return {"fotos": [f"/capa/{n}" for n in a.fotos or []]}
 
 
 @router.get("/gestao/quadras/{quadra_id}")

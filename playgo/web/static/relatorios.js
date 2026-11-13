@@ -43,7 +43,10 @@ window.Relatorios = (function () {
 
   function desenharArena(el, r) {
     const x = r.resumo;
+    const ini = r.periodo.inicio.split('-').reverse().join('/'), fim = r.periodo.fim.split('-').reverse().join('/');
     el.innerHTML =
+      '<header class="rl-cab">' + (r.arena.logo_url ? '<img class="rl-logo" src="' + esc(r.arena.logo_url) + '" alt="Logo de ' + esc(r.arena.nome) + '">' : '') +
+      '<div><h3>' + esc(r.arena.nome) + '</h3><p>' + (r.arena.cidade ? esc(r.arena.cidade) + ' · ' : '') + 'Relatório de ' + ini + ' a ' + fim + '</p></div></header>' +
       '<div class="rl-numeros">' +
       numero('Reservas no período', x.reservas, x.reservas_atletas + ' de atletas, ' + x.reservas_gestor + ' lançadas por você', 'destaque') +
       numero('Recebido pelo app', brl(x.recebido_bruto), x.pagas_pelo_app + ' reserva(s) paga(s)', 'lima') +
@@ -81,7 +84,7 @@ window.Relatorios = (function () {
       numero('Novos usuários', x.novos_usuarios) + numero('Atividades criadas', x.atividades_criadas) + numero('Campeonatos criados', x.campeonatos_criados) +
       '</div><div class="rl-grade">' +
       '<section class="rl-cartao cheio"><h3>Arenas por resultado</h3>' + tabela([['Arena'], ['Cidade'], ['Reservas', 1], ['Pagas no app', 1], ['Horas', 1], ['Recebido', 1], ['Comissão', 1], ['']],
-        r.arenas.map((a) => '<tr><td>' + esc(a.nome) + '</td><td>' + esc(a.cidade || '') + '</td><td class="n">' + a.reservas + '</td><td class="n">' + a.pagas_pelo_app + '</td><td class="n">' + a.horas + '</td><td class="n">' + brl(a.recebido_bruto) + '</td><td class="n">' + brl(a.comissao_playgo) + '</td><td><a href="/relatorios?arena=' + a.id + '">Ver</a></td></tr>'), 'Nenhuma arena ativa.') + '</section>' +
+        r.arenas.map((a) => '<tr><td>' + (a.logo_url ? '<img src="' + esc(a.logo_url) + '" alt="" class="rl-mini">' : '') + esc(a.nome) + '</td><td>' + esc(a.cidade || '') + '</td><td class="n">' + a.reservas + '</td><td class="n">' + a.pagas_pelo_app + '</td><td class="n">' + a.horas + '</td><td class="n">' + brl(a.recebido_bruto) + '</td><td class="n">' + brl(a.comissao_playgo) + '</td><td><a href="/relatorios?arena=' + a.id + '">Ver</a></td></tr>'), 'Nenhuma arena ativa.') + '</section>' +
       '<section class="rl-cartao"><h3>Assinaturas ativas</h3>' + barras(r.assinaturas_ativas, (i) => i.plano, (i) => i.total, (v) => v) + '</section>' +
       '<section class="rl-cartao"><h3>Recebido por arena</h3>' + barras(r.arenas.filter((a) => a.recebido_bruto > 0).slice(0, 8), (i) => i.nome, (i) => i.recebido_bruto, brl) + '</section>' +
       '</div>';

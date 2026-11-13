@@ -131,7 +131,7 @@ def arena(s: SessaoORM, usuario: Usuario, arena_id: int, inicio: date | None = N
     top = sorted(clientes.items(), key=lambda kv: (-kv[1]["reservas"], -kv[1]["valor"]))[:10]
 
     return {
-        "arena": {"id": a.id, "nome": a.nome}, "periodo": {"inicio": d_ini.isoformat(), "fim": d_fim.isoformat(), "dias": dias}, "resumo": resumo,
+        "arena": {"id": a.id, "nome": a.nome, "logo_url": f"/logo/{a.logo}" if a.logo else None, "cidade": a.cidade}, "periodo": {"inicio": d_ini.isoformat(), "fim": d_fim.isoformat(), "dias": dias}, "resumo": resumo,
         "taxas": {"tem_conta": cobradas["tem_conta"], "atualizado_em": cobradas["atualizado_em"], "vigentes": cobradas["vigentes"]},
         "por_quadra": [{"quadra": v["quadra"], "reservas": v["reservas"], "horas": round(v["horas"], 1), "recebido": _f(v["recebido"])} for v in por_quadra.values()],
         "por_dia_da_semana": [{"dia": v["dia"], "reservas": v["reservas"], "recebido": _f(v["recebido"])} for v in por_semana],
@@ -172,7 +172,7 @@ def plataforma(s: SessaoORM, usuario: Usuario, inicio: date | None = None, fim: 
         bruto = sum((_d(r.valor) for r in pagas), Decimal(0))
         com = sum((_d(r.comissao) for r in pagas), Decimal(0))
         tot_res, tot_bruto, tot_com = tot_res + len(linhas), tot_bruto + bruto, tot_com + com
-        por_arena.append({"id": a.id, "nome": a.nome, "cidade": a.cidade, "reservas": len(linhas), "pagas_pelo_app": len(pagas), "recebido_bruto": _f(bruto), "comissao_playgo": _f(com),
+        por_arena.append({"id": a.id, "nome": a.nome, "cidade": a.cidade, "logo_url": f"/logo/{a.logo}" if a.logo else None, "reservas": len(linhas), "pagas_pelo_app": len(pagas), "recebido_bruto": _f(bruto), "comissao_playgo": _f(com),
                           "horas": round(sum(_horas(r) for r, _ in linhas), 1)})
     por_arena.sort(key=lambda x: (-x["recebido_bruto"], -x["reservas"]))
 

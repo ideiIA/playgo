@@ -112,11 +112,17 @@ def processar_avatar(dados: bytes) -> bytes:
 LARGURA_CAPA, ALTURA_CAPA = 1600, 900
 
 
-def processar_capa(dados: bytes) -> bytes:
-    """Arte ou logo do campeonato/atividade: só imagem, recortada em 16:9 (1600x900), JPEG sem metadados. PNG com fundo transparente vira fundo branco."""
+AJUSTES_CAPA = ("recortar", "auto", "inteira")  # como a arena quer enquadrar uma foto fora do padrão 16:9
+PROPORCAO_CAPA = LARGURA_CAPA / ALTURA_CAPA
+LARGURA_IDEAL_CAPA = 1200  # abaixo disso a capa pode ficar sem nitidez nos cartões grandes
+
+
+def _abrir_imagem(dados: bytes, manter_transparencia: bool = False) -> Image.Image:
+    """Valida (tipo pelos bytes, tamanho), abre, endireita pelo EXIF e tira a transparência (a não ser que `manter_transparencia`, para logos).
+    Nunca confia no nome do arquivo."""
     achado = detectar(dados)
     if achado is None or achado[0] != "foto":
-        raise ErroNegocio("Envie uma imagem (JPG, PNG ou WebP) para a capa.")
+        raise ErroNegocio("Envie uma imagem (JPG, PNG ou WebP).")
     if len(dados) > settings.limite_foto_mb * 1024 * 1024:
         raise ErroNegocio(f"A imagem passa do limite de {settings.limite_foto_mb} MB.")
     try:
@@ -126,13 +132,131 @@ def processar_capa(dados: bytes) -> bytes:
         raise ErroNegocio("Não foi possível ler essa imagem. Tente outra.") from None
     img = ImageOps.exif_transpose(img)
     if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+        if manter_transparencia:
+            return img.convert("RGBA")
         fundo = Image.new("RGB", img.size, "white")
         fundo.paste(img.convert("RGBA"), mask=img.convert("RGBA").split()[3])
-        img = fundo
-    img = ImageOps.fit(img.convert("RGB"), (LARGURA_CAPA, ALTURA_CAPA))
+        return fundo
+    return img.convert("RGBA" if manter_transparencia else "RGB")
+
+
+LADO_LOGO = 400
+
+
+def processar_logo(dados: bytes) -> bytes:
+    """Logo/brasão da arena: a imagem INTEIRA (sem cortar) centralizada num quadrado 400x400 com fundo transparente, PNG sem metadados."""
+    img = _abrir_imagem(dados, manter_transparencia=True)
+    img.thumbnail((LADO_LOGO, LADO_LOGO), Image.LANCZOS)
+    tela = Image.new("RGBA", (LADO_LOGO, LADO_LOGO), (0, 0, 0, 0))
+    tela.paste(img, ((LADO_LOGO - img.width) // 2, (LADO_LOGO - img.height) // 2))
     saida = io.BytesIO()
-    img.save(saida, "JPEG", quality=86, optimize=True)
+    tela.save(saida, "PNG", optimize=True)
     return saida.getvalue()
+
+
+def salvar_logo(png: bytes) -> str:
+    """Grava em logos/<32 hex>.png e devolve só o nome."""
+    nome = uuid.uuid4().hex + ".png"
+    armazenamento.salvar(f"logos/{nome}", png, "image/png")
+    return nome
+
+
+def _perda_do_corte(largura: int, altura: int) -> float:
+    """Parte da foto (0 a 1) que o corte 16:9 descarta."""
+    r = largura / altura
+    return 1 - (PROPORCAO_CAPA / r if r > PROPORCAO_CAPA else r / PROPORCAO_CAPA)
+
+
+def analisar_capa(dados: bytes) -> dict:
+    """O que a arena precisa saber antes de enviar a capa: tamanho, proporção, quanto o corte 16:9 descartaria e se está dentro do padrão."""
+    img = _abrir_imagem(dados)
+    larg, alt = img.size
+    perda = _perda_do_corte(larg, alt)
+    avisos = []
+    if alt > larg:
+        avisos.append("A foto está na vertical: para virar capa (horizontal, 16:9) uma parte grande dela seria cortada.")
+    elif perda > 0.06:
+        avisos.append(f"A proporção da foto ({larg}×{alt}) é diferente de 16:9: o corte descartaria cerca de {round(perda * 100)}% da imagem.")
+    if larg < LARGURA_IDEAL_CAPA:
+        avisos.append(f"A foto é pequena ({larg}×{alt}). Para ficar nítida use pelo menos {LARGURA_IDEAL_CAPA} px de largura.")
+    return {"largura": larg, "altura": alt, "perda_corte_pct": round(perda * 100), "dentro_do_padrao": not avisos, "avisos": avisos}
+
+
+def _janela_de_foco(img: Image.Image, alvo_larg: int, alvo_alt: int) -> tuple[int, int, int, int]:
+    """Janela de corte (proporção do alvo) sobre a região mais "rica" da foto (mais detalhe/contraste), em vez do centro puro.
+    Só escolhe onde cortar: não inventa nem altera pixels. Sem biblioteca de visão: soma de bordas por faixa."""
+    from PIL import ImageFilter
+
+    larg, alt = img.size
+    r = alvo_larg / alvo_alt
+    if larg / alt > r:  # foto mais larga que o alvo: corta dos lados
+        jan_larg, jan_alt = round(alt * r), alt
+    else:  # mais alta: corta em cima e embaixo
+        jan_larg, jan_alt = larg, round(larg / r)
+    horizontal = jan_larg < larg
+    base = min(larg, 320)
+    pequena = img.convert("L").resize((max(1, base), max(1, round(base * alt / larg))))
+    bordas = pequena.filter(ImageFilter.FIND_EDGES)
+    n = bordas.width if horizontal else bordas.height
+    faixas = list(bordas.resize((n, 1), Image.BOX).tobytes()) if horizontal else list(bordas.resize((1, n), Image.BOX).tobytes())
+    janela = max(1, round(n * (jan_larg / larg if horizontal else jan_alt / alt)))
+    if janela >= n:
+        return 0, 0, larg, alt
+    soma = sum(faixas[:janela])
+    melhor, pos = -1.0, 0
+    for i in range(0, n - janela + 1):
+        if i:
+            soma += faixas[i + janela - 1] - faixas[i - 1]
+        centro = abs((i + janela / 2) - n / 2) / (n / 2)
+        pontos = soma * (1 - 0.15 * centro)  # leve preferência pelo centro: o foco não "foge" para a borda
+        if pontos > melhor:
+            melhor, pos = pontos, i
+    if horizontal:
+        x = min(round(pos * larg / n), larg - jan_larg)
+        return x, 0, x + jan_larg, alt
+    y = min(round(pos * alt / n), alt - jan_alt)
+    return 0, y, larg, y + jan_alt
+
+
+def _enquadrar(img: Image.Image, ajuste: str, largura: int, altura: int) -> Image.Image:
+    from PIL import ImageFilter
+
+    if ajuste == "inteira":  # nenhuma parte da foto é cortada nem esticada: ela inteira sobre um fundo feito dela mesma, desfocado
+        fundo = ImageOps.fit(img, (largura, altura)).filter(ImageFilter.GaussianBlur(max(6, largura // 60)))
+        fundo = Image.blend(fundo, Image.new("RGB", fundo.size, (20, 33, 61)), 0.25)
+        frente = img.copy()
+        frente.thumbnail((largura, altura), Image.LANCZOS)
+        fundo.paste(frente, ((largura - frente.width) // 2, (altura - frente.height) // 2))
+        return fundo
+    if ajuste == "auto":  # corte guiado pelo foco + nitidez leve se a foto precisou ser ampliada
+        corte = img.crop(_janela_de_foco(img, largura, altura))
+        ampliada = corte.width < largura
+        corte = corte.resize((largura, altura), Image.LANCZOS)
+        return corte.filter(ImageFilter.UnsharpMask(radius=1.4, percent=55, threshold=3)) if ampliada else corte
+    return ImageOps.fit(img, (largura, altura))  # recortar: centro, como sempre foi
+
+
+def processar_capa(dados: bytes, recortar: bool = True, ajuste: str = "recortar", largura: int = LARGURA_CAPA, altura: int = ALTURA_CAPA, qualidade: int = 86) -> bytes:
+    """Arte ou logo do campeonato/atividade e capa da arena: só imagem, em 16:9 (1600x900), JPEG sem metadados. PNG transparente vira fundo branco.
+    `ajuste` (só a capa da arena escolhe): recortar (centro), auto (corte no foco + nitidez) ou inteira (sem cortar, fundo desfocado).
+    Com `recortar=False` (galeria da arena) a foto mantém a proporção e só é reduzida para caber em 1600 px."""
+    if ajuste not in AJUSTES_CAPA:
+        raise ErroNegocio("Escolha como ajustar a capa: recortar, ajuste automático ou foto inteira.")
+    img = _abrir_imagem(dados)
+    if recortar:
+        img = _enquadrar(img, ajuste, largura, altura)
+    else:
+        img.thumbnail((LARGURA_CAPA, LARGURA_CAPA))
+    saida = io.BytesIO()
+    img.save(saida, "JPEG", quality=qualidade, optimize=True)
+    return saida.getvalue()
+
+
+def previas_capa(dados: bytes) -> dict:
+    """Os três enquadramentos em miniatura (640x360), para a arena comparar e decidir antes de salvar. Nada é gravado."""
+    import base64
+
+    return {a: "data:image/jpeg;base64," + base64.b64encode(processar_capa(dados, ajuste=a, largura=640, altura=360, qualidade=72)).decode() for a in AJUSTES_CAPA}
 
 
 def salvar_capa(jpeg: bytes) -> str:

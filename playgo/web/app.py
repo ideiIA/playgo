@@ -136,7 +136,7 @@ def _plano_necessario(request: Request, erro: PlanoNecessario):
 @app.exception_handler(ErroNegocio)
 def _erro_de_negocio(request: Request, erro: ErroNegocio):
     codigo = 404 if isinstance(erro, NaoEncontrado) else 403 if isinstance(erro, SemPermissao) else 400
-    if request.url.path.startswith(("/api/", "/midia/", "/foto/", "/capa/")) or request.url.path.endswith("/regulamento.pdf"):
+    if request.url.path.startswith(("/api/", "/midia/", "/foto/", "/capa/", "/logo/")) or request.url.path.endswith("/regulamento.pdf"):
         return JSONResponse({"detail": str(erro)}, status_code=codigo)
     # No site, a mensagem vai para a página de onde a pessoa veio
     request.session["erro"] = str(erro)
@@ -603,6 +603,14 @@ def capa_do_evento(nome: str):
     return armazenamento.servir(f"capas/{nome}", "image/jpeg", "public, max-age=86400")
 
 
+@app.get("/logo/{nome}")
+def logo_da_arena(nome: str):
+    """Logo/brasão de arena. Nome aleatório (32 hex) e público, como a capa."""
+    if not re.fullmatch(r"[0-9a-f]{32}\.png", nome):
+        raise NaoEncontrado("Imagem não encontrada.")
+    return armazenamento.servir(f"logos/{nome}", "image/png", "public, max-age=86400")
+
+
 @app.get("/campeonatos/{campeonato_id}/book")
 def book_campeonato(campeonato_id: int, request: Request, s: Sessao, usuario: Atual):
     c = campeonatos.obter(s, campeonato_id)
@@ -847,7 +855,7 @@ def editar_arena_tela(arena_id: int, request: Request, s: Sessao, usuario: Atual
     arenas.exigir_gestor(a, usuario)
     return pagina(
         request, s, usuario, "arena_editar.html", "gestao", arena=a, centro={"latitude": a.latitude, "longitude": a.longitude, "informada": True},
-        online_pronto=reservas._recebimento_pronto(s, a),
+        online_pronto=reservas._recebimento_pronto(s, a), max_fotos=arenas.MAX_FOTOS,
     )
 
 
@@ -862,6 +870,56 @@ def editar_arena(
         raise ErroNegocio("Marque a localização da arena no mapa.")
     a = arenas.editar(s, arenas.obter(s, arena_id), usuario, nome, lat, lng, endereco, cidade or None, descricao or None, estrutura or None, regras or None, _hora(abre), _hora(fecha), tipo_estabelecimento, pagamento_reserva, cancel_horas, reembolso_pct, reembolso_pct_fora, _num(acrescimo_cartao_pct) or Decimal(0))
     return RedirectResponse(f"/gestao?arena={a.id}", status_code=303)
+
+
+def _volta_fotos(arena_id: int) -> RedirectResponse:
+    return RedirectResponse(f"/gestao/arenas/{arena_id}/editar#fotos", status_code=303)
+
+
+@app.post("/gestao/arenas/{arena_id}/capa")
+def trocar_capa_arena(arena_id: int, request: Request, s: Sessao, usuario: Atual, capa: UploadFile = File(), ajuste: str = Form("recortar")):
+    arenas.definir_capa(s, arena_id, usuario, midia.ler_upload(capa), ajuste)
+    request.session["ok"] = "Capa atualizada."
+    return _volta_fotos(arena_id)
+
+
+@app.post("/gestao/arenas/{arena_id}/logo")
+def trocar_logo_arena(arena_id: int, request: Request, s: Sessao, usuario: Atual, logo: UploadFile = File()):
+    arenas.definir_logo(s, arena_id, usuario, midia.ler_upload(logo))
+    request.session["ok"] = "Logo atualizado."
+    return _volta_fotos(arena_id)
+
+
+@app.post("/gestao/arenas/{arena_id}/logo/remover")
+def tirar_logo_arena(arena_id: int, request: Request, s: Sessao, usuario: Atual):
+    arenas.remover_logo(s, arena_id, usuario)
+    request.session["ok"] = "Logo removido."
+    return _volta_fotos(arena_id)
+
+
+@app.post("/gestao/arenas/{arena_id}/capa/remover")
+def tirar_capa_arena(arena_id: int, request: Request, s: Sessao, usuario: Atual):
+    arenas.remover_capa(s, arena_id, usuario)
+    request.session["ok"] = "Capa removida."
+    return _volta_fotos(arena_id)
+
+
+@app.post("/gestao/arenas/{arena_id}/fotos")
+def enviar_fotos_arena(arena_id: int, request: Request, s: Sessao, usuario: Atual, fotos: list[UploadFile] = File(default=[])):
+    enviadas = 0
+    for f in fotos:
+        if f.filename:
+            arenas.adicionar_foto(s, arena_id, usuario, midia.ler_upload(f))
+            enviadas += 1
+    request.session["ok"] = f"{enviadas} foto{'s' if enviadas != 1 else ''} adicionada{'s' if enviadas != 1 else ''}." if enviadas else "Escolha ao menos uma foto."
+    return _volta_fotos(arena_id)
+
+
+@app.post("/gestao/arenas/{arena_id}/fotos/{nome}/remover")
+def tirar_foto_arena(arena_id: int, nome: str, request: Request, s: Sessao, usuario: Atual):
+    arenas.remover_foto(s, arena_id, usuario, nome)
+    request.session["ok"] = "Foto removida."
+    return _volta_fotos(arena_id)
 
 
 def _volta_gestao(arena_id: int | str, dia: str = "") -> RedirectResponse:
