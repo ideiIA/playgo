@@ -10,7 +10,7 @@ from decimal import Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session as SessaoORM
 
-from . import arenas
+from . import arenas, taxas
 from .db import agora
 from .erros import ErroNegocio, SemPermissao
 from .models import Arena, Assinatura, Atividade, Campeonato, Pagamento, Quadra, Reserva, Usuario
@@ -89,13 +89,16 @@ def arena(s: SessaoORM, usuario: Usuario, arena_id: int, inicio: date | None = N
 
     bruto = sum((_d(r.valor) for r in pagas), Decimal(0))
     estornos = sum((_d(r.valor_reembolsado) for r in pagas), Decimal(0))
-    comissao = sum((_d(r.comissao) for r in pagas), Decimal(0))
+    cobradas = taxas.cobradas(s, a.id, pagas)  # taxas do Asaas e comissão realmente lançadas nesses pagamentos
+    comissao = _d(cobradas["comissao_playgo"]) if cobradas["tem_conta"] and cobradas["pagamentos"] else sum((_d(r.comissao) for r in pagas), Decimal(0))
+    taxa_arena = _d(cobradas["taxa_asaas_paga_pela_arena"])
     horas_res = sum(_horas(r) for r, _ in ocupadas)
     horas_disp = _horas_abertas(a) * len(quadras) * dias
     resumo = {
         "reservas": len(ocupadas), "reservas_atletas": len(de_atletas), "reservas_gestor": len(ocupadas) - len(de_atletas), "bloqueios": len(bloqueios),
         "pagas_pelo_app": len(pagas), "pendentes_pelo_app": len(pendentes), "combinadas_na_arena": len(na_arena),
-        "recebido_bruto": _f(bruto), "estornado": _f(estornos), "comissao_playgo": _f(comissao), "liquido_estimado": _f(bruto - estornos - comissao),
+        "recebido_bruto": _f(bruto), "estornado": _f(estornos), "comissao_playgo": _f(comissao), "taxa_asaas": cobradas["taxa_asaas"], "taxa_asaas_paga_pela_arena": cobradas["taxa_asaas_paga_pela_arena"], "taxa_efetiva_pct": cobradas["taxa_efetiva_pct"],
+        "liquido_estimado": _f(bruto - estornos - comissao - taxa_arena),
         "a_receber_pelo_app": _f(sum((_d(r.valor) for r in pendentes), Decimal(0))), "previsto_na_arena": _f(sum((_d(r.valor) for r in na_arena), Decimal(0))),
         "ticket_medio": _f(bruto / len(pagas)) if pagas else 0.0,
         "horas_reservadas": round(horas_res, 1), "horas_disponiveis": round(horas_disp, 1), "ocupacao_pct": round(100 * horas_res / horas_disp) if horas_disp else 0,
@@ -129,6 +132,7 @@ def arena(s: SessaoORM, usuario: Usuario, arena_id: int, inicio: date | None = N
 
     return {
         "arena": {"id": a.id, "nome": a.nome}, "periodo": {"inicio": d_ini.isoformat(), "fim": d_fim.isoformat(), "dias": dias}, "resumo": resumo,
+        "taxas": {"tem_conta": cobradas["tem_conta"], "atualizado_em": cobradas["atualizado_em"], "vigentes": cobradas["vigentes"]},
         "por_quadra": [{"quadra": v["quadra"], "reservas": v["reservas"], "horas": round(v["horas"], 1), "recebido": _f(v["recebido"])} for v in por_quadra.values()],
         "por_dia_da_semana": [{"dia": v["dia"], "reservas": v["reservas"], "recebido": _f(v["recebido"])} for v in por_semana],
         "por_hora": [{"hora": f"{h:02d}:00", "reservas": n} for h, n in sorted(por_hora.items())],

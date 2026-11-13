@@ -28,14 +28,28 @@ window.Relatorios = (function () {
       (linhas.join('') || '<tr><td colspan="' + cabecalho.length + '">' + vazio + '</td></tr>') + '</tbody></table></div>';
   }
 
+  const pct = (v) => Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + '%';
+  function taxasVigentes(t) {
+    const v = t.vigentes;
+    if (!v) return '<p class="rl-nota">As taxas ainda não foram consultadas. Abra "Receber pelo app" para carregar.</p>';
+    const x = [], pix = v.pix || {}, c = v.cartao || {}, a = v.antecipacao || {}, s = v.saque || {};
+    const ok = (n) => n !== null && n !== undefined;
+    if (ok(pix.percentual) && pix.percentual) x.push(['Receber por Pix', pct(pix.percentual)]); else if (ok(pix.fixa)) x.push(['Receber por Pix', brl(ok(pix.fixa_promocional) ? pix.fixa_promocional : pix.fixa)]);
+    if (ok(c.pct_1x)) x.push(['Cartão de crédito à vista', pct(c.pct_1x) + (c.fixa ? ' + ' + brl(c.fixa) : '') + (c.dias_para_receber ? ' (cai em ' + c.dias_para_receber + ' dias)' : '')]);
+    if (ok(a.cartao_avista_pct_mes)) x.push(['Antecipar cartão', pct(a.cartao_avista_pct_mes) + ' ao mês']);
+    if (ok(s.pix)) x.push(['Saque por Pix', brl(s.pix)]);
+    return x.length ? '<div class="rl-barras">' + x.map(([n, val]) => '<div class="rl-linha" style="grid-template-columns:minmax(0,1fr) auto"><span class="rot">' + esc(n) + '</span><span class="val">' + esc(val) + '</span></div>').join('') + '</div>' : '<p class="rl-nota">O Asaas ainda não informou as taxas.</p>';
+  }
+
   function desenharArena(el, r) {
     const x = r.resumo;
     el.innerHTML =
       '<div class="rl-numeros">' +
       numero('Reservas no período', x.reservas, x.reservas_atletas + ' de atletas, ' + x.reservas_gestor + ' lançadas por você', 'destaque') +
       numero('Recebido pelo app', brl(x.recebido_bruto), x.pagas_pelo_app + ' reserva(s) paga(s)', 'lima') +
-      numero('Líquido estimado', brl(x.liquido_estimado), 'após estornos e comissão do PlayGo') +
+      numero('Líquido estimado', brl(x.liquido_estimado), 'após estornos, comissão e taxas') +
       numero('Comissão do PlayGo', brl(x.comissao_playgo)) +
+      numero('Taxas do Asaas', brl(x.taxa_asaas), x.pagas_pelo_app ? 'taxa efetiva de ' + Number(x.taxa_efetiva_pct).toLocaleString('pt-BR') + '%' + (x.taxa_asaas && !x.taxa_asaas_paga_pela_arena ? ' (paga pelo PlayGo)' : '') : 'cobradas nos pagamentos pelo app') +
       numero('Estornos', brl(x.estornado)) +
       numero('A receber pelo app', brl(x.a_receber_pelo_app), x.pendentes_pelo_app + ' pagamento(s) pendente(s)') +
       numero('Combinado na arena', brl(x.previsto_na_arena), x.combinadas_na_arena + ' reserva(s), pagas direto com você') +
@@ -51,8 +65,9 @@ window.Relatorios = (function () {
       '<section class="rl-cartao"><h3>Melhores clientes</h3>' + tabela([['Atleta'], ['Reservas', 1], ['Valor', 1]],
         r.melhores_clientes.map((c) => '<tr><td>' + esc(c.usuario) + '</td><td class="n">' + c.reservas + '</td><td class="n">' + brl(c.valor) + '</td></tr>'), 'Nenhuma reserva de atleta no período.') +
       '<p class="rl-nota">Atletas aparecem só pelo @usuario.</p></section>' +
+      (r.taxas && r.taxas.tem_conta ? '<section class="rl-cartao cheio"><h3>Taxas da sua conta de recebimento</h3>' + taxasVigentes(r.taxas) + '<p class="rl-nota">' + (r.taxas.atualizado_em ? 'Consultadas no Asaas em ' + new Date(r.taxas.atualizado_em).toLocaleString('pt-BR') + '. ' : '') + '<a href="/gestao/recebimentos?arena=' + r.arena.id + '">Ver todas as taxas e simular quanto você recebe</a>.</p></section>' : '') +
       '</div><div class="rl-acoes"><a class="btn soft" id="rl-csv" href="#">Baixar reservas (CSV)</a><a class="btn soft" href="/gestao/recebimentos?arena=' + r.arena.id + '">Saldo e saques</a></div>' +
-      '<p class="rl-nota">"Recebido" conta as reservas pagas pelo app. O líquido é uma estimativa: desconta o que foi devolvido e a comissão do PlayGo, não as taxas do Asaas.</p>';
+      '<p class="rl-nota">"Recebido" conta as reservas pagas pelo app. O líquido é uma estimativa: desconta o que foi devolvido, a comissão do PlayGo e as taxas do Asaas que ficam com a arena.</p>';
   }
 
   function desenharPlataforma(el, r) {

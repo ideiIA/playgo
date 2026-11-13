@@ -9,7 +9,7 @@ from fastapi import APIRouter, File, Form, Header, Request, Response, UploadFile
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from .. import recebimentos
+from .. import recebimentos, taxas
 from ..cobranca import TokenWebhookInvalido
 from ..deps import AtualApi, Sessao
 from ..erros import ErroNegocio
@@ -117,6 +117,13 @@ def saldo(arena_id: int, resposta: Response, u: AtualApi, s: Sessao):
 def extrato(arena_id: int, resposta: Response, u: AtualApi, s: Sessao, inicio: date | None = None, fim: date | None = None):
     _sem_cache(resposta)
     return recebimentos.extrato(s, arena_id, u, inicio, fim)
+
+
+@router.get("/arenas/{arena_id}/taxas")
+def taxas_da_arena(arena_id: int, resposta: Response, u: AtualApi, s: Sessao, valor: Decimal | None = None, atualizar: bool = False):
+    """Taxas da subconta (cópia do Asaas) e simulação de quanto a arena recebe numa reserva de `valor`."""
+    _sem_cache(resposta)
+    return taxas.ver(s, arena_id, u, valor, forcar=atualizar)
 
 
 @router.get("/arenas/{arena_id}/saques")

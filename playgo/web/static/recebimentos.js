@@ -9,6 +9,42 @@
   const TIPO_LANC = { recebimento: 'Recebimento', taxa_asaas: 'Taxa do Asaas', comissao: 'Comissão PlayGo', estorno: 'Estorno', saque: 'Saque', saque_falho: 'Saque devolvido' };
   const TIPO_PIX = [['CPF', 'CPF'], ['CNPJ', 'CNPJ'], ['EMAIL', 'E-mail'], ['PHONE', 'Celular'], ['EVP', 'Chave aleatória']];
 
+  const pct = (v) => Number(v).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + '%';
+  const tem = (v) => v !== null && v !== undefined;
+
+  // Taxas da conta (cópia do Asaas) em frases curtas, só com o que o Asaas informou.
+  function listaTaxas(t) {
+    const x = [], pix = t.pix || {}, c = t.cartao || {}, d = t.debito || {}, s = t.saque || {}, a = t.antecipacao || {};
+    if (tem(pix.fixa) || tem(pix.percentual)) x.push(['Receber por Pix', (tem(pix.percentual) && pix.percentual ? pct(pix.percentual) + (tem(pix.minima) ? ' (mín. ' + brl(pix.minima) + ')' : '') : brl(tem(pix.fixa_promocional) ? pix.fixa_promocional : pix.fixa)) + ' por recebimento' + (pix.gratis_por_mes ? ' · ' + pix.gratis_por_mes + ' grátis por mês' : '')]);
+    if (tem(c.pct_1x)) x.push(['Cartão de crédito à vista', pct(c.pct_1x) + (c.fixa ? ' + ' + brl(c.fixa) : '') + (c.dias_para_receber ? ' · cai em ' + c.dias_para_receber + ' dias' : '')]);
+    if (tem(d.percentual)) x.push(['Cartão de débito', pct(d.percentual) + (d.fixa ? ' + ' + brl(d.fixa) : '') + (d.dias_para_receber ? ' · cai em ' + d.dias_para_receber + ' dias' : '')]);
+    if (tem(a.cartao_avista_pct_mes)) x.push(['Receber antes (antecipar cartão à vista)', pct(a.cartao_avista_pct_mes) + ' ao mês, proporcional aos dias adiantados']);
+    if (tem(s.pix)) x.push(['Sacar por Pix', brl(s.pix) + ' por saque' + (s.gratis_por_mes ? ' · ' + s.gratis_por_mes + ' grátis por mês' : '')]);
+    return x.length ? '<div class="rb-lista">' + x.map(([n, v]) => '<div class="rb-linha"><span>' + esc(n) + '</span><b>' + esc(v) + '</b></div>').join('') + '</div>' : '<p class="rb-nota">O Asaas ainda não informou as taxas desta conta.</p>';
+  }
+
+  function tabelaSimulacao(sim) {
+    if (!sim.length) return '<p class="rb-nota">Sem dados para simular ainda.</p>';
+    return '<div class="rb-rolar"><table class="rb-tab"><thead><tr><th>Forma</th><th>Cliente paga</th><th>Taxa Asaas</th><th>Comissão PlayGo</th><th>Você recebe</th><th>Cai em</th></tr></thead><tbody>' +
+      sim.map((l) => '<tr><td>' + esc(l.forma) + '</td><td>' + brl(l.cliente_paga) + '</td><td>' + brl(l.taxa_asaas) + (l.taxa_paga_por !== 'arena' ? ' <small>(paga pelo PlayGo)</small>' : '') + '</td><td>' + brl(l.comissao_playgo) + '</td><td><b>' + brl(l.voce_recebe) + '</b></td><td>' + esc(l.prazo || '') + '</td></tr>').join('') + '</tbody></table></div>';
+  }
+
+  async function secaoTaxas(el, api, base, valor, atualizar) {
+    const alvo = el.querySelector('#rb-taxas');
+    if (!alvo) return;
+    try {
+      const r = await api(base + '/taxas?valor=' + encodeURIComponent(valor || 100) + (atualizar ? '&atualizar=true' : ''));
+      const cp = r.comissao_playgo || {};
+      const comissao = (cp.percentual || cp.fixa) ? 'A comissão do PlayGo é de ' + [cp.percentual ? pct(cp.percentual) : '', cp.fixa ? brl(cp.fixa) : ''].filter(Boolean).join(' + ') + ' por reserva paga pelo app.' : 'O PlayGo não cobra comissão sobre as reservas.';
+      alvo.innerHTML = '<h4>Taxas do Asaas na sua conta</h4>' + listaTaxas(r.taxas) +
+        '<h4>Quanto você recebe numa reserva</h4><form class="rb-form" id="rb-sim"><label class="rb-campo">Valor da reserva, R$<input name="valor" inputmode="decimal" value="' + String(r.valor_simulado).replace('.', ',') + '"></label><button class="rb-btn suave">Simular</button></form>' + tabelaSimulacao(r.simulacao) +
+        '<p class="rb-nota">' + esc(comissao) + (r.acrescimo_cartao_pct ? ' O cliente paga ' + pct(r.acrescimo_cartao_pct) + ' a mais no cartão (acréscimo da sua arena).' : '') + ' É uma estimativa: o valor exato é calculado pelo Asaas na cobrança. As taxas que valem para cada pagamento aparecem no extrato.</p>' +
+        '<p class="rb-nota">' + (r.atualizado_em ? 'Taxas consultadas em ' + dh(r.atualizado_em) + '. ' : '') + (r.aviso ? esc(r.aviso) + ' ' : '') + '<button class="rb-btn pequeno suave" id="rb-taxas-atualizar">Atualizar agora</button></p>';
+      alvo.querySelector('#rb-sim').onsubmit = (ev) => { ev.preventDefault(); secaoTaxas(el, api, base, ev.target.elements.valor.value.replace(',', '.'), false); };
+      alvo.querySelector('#rb-taxas-atualizar').onclick = () => secaoTaxas(el, api, base, valor, true);
+    } catch (e) { alvo.innerHTML = '<p class="rb-nota">' + esc(e.message || 'Não foi possível carregar as taxas agora.') + '</p>'; }
+  }
+
   function rodape(d) {
     const a = (d && d.asaas) || {};
     return '<p class="rb-rodape">' + esc(a.texto || '') + (a.links || []).map((l) => ' · <a href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.texto) + '</a>').join('') + '</p>';
@@ -127,6 +163,7 @@
       el.innerHTML = '<div class="rb-caixa">' + titulo(d) + '<p><span class="rb-tag rb-verde">Aprovado</span> Você já pode cobrar reservas pela agenda (botão “Cobrar”).</p>' +
         (r.precisa_atualizar_dados ? '<div class="rb-aviso"><b>Atualize seus dados cadastrais.</b> O Asaas exige a confirmação anual. <button class="rb-btn pequeno" id="rb-abrir-dados">Atualizar dados</button><div id="rb-dados" hidden></div></div>' : '') +
         '<div class="rb-saldo"><span>Saldo disponível</span><b id="rb-saldo">…</b><span class="rb-nota" id="rb-div"></span></div>' +
+        '<h3>Taxas e quanto você recebe</h3><div id="rb-taxas"><p class="rb-nota">Carregando…</p></div>' +
         '<h3>Sacar</h3><div id="rb-destino"></div>' +
         '<h3>Extrato</h3><div id="rb-extrato" class="rb-lista">Carregando…</div><h3>Saques</h3><div id="rb-saques" class="rb-lista">Carregando…</div>' + rodape(d) + '</div>';
       destino(r);
@@ -135,6 +172,7 @@
         const c = el.querySelector('#rb-dados'); c.hidden = false; c.innerHTML = formCadastro('Confirmar dados'); const f = ligarCadastro(c);
         f.onsubmit = async (ev) => { ev.preventDefault(); try { desenhar(await api(base + '/dados', { metodo: 'POST', corpo: lerCadastro(f) })); if (toast) toast('Dados atualizados.'); } catch (e) { erro(e); } };
       };
+      secaoTaxas(el, api, base, 100, false);
       try {
         const [sd, ex, sq] = await Promise.all([api(base + '/saldo'), api(base + '/extrato'), api(base + '/saques')]);
         el.querySelector('#rb-saldo').textContent = brl(sd.saldo);

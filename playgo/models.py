@@ -1040,6 +1040,8 @@ class Recebedor(Base):
     destino_mascara: Mapped[str | None] = mapped_column(String(80))
     destino_confirmado: Mapped[bool] = mapped_column(Boolean, default=False)  # a Arena declarou que a chave é de mesma titularidade da subconta
     dados_atualizados_em: Mapped[datetime | None] = mapped_column(DateTime)  # atualização anual dos dados cadastrais (exigida pelo Asaas)
+    taxas: Mapped[dict | None] = mapped_column(JSONB)  # cópia das taxas da subconta (GET /v3/myAccount/fees), em português: ver taxas.py
+    taxas_em: Mapped[datetime | None] = mapped_column(DateTime)  # quando a cópia foi consultada
     ativo: Mapped[bool] = mapped_column(Boolean, default=True)
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
 

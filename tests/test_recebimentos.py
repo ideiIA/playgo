@@ -39,6 +39,11 @@ class FakeAsaas:
         self.falhar: set[str] = set()  # "METODO caminho-final" que devolve 400
         self.contas = 0
         self.chave_pix = False
+        self.taxas = {"payment": {"pix": {"fixedFeeValue": 1.99, "fixedFeeValueWithDiscount": None, "monthlyCreditsWithoutFee": 30},
+                                  "creditCard": {"operationValue": 0.49, "oneInstallmentPercentage": 2.99, "daysToReceive": 32},
+                                  "debitCard": {"operationValue": 0.35, "defaultPercentage": 1.89, "daysToReceive": 3}},
+                      "transfer": {"pix": {"feeValue": 3.5}, "monthlyTransfersWithoutFee": 1},
+                      "anticipation": {"creditCard": {"detachedMonthlyFeeValue": 1.7, "installmentMonthlyFeeValue": 1.7}}}
 
     def __call__(self, req: httpx.Request) -> httpx.Response:
         caminho = req.url.path.removeprefix("/v3")
@@ -62,6 +67,8 @@ class FakeAsaas:
             return httpx.Response(200, json={})
         if req.method == "GET" and caminho == "/finance/balance":
             return httpx.Response(200, json={"balance": self.balance})
+        if req.method == "GET" and caminho == "/myAccount/fees":
+            return httpx.Response(200, json=self.taxas)
         if req.method == "GET" and caminho == "/pix/addressKeys":
             return httpx.Response(200, json={"data": [{"id": "k1", "status": "ACTIVE"}] if self.chave_pix else []})
         if req.method == "POST" and caminho == "/pix/addressKeys":
