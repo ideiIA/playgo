@@ -183,7 +183,8 @@
     if (estado.mapa && estado.mapa.getContainer && estado.mapa.getContainer() === el) estado.mapa.remove();
     const m = (estado.mapa = L.map(el).setView([centro.latitude, centro.longitude], 13));
     if (window.PlayGoMapa) PlayGoMapa.preparar(m); else L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(m);
-    L.circleMarker([centro.latitude, centro.longitude], { radius: 8, color: '#fff', weight: 3, fillColor: '#6c4cff', fillOpacity: 1 }).addTo(m);
+    if (window.PlayGoMapa && PlayGoMapa.voce && (pontos || []).some((p) => p.camada)) PlayGoMapa.voce(m, centro);
+    else L.circleMarker([centro.latitude, centro.longitude], { radius: 8, color: '#fff', weight: 3, fillColor: '#6c4cff', fillOpacity: 1 }).addTo(m);
     const cores = { atividade: '#6c4cff', campeonato: '#ff8a00', arena: '#16c784', grupo: '#22c7f2', horario: '#16c784' };
     const rotas = { atividade: '#/atividade/', campeonato: '#/campeonato/', arena: '#/arena/', grupo: '#/grupo/', local: '#/local/', profissional: '#/profissional/', oferta: '#/oferta/' };
     const lim = [[centro.latitude, centro.longitude]];

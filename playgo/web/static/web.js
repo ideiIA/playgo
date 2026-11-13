@@ -135,7 +135,8 @@
     if (window._mapa && window._mapa.getContainer() === el) { window._mapa.remove(); window._mapa = null; }  // nova busca na mesma tela
     const mapa = L.map(el).setView([centro.latitude, centro.longitude], 13);
     if (window.PlayGoMapa) PlayGoMapa.preparar(mapa); else L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(mapa);
-    L.circleMarker([centro.latitude, centro.longitude], { radius: 8, color: '#fff', weight: 3, fillColor: '#6c4cff', fillOpacity: 1 }).addTo(mapa).bindTooltip('Você');
+    if (window.PlayGoMapa && PlayGoMapa.voce && pontos.some((p) => p.camada)) PlayGoMapa.voce(mapa, centro).bindTooltip('Você');
+    else L.circleMarker([centro.latitude, centro.longitude], { radius: 8, color: '#fff', weight: 3, fillColor: '#6c4cff', fillOpacity: 1 }).addTo(mapa).bindTooltip('Você');
     const rotas = { atividade: '/atividades/', campeonato: '/campeonatos/', arena: '/arenas/', grupo: '/grupos/', horario: '/arenas/', local: '/locais/', profissional: '/profissionais/', oferta: '/ofertas/' };
     const limites = [[centro.latitude, centro.longitude]];
     if (window.PlayGoMapa && PlayGoMapa.pontos && pontos.some((p) => p.camada)) {  // Explorar: parceira em destaque + filtro de camadas
