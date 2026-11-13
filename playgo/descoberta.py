@@ -189,6 +189,7 @@ def buscar_arenas(s: SessaoORM, lat: float, lng: float, f: Filtros, limite: int 
     premium = planos.arenas_premium(s, [i["id"] for i in itens])
     for i in itens:
         i["premium"] = i["id"] in premium  # arena com plano pago: pino com coroa no mapa
+    itens.sort(key=lambda i: (not i["premium"], i["distancia_km"] if i["distancia_km"] is not None else 1e9))  # parceiras primeiro, depois a mais perto
     return itens
 
 
@@ -278,6 +279,15 @@ def _rotulo_pino(i: dict) -> str:
 PINO_ENSINO = {"profissional": ("🎓", "#0ea5a4"), "oferta": ("📅", "#f59e0b")}  # Personal/Instrutores e Aulas e treinamentos
 
 
+def camada_do_ponto(i: dict) -> str:
+    """Camada do filtro do mapa: base (arenas e locais públicos, o que abre ligado), clubes, lojas ou eventos (jogos, campeonatos, grupos, horários, ensino)."""
+    if i["tipo"] == "arena":
+        return "base"
+    if i["tipo"] == "local":
+        return {"clube": "clubes", "loja": "lojas"}.get(i.get("categoria"), "base")
+    return "eventos"
+
+
 def pontos_do_mapa(res: dict) -> list[dict]:
     pontos = []
     for chave in ("atividades", "campeonatos", "arenas", "grupos", "horarios", "locais", "profissionais", "ofertas"):
@@ -286,7 +296,7 @@ def pontos_do_mapa(res: dict) -> list[dict]:
                 continue
             pontos.append({
                 "tipo": i["tipo"], "id": i["id"], "latitude": i["latitude"], "longitude": i["longitude"], "rotulo": _rotulo_pino(i), "distancia": i["distancia"],
-                "urgente": bool(i.get("falta_gente")), "arena_id": i.get("arena_id"), "premium": bool(i.get("premium")) if i["tipo"] == "arena" else False,
+                "camada": camada_do_ponto(i), "categoria": i.get("categoria") if i["tipo"] == "local" else None, "urgente": bool(i.get("falta_gente")), "arena_id": i.get("arena_id"), "premium": bool(i.get("premium")) if i["tipo"] == "arena" else False,
                 "icone": i.get("icone") if i["tipo"] == "local" else PINO_ENSINO.get(i["tipo"], (None, None))[0],
                 "cor": i.get("cor") if i["tipo"] == "local" else PINO_ENSINO.get(i["tipo"], (None, None))[1],  # pino próprio por tipo de local e do ensino
             })

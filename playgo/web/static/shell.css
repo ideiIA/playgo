@@ -197,3 +197,9 @@ body.menu-min:not(.menu-aberto) .sb-perfil { justify-content: center; }
 .b-cam .b-selo, .vazio-rico.leve .vazio-ico { width: 44px; height: 44px; margin: 0; }
 .vazio-rico.leve h3, .b-cam h2 { margin: 0; }
 .vazio-rico.leve > .btn { justify-self: start; }
+
+/* Explorar: arena parceira em destaque, as demais discretas */
+.card.parceira { border: 1.5px solid #f5b301; background: linear-gradient(180deg, #fffaf0, #fff 60%); box-shadow: 0 8px 22px rgb(245 179 1 / .18); }
+.card.discreta { background: #f7f8fc; box-shadow: none; opacity: .9; }
+.card.discreta h3 { font-size: 15px; color: #4a5468; font-weight: 600; }
+.card.discreta .meta { color: #7b8496; }

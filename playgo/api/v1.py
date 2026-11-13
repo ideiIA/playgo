@@ -728,8 +728,14 @@ def agenda(arena_id: int, u: AtualApi, s: Sessao, dia: date | None = None):
 
 
 @router.post("/gestao/arenas/{arena_id}/divulgar-ociosos")
-def divulgar_ociosos(arena_id: int, u: AtualApi, s: Sessao):
-    return {"divulgados": arenas.divulgar_ociosos(s, arenas.obter(s, arena_id), u)}
+def divulgar_ociosos(arena_id: int, u: AtualApi, s: Sessao, dia: date | None = None, quadra_id: int | None = None):
+    return {"divulgados": arenas.divulgar_ociosos(s, arenas.obter(s, arena_id), u, dia, quadra_id)}
+
+
+@router.post("/gestao/arenas/{arena_id}/retirar-divulgados")
+def retirar_divulgados(arena_id: int, u: AtualApi, s: Sessao, dia: date | None = None, quadra_id: int | None = None):
+    """Tira da divulgação os horários ainda divulgados do dia (arena toda ou uma quadra)."""
+    return {"retirados": arenas.retirar_divulgados(s, arenas.obter(s, arena_id), u, dia, quadra_id)}
 
 
 @router.post("/gestao/quadras/{quadra_id}/reservas", status_code=201)

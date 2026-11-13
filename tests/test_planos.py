@@ -622,6 +622,21 @@ def test_so_arena_com_plano_pago_ganha_o_pino_com_coroa(s, fabrica):
     res = {"atividades": [], "campeonatos": [], "arenas": [achadas["Arena Paga"], achadas["Arena em Teste"]], "grupos": [], "horarios": [], "locais": []}
     pinos = {p["id"]: p for p in descoberta.pontos_do_mapa(res)}
     assert pinos[a_paga.id]["premium"] is True and pinos[a_teste.id]["premium"] is False
+    assert pinos[a_paga.id]["camada"] == "base" and pinos[a_teste.id]["camada"] == "base"
+    # parceiras primeiro na lista, mesmo que a outra esteja mais perto
+    ordem = [a["premium"] for a in descoberta.buscar_arenas(s, PERTO[0], PERTO[1], Filtros(raio_km=5), limite=200)]
+    assert ordem == sorted(ordem, reverse=True)
+
+
+def test_camadas_do_filtro_do_mapa():
+    from playgo import descoberta
+
+    c = descoberta.camada_do_ponto
+    assert c({"tipo": "arena"}) == "base"
+    assert c({"tipo": "local", "categoria": "publico"}) == "base" and c({"tipo": "local", "categoria": "arena"}) == "base"
+    assert c({"tipo": "local", "categoria": "clube"}) == "clubes" and c({"tipo": "local", "categoria": "loja"}) == "lojas"
+    for tipo in ("atividade", "campeonato", "grupo", "horario", "profissional", "oferta"):
+        assert c({"tipo": tipo}) == "eventos"
 
 
 # ---------------------------------------------------------------- Fase 0 do ensino: família de planos do profissional e espaços

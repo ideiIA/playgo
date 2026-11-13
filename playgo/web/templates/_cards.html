@@ -62,10 +62,10 @@
 {% endmacro %}
 
 {% macro arena(a) %}
-<div class="card">
+<div class="card {{ 'parceira' if a.premium else 'discreta' }}">
   <a class="cobre" href="/arenas/{{ a.id }}" aria-label="{{ a.nome }}"></a>
   {% if a.capa_url %}<img src="{{ a.capa_url }}" alt="" loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:14px;display:block;margin-bottom:10px">{% endif %}
-  <span class="tag verde">🏟️ {{ a.quadras }} quadra{{ 's' if a.quadras != 1 }}</span>{% if a.premium %} <span class="tag laranja">👑 Parceira</span>{% endif %}
+  <span class="tag {{ 'verde' if a.premium else 'cinza' }}">🏟️ {{ a.quadras }} quadra{{ 's' if a.quadras != 1 }}</span>{% if a.premium %} <span class="tag laranja">👑 Parceira PlayGo</span>{% endif %}
   <h3>{% if a.logo_url %}<img src="{{ a.logo_url }}" alt="" loading="lazy" style="width:32px;height:32px;object-fit:contain;border-radius:8px;vertical-align:middle;margin-right:8px;background:#fff;border:1px solid var(--borda)">{% endif %}{{ a.nome }}</h3>
   <div class="meta">{{ a.endereco or a.cidade }}{% if a.distancia %} • {{ a.distancia }}{% endif %}{% if a.horarios_disponiveis %}<br><b style="color:var(--green)">{{ a.horarios_disponiveis }} horário{{ 's' if a.horarios_disponiveis != 1 }} livre{{ 's' if a.horarios_disponiveis != 1 }} hoje</b>{% endif %}</div>
 </div>

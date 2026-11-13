@@ -16,7 +16,7 @@ from .models import Local, Modalidade, Usuario
 # categoria -> (ícone no mapa e nos cartões, nome, cor do pino)
 TIPOS = {
     "publico": ("🌳", "Local público", "#22a55a"),
-    "arena": ("🏟️", "Arena parceira", "#6c4cff"),
+    "arena": ("🏟️", "Arena", "#6c4cff"),  # arena que ainda não assina o PlayGo ("Parceira" é só quem assina: coroa no mapa)
     "clube": ("🏋️", "Clube, academia ou escola", "#e5484d"),
     "loja": ("🛍️", "Loja de material esportivo", "#ff8a00"),
 }

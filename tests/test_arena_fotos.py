@@ -152,3 +152,44 @@ def test_logo_da_arena_inteiro_quadrado_e_transparente(s, fabrica):
     assert a.logo is None
     rel = __import__("playgo.relatorios", fromlist=["x"]).arena(s, gestor, a.id)
     assert "logo_url" in rel["arena"]
+
+
+def test_divulgar_e_retirar_por_dia_e_por_quadra(s, fabrica):
+    from datetime import timedelta
+
+    from sqlalchemy import func, select
+
+    from playgo.db import agora
+    from playgo.models import HorarioDivulgado
+
+    gestor = _admin(fabrica, s)
+    a = arenas.criar(s, gestor, "Arena Retirar", *PERTO)
+    q1 = arenas.criar_quadra(s, a, gestor, "Quadra 1", [], 4, __import__("decimal").Decimal(50))
+    q2 = arenas.criar_quadra(s, a, gestor, "Quadra 2", [], 4, __import__("decimal").Decimal(50))
+    amanha = agora().date() + timedelta(days=1)
+    qtd = lambda qid=None: s.scalar(select(func.count()).select_from(HorarioDivulgado).where(HorarioDivulgado.quadra_id == qid) if qid else select(func.count()).select_from(HorarioDivulgado).where(HorarioDivulgado.quadra_id.in_([q1.id, q2.id])))
+
+    so_q1 = arenas.divulgar_ociosos(s, a, gestor, amanha, q1.id)
+    assert so_q1 > 0 and qtd(q1.id) == so_q1 and qtd(q2.id) == 0  # divulgar só uma quadra
+    todas = arenas.divulgar_ociosos(s, a, gestor, amanha)
+    assert qtd(q2.id) > 0 and qtd(q1.id) == so_q1 and todas == qtd(q2.id)  # o resto, sem duplicar a q1
+    ag = arenas.agenda_do_dia(s, a, amanha)
+    assert {q["id"]: q["divulgados"] for q in ag["quadras"]} == {q1.id: so_q1, q2.id: qtd(q2.id)} and all(q["livres"] == 0 for q in ag["quadras"])
+
+    retirados = arenas.retirar_divulgados(s, a, gestor, amanha, q1.id)  # retirar só de uma quadra
+    assert retirados == so_q1 and qtd(q1.id) == 0 and qtd(q2.id) > 0
+    assert arenas.retirar_divulgados(s, a, gestor, amanha) == qtd(q2.id) or qtd(q2.id) == 0  # e o resto do dia
+    assert qtd() == 0
+    assert arenas.retirar_divulgados(s, a, gestor, amanha) == 0  # nada mais a retirar
+    ontem = agora().date() - timedelta(days=1)
+    assert arenas.retirar_divulgados(s, a, gestor, ontem) == 0
+    with pytest.raises(ErroNegocio):
+        arenas.divulgar_ociosos(s, a, gestor, ontem)  # dia que já passou
+    outra = arenas.criar(s, gestor, "Outra Arena", *PERTO)
+    qo = arenas.criar_quadra(s, outra, gestor, "Q", [], 4, __import__("decimal").Decimal(10))
+    with pytest.raises(NaoEncontrado):
+        arenas.retirar_divulgados(s, a, gestor, amanha, qo.id)  # quadra de outra arena
+    arenas.divulgar_ociosos(s, a, gestor, amanha)
+    with pytest.raises(SemPermissao):
+        arenas.retirar_divulgados(s, a, fabrica.atleta("Intruso"), amanha)
+    assert qtd() > 0  # nada foi retirado pelo intruso

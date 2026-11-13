@@ -154,9 +154,9 @@
       <div class="meta">${esc(h.arena_nome)} · ${esc(h.quadra_nome)}${h.distancia ? ' • ' + esc(h.distancia) : ''}<br><b>${esc(h.valor_texto)}</b></div>
     </a>`;
   const cardArena = (a) => `
-    <a class="card" href="#/arena/${a.id}">
+    <a class="card ${a.premium ? 'parceira' : 'discreta'}" href="#/arena/${a.id}">
       ${a.capa_url ? `<img src="${a.capa_url}" alt="" loading="lazy" style="width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px;display:block;margin-bottom:8px">` : ''}
-      <span class="tag verde">🏟️ ${a.quadras} quadra${a.quadras !== 1 ? 's' : ''}</span>${a.premium ? ' <span class="tag laranja">👑 Parceira</span>' : ''}
+      <span class="tag ${a.premium ? 'verde' : 'cinza'}">🏟️ ${a.quadras} quadra${a.quadras !== 1 ? 's' : ''}</span>${a.premium ? ' <span class="tag laranja">👑 Parceira PlayGo</span>' : ''}
       <h3>${a.logo_url ? `<img src="${a.logo_url}" alt="" loading="lazy" style="width:28px;height:28px;object-fit:contain;border-radius:7px;vertical-align:middle;margin-right:8px;background:#fff;border:1px solid var(--borda)">` : ''}${esc(a.nome)}</h3>
       <div class="meta">${esc(a.endereco || a.cidade || '')}${a.distancia ? ' • ' + esc(a.distancia) : ''}${a.horarios_disponiveis ? `<br><b style="color:var(--green)">${a.horarios_disponiveis} horário(s) livre(s) hoje</b>` : ''}</div>
     </a>`;
@@ -187,6 +187,11 @@
     const cores = { atividade: '#6c4cff', campeonato: '#ff8a00', arena: '#16c784', grupo: '#22c7f2', horario: '#16c784' };
     const rotas = { atividade: '#/atividade/', campeonato: '#/campeonato/', arena: '#/arena/', grupo: '#/grupo/', local: '#/local/', profissional: '#/profissional/', oferta: '#/oferta/' };
     const lim = [[centro.latitude, centro.longitude]];
+    if (window.PlayGoMapa && PlayGoMapa.pontos && (pontos || []).some((p) => p.camada)) {  // Explorar: parceira em destaque + filtro de camadas
+      lim.push(...PlayGoMapa.pontos(m, pontos, { alvo: (p) => (p.tipo === 'horario' ? '#/arena/' + p.arena_id : rotas[p.tipo] + p.id) }));
+      if (lim.length > 1) m.fitBounds(lim, { padding: [30, 30], maxZoom: 15 });
+      return;
+    }
     (pontos || []).forEach((p) => {
       const alvo = p.tipo === 'horario' ? '#/arena/' + p.arena_id : rotas[p.tipo] + p.id;
       (p.tipo === 'arena' && p.premium
@@ -832,6 +837,7 @@
   }
 
   // ------------------------------------------------------------ gestão (arena)
+  const diaDaGestao = () => estado.dia || new Date().toISOString().slice(0, 10);
   async function vGestao() {
     carregando();
     try {
@@ -847,9 +853,9 @@
       const max = Math.max(1, ...p.demanda_por_dia.map((x) => x.total));
       montar(`<div class="secao" style="margin-top:0"><h1>${esc(arena.nome)}</h1>${arenas.length > 1 ? `<select id="sel-arena" class="chip">${arenas.map((a) => `<option value="${a.id}" ${a.id === arena.id ? 'selected' : ''}>${esc(a.nome)}</option>`).join('')}</select>` : ''}</div>
         <div class="stats"><div class="stat"><b>${p.reservas_hoje}</b><span>Reservas</span></div><div class="stat"><b>${p.ocupacao_pct}%</b><span>Ocupação</span></div><div class="stat"><b>${p.eventos_ativos}</b><span>Eventos ativos</span></div><div class="stat"><b>${p.atletas_alcancados}</b><span>Atletas alcançados</span></div></div>
-        <div class="livebar" style="flex-direction:column;align-items:stretch">${p.horarios_ociosos ? `<div><span class="pulse"></span><strong>${p.horarios_ociosos} horário(s) ocioso(s).</strong> Publique para atletas próximos.</div><button class="btn lima" data-acao="divulgar-todos" data-id="${arena.id}">Divulgar horário</button>` : `<div><span class="pulse"></span><strong>Sem horários ociosos no restante do dia${p.horarios_divulgados ? ': ' + p.horarios_divulgados + ' já divulgado(s)' : ''}.</strong></div>`}</div>
+        <div class="livebar" style="flex-direction:column;align-items:stretch">${p.horarios_ociosos ? `<div><span class="pulse"></span><strong>${p.horarios_ociosos} horário(s) ocioso(s).</strong> Publique para atletas próximos.</div><button class="btn lima" data-acao="divulgar-todos" data-id="${arena.id}">Divulgar horário</button>` : `<div><span class="pulse"></span><strong>Sem horários ociosos no restante do dia${p.horarios_divulgados ? ': ' + p.horarios_divulgados + ' já divulgado(s)' : ''}.</strong></div>`}${p.horarios_divulgados ? `<button class="btn suave" style="margin-top:8px" data-acao="retirar-divulgados" data-id="${arena.id}" data-n="${p.horarios_divulgados}">Retirar divulgados (${p.horarios_divulgados})</button>` : ''}</div>
         <div class="secao"><h2>Agenda</h2><div><button class="btn suave pequeno" data-acao="dia" data-v="${mover(-1)}">←</button> <span class="suave">${d.toLocaleDateString('pt-BR')}</span> <button class="btn suave pequeno" data-acao="dia" data-v="${mover(1)}">→</button></div></div>
-        <div class="painel" style="overflow-x:auto">${ag.quadras.length ? `<table class="agenda"><thead><tr><th>Hora</th>${ag.quadras.map((q) => `<th>${esc(q.nome)} <button class="link-botao" data-acao="editar-quadra" data-id="${q.id}" aria-label="Editar ${esc(q.nome)}" style="font-size:12px">✏️</button></th>`).join('')}</tr></thead><tbody>${ag.linhas.map((l) => `<tr><td>${esc(l.hora)}</td>${l.celulas.map((c) => `<td><button class="cel ${c.estado} ${c.passado ? 'passado' : ''}" data-acao="celula" data-c='${esc(JSON.stringify({ ...c, inicio: l.inicio }))}'>${esc(c.rotulo)}</button></td>`).join('')}</tr>`).join('')}</tbody></table>` : '<p class="vazio">Cadastre a primeira quadra.</p>'}</div>
+        <div class="painel" style="overflow-x:auto">${ag.quadras.length ? `<table class="agenda"><thead><tr><th>Hora</th>${ag.quadras.map((q) => `<th>${esc(q.nome)} <button class="link-botao" data-acao="editar-quadra" data-id="${q.id}" aria-label="Editar ${esc(q.nome)}" style="font-size:12px">✏️</button>${q.livres || q.divulgados ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">${q.livres ? `<button class="btn suave pequeno" data-acao="divulgar-todos" data-id="${arena.id}" data-q="${q.id}">Divulgar (${q.livres})</button>` : ''}${q.divulgados ? `<button class="btn suave pequeno" data-acao="retirar-divulgados" data-id="${arena.id}" data-q="${q.id}" data-n="${q.divulgados}" data-nome="${esc(q.nome)}">Retirar (${q.divulgados})</button>` : ''}</div>` : ''}</th>`).join('')}</tr></thead><tbody>${ag.linhas.map((l) => `<tr><td>${esc(l.hora)}</td>${l.celulas.map((c) => `<td><button class="cel ${c.estado} ${c.passado ? 'passado' : ''}" data-acao="celula" data-c='${esc(JSON.stringify({ ...c, inicio: l.inicio }))}'>${esc(c.rotulo)}</button></td>`).join('')}</tr>`).join('')}</tbody></table>` : '<p class="vazio">Cadastre a primeira quadra.</p>'}</div>
         <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn suave" data-acao="nova-quadra" data-id="${arena.id}">+ Nova quadra</button><a class="btn suave" href="#/editar-arena/${arena.id}">✏️ Editar arena</a><a class="btn suave" href="#/nova-arena">+ Nova arena</a>${pode('recebimentos') ? `<a class="btn suave" href="#/recebimentos/${arena.id}">💰 Receber pelo app</a>` : ''}</div>
         ${secao('Ocupação por horário')}<div class="painel barras">${p.ocupacao_por_hora.map((h) => `<div class="l"><span>${esc(h.hora)}</span><div class="barra"><i style="width:${h.pct}%"></i></div><span>${h.pct}%</span></div>`).join('')}</div>
         ${secao('Dias com maior demanda')}<div class="painel barras">${p.demanda_por_dia.map((x) => `<div class="l"><span>${esc(x.dia)}</span><div class="barra"><i style="width:${Math.round((100 * x.total) / max)}%"></i></div><span>${x.total}</span></div>`).join('')}</div>
@@ -1478,7 +1484,12 @@
     'f-vagas'() { trocaFiltro('com_vagas', !estado.filtros.com_vagas); },
     'f-mod'(el) { trocaFiltro('modalidades', el.dataset.v); },
     'f-modo'(el) { trocaFiltro('modo', el.dataset.v); },
-    async 'divulgar-todos'(el) { try { const r = await post(`/gestao/arenas/${el.dataset.id}/divulgar-ociosos`); toast(`${r.divulgados} horário(s) publicado(s)! 🚀`); vGestao(); } catch (e) { toast(e.message); } },
+    async 'divulgar-todos'(el) { try { const r = await post(`/gestao/arenas/${el.dataset.id}/divulgar-ociosos?dia=${diaDaGestao()}${el.dataset.q ? '&quadra_id=' + el.dataset.q : ''}`); toast(`${r.divulgados} horário(s) publicado(s)! 🚀`); vGestao(); } catch (e) { toast(e.message); } },
+    async 'retirar-divulgados'(el) {
+      const onde = el.dataset.nome ? ` de ${el.dataset.nome}` : '';
+      if (!confirm(`Retirar da divulgação os ${el.dataset.n} horário(s) ainda divulgados${onde}? Eles somem da lista dos atletas. Reservas já feitas não mudam e você pode divulgar de novo quando quiser.`)) return;
+      try { const r = await post(`/gestao/arenas/${el.dataset.id}/retirar-divulgados?dia=${diaDaGestao()}${el.dataset.q ? '&quadra_id=' + el.dataset.q : ''}`); toast(r.retirados ? `${r.retirados} horário(s) retirado(s) da divulgação.` : 'Não havia horários divulgados para retirar.'); vGestao(); } catch (e) { toast(e.message); }
+    },
     dia(el) { estado.dia = el.dataset.v; vGestao(); },
     celula(el) {
       const c = JSON.parse(el.dataset.c); const fim = (iso) => { const d = new Date(iso); d.setHours(d.getHours() + 1); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); };

@@ -114,6 +114,95 @@
     new Controle().addTo(mapa);
   }
 
+  // ---- pinos do Explorar: parceira em destaque, o resto discreto, e filtro de camadas
+  const CAMADAS = [['base', 'Arenas e locais públicos'], ['clubes', 'Clubes e academias'], ['lojas', 'Lojas'], ['eventos', 'Jogos e eventos']];
+  const CHAVE_CAMADAS = 'pg-mapa-camadas';
+  const escapar = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  function lerCamadas() {
+    try { const v = JSON.parse(localStorage.getItem(CHAVE_CAMADAS) || 'null'); if (Array.isArray(v)) return v.filter((k) => CAMADAS.some((c) => c[0] === k)); } catch (e) { /* sem armazenamento */ }
+    return ['base'];
+  }
+  function guardarCamadas(v) { try { localStorage.setItem(CHAVE_CAMADAS, JSON.stringify(v)); } catch (e) { /* sem armazenamento */ } }
+
+  function pino(p, cores) {
+    const popup = (p.premium ? '<span style="font-size:12px;font-weight:700;color:#8a5f00">👑 Parceira PlayGo</span><br>' : '') + '<b>' + escapar(p.rotulo) + '</b><br>' + escapar(p.distancia || '') + '<br><a href="' + escapar(p._alvo) + '">Ver detalhes</a>';
+    let m;
+    if (p.tipo === 'arena' && p.premium) {  // parceira: grande, coroa, borda dourada, sempre por cima
+      m = L.marker([p.latitude, p.longitude], { zIndexOffset: 1000, icon: L.divIcon({ className: 'pino-local', iconSize: [42, 42], iconAnchor: [21, 21], popupAnchor: [0, -22],
+        html: '<span style="position:relative;display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:#6c4cff;border:4px solid #f5b301;box-shadow:0 4px 14px rgba(0,0,0,.45);font-size:21px;line-height:1">🏟️<b style="position:absolute;top:-23px;left:50%;transform:translateX(-50%);font-size:21px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))">👑</b></span>' }) });
+    } else if (p.tipo === 'arena' || (p.tipo === 'local' && p.categoria === 'arena')) {  // arena que não assina: pontinho cinza
+      m = L.circleMarker([p.latitude, p.longitude], { radius: 6, color: '#fff', weight: 1.5, fillColor: '#9aa3b2', fillOpacity: 0.9 });
+    } else if (p.tipo === 'local' && p.icone) {  // local público, clube, loja: pino pequeno com o ícone do tipo
+      const t = p.camada === 'base' ? 24 : 28;
+      m = L.marker([p.latitude, p.longitude], { icon: L.divIcon({ className: 'pino-local', iconSize: [t, t], iconAnchor: [t / 2, t / 2], popupAnchor: [0, -t / 2],
+        html: '<span style="display:grid;place-items:center;width:' + t + 'px;height:' + t + 'px;border-radius:50%;background:' + (p.cor || '#0ea5e9') + ';border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);font-size:' + Math.round(t * 0.55) + 'px;line-height:1;opacity:.92">' + p.icone + '</span>' }) });
+    } else if ((p.tipo === 'profissional' || p.tipo === 'oferta') && p.icone) {
+      m = L.marker([p.latitude, p.longitude], { icon: L.divIcon({ className: 'pino-local', iconSize: [28, 28], iconAnchor: [14, 14], popupAnchor: [0, -14],
+        html: '<span style="display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:' + (p.cor || '#0ea5e9') + ';border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3);font-size:15px;line-height:1">' + p.icone + '</span>' }) });
+    } else {
+      m = L.circleMarker([p.latitude, p.longitude], { radius: p.urgente ? 10 : 8, color: '#fff', weight: 2, fillColor: p.urgente ? '#ff3d81' : (cores[p.tipo] || '#6c4cff'), fillOpacity: 0.95 });
+    }
+    return m.bindPopup(popup);
+  }
+
+  /* PlayGoMapa.pontos(mapa, pontos, { alvo(p) -> link, aoAjustar }): desenha os pontos do Explorar.
+     Parceira (arena com plano) fica sempre visível e em destaque; as outras arenas viram um ponto cinza; o filtro no canto do mapa liga/desliga
+     "Clubes e academias", "Lojas" e "Jogos e eventos" (abre só com "Arenas e locais públicos"). A escolha fica guardada no navegador. */
+  const CSS_FILTRO = '.pgm-filtro{background:#fff;border-radius:16px;padding:8px 10px;box-shadow:0 4px 14px rgba(20,33,61,.25);max-width:min(330px,calc(100vw - 32px));font-family:inherit}' +
+    '.pgm-titulo{font-size:12px;font-weight:700;color:#667085;margin:0 0 6px}' +
+    '.pgm-chip{border:1px solid #e4e7f0;background:#fff;color:#14213d;border-radius:999px;padding:5px 10px;margin:0 4px 4px 0;font:600 12px/1.2 inherit;cursor:pointer;min-height:30px}' +
+    '.pgm-chip small{opacity:.7;font-weight:600}.pgm-chip.on{background:#6c4cff;border-color:#6c4cff;color:#fff}.pgm-chip.tudo.on{background:#14213d;border-color:#14213d}' +
+    '.pgm-chip:focus-visible{outline:2px solid #6c4cff;outline-offset:2px}';
+  function pontosDoExplorar(mapa, pontos, op) {
+    estilo();
+    if (!document.getElementById('pgm-filtro-estilo')) { const s = document.createElement('style'); s.id = 'pgm-filtro-estilo'; s.textContent = CSS_FILTRO; document.head.appendChild(s); }
+    const cores = { atividade: '#6c4cff', campeonato: '#ff8a00', grupo: '#22c7f2', horario: '#16c784' };
+    const grupos = {};
+    CAMADAS.forEach(([k]) => { grupos[k] = L.layerGroup(); });
+    const parceiras = L.layerGroup().addTo(mapa);
+    const porCamada = {};
+    pontos.forEach((p) => {
+      p._alvo = op.alvo(p);
+      const m = pino(p, cores);
+      (p.tipo === 'arena' && p.premium ? parceiras : grupos[p.camada || 'base']).addLayer(m);
+      porCamada[p.camada || 'base'] = (porCamada[p.camada || 'base'] || 0) + 1;
+    });
+    const ligadas = new Set(lerCamadas());
+    const aplicar = () => CAMADAS.forEach(([k]) => { if (ligadas.has(k)) grupos[k].addTo(mapa); else mapa.removeLayer(grupos[k]); });
+    aplicar();
+
+    const Filtro = L.Control.extend({
+      options: { position: 'bottomleft' },
+      onAdd() {
+        const caixa = L.DomUtil.create('div', 'pgm-filtro');
+        L.DomEvent.disableClickPropagation(caixa);
+        const desenhar = () => {
+          const todas = CAMADAS.every(([k]) => ligadas.has(k));
+          caixa.innerHTML = '<div class="pgm-titulo">Mostrar no mapa</div>' + CAMADAS.map(([k, nome]) => '<button type="button" class="pgm-chip' + (ligadas.has(k) ? ' on' : '') + '" data-k="' + k + '" aria-pressed="' + ligadas.has(k) + '">' + escapar(nome) + (porCamada[k] ? ' <small>' + porCamada[k] + '</small>' : '') + '</button>').join('') +
+            '<button type="button" class="pgm-chip tudo' + (todas ? ' on' : '') + '" data-k="tudo" aria-pressed="' + todas + '">Tudo</button>';
+        };
+        caixa.addEventListener('click', (e) => {
+          const b = e.target.closest('[data-k]');
+          if (!b) return;
+          if (b.dataset.k === 'tudo') { if (CAMADAS.every(([k]) => ligadas.has(k))) { ligadas.clear(); ligadas.add('base'); } else CAMADAS.forEach(([k]) => ligadas.add(k)); }
+          else if (ligadas.has(b.dataset.k)) ligadas.delete(b.dataset.k); else ligadas.add(b.dataset.k);
+          guardarCamadas([...ligadas]);
+          aplicar();
+          desenhar();
+        });
+        desenhar();
+        return caixa;
+      },
+    });
+    new Filtro().addTo(mapa);
+
+    // enquadra o que está visível ao abrir (parceiras e camadas ligadas)
+    const limites = [];
+    pontos.forEach((p) => { if ((p.tipo === 'arena' && p.premium) || ligadas.has(p.camada || 'base')) limites.push([p.latitude, p.longitude]); });
+    return limites;
+  }
+
   window.PlayGoMapa = {
     preparar(mapa, op) {
       estilo();
@@ -121,5 +210,6 @@
       telaCheia(mapa);
       busca(mapa, op || {});
     },
+    pontos: pontosDoExplorar,
   };
 })();

@@ -29,13 +29,17 @@
   <div class="stat"><b>{{ '{:,}'.format(p.atletas_alcancados).replace(',', '.') }}</b><span>Atletas alcançados</span></div>
 </div>
 
-<div class="livebar">
+{% set eh_hoje = dia.isoformat() == hoje %}
+<div class="livebar" style="flex-wrap:wrap;gap:12px">
   {% if p.horarios_ociosos %}
-  <div><span class="pulse"></span><strong>{{ p.horarios_ociosos }} horário{{ 's' if p.horarios_ociosos != 1 }} ocioso{{ 's' if p.horarios_ociosos != 1 }} hoje.</strong> Publique para atletas próximos e ajude a formar novos jogos.</div>
-  <form method="post" action="/gestao/{{ arena.id }}/divulgar-ociosos"><button class="btn lime">Divulgar horário</button></form>
+  <div><span class="pulse"></span><strong>{{ p.horarios_ociosos }} horário{{ 's' if p.horarios_ociosos != 1 }} ocioso{{ 's' if p.horarios_ociosos != 1 }} {{ 'hoje' if eh_hoje else 'em ' ~ dia_texto }}.</strong> Publique para atletas próximos e ajude a formar novos jogos.</div>
   {% else %}
-  <div><span class="pulse"></span><strong>Sem horários ociosos pelo resto do dia{% if p.horarios_divulgados %}. {{ p.horarios_divulgados }} já divulgado{{ 's' if p.horarios_divulgados != 1 }}{% endif %}.</strong></div>
+  <div><span class="pulse"></span><strong>Sem horários ociosos {{ 'pelo resto do dia' if eh_hoje else 'em ' ~ dia_texto }}{% if p.horarios_divulgados %}. {{ p.horarios_divulgados }} já divulgado{{ 's' if p.horarios_divulgados != 1 }}{% endif %}.</strong></div>
   {% endif %}
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    {% if p.horarios_ociosos %}<form method="post" action="/gestao/{{ arena.id }}/divulgar-ociosos"><input type="hidden" name="dia" value="{{ dia.isoformat() }}"><button class="btn lime">Divulgar horário</button></form>{% endif %}
+    {% if p.horarios_divulgados %}<form method="post" action="/gestao/{{ arena.id }}/retirar-divulgados" onsubmit="return confirm('Retirar da divulgação os {{ p.horarios_divulgados }} horário(s) ainda divulgados {{ 'hoje' if eh_hoje else 'em ' ~ dia_texto }}? Eles somem da lista dos atletas. Reservas já feitas não mudam e você pode divulgar de novo quando quiser.')"><input type="hidden" name="dia" value="{{ dia.isoformat() }}"><button class="btn soft" style="background:#fff;color:#14213d">Retirar divulgados ({{ p.horarios_divulgados }})</button></form>{% endif %}
+  </div>
 </div>
 
 <div class="section-title">
@@ -49,7 +53,11 @@
 <div class="panel">
   {% if agenda.quadras %}
   <table class="schedule">
-    <thead><tr><th>Horário</th>{% for q in agenda.quadras %}<th>{{ q.nome }} <a href="/gestao/quadras/{{ q.id }}/editar" title="Editar {{ q.nome }}" aria-label="Editar {{ q.nome }}" style="text-transform:none;font-weight:600;font-size:12px">✏️ Editar</a><div class="suave" style="text-transform:none;font-weight:600">{{ q.modalidades|join(', ')|replace('_', ' ') }}</div></th>{% endfor %}</tr></thead>
+    <thead><tr><th>Horário</th>{% for q in agenda.quadras %}<th>{{ q.nome }} <a href="/gestao/quadras/{{ q.id }}/editar" title="Editar {{ q.nome }}" aria-label="Editar {{ q.nome }}" style="text-transform:none;font-weight:600;font-size:12px">✏️ Editar</a><div class="suave" style="text-transform:none;font-weight:600">{{ q.modalidades|join(', ')|replace('_', ' ') }}</div>
+      {% if q.livres or q.divulgados %}<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;text-transform:none;font-weight:600;font-size:12px">
+        {% if q.livres %}<form method="post" action="/gestao/{{ arena.id }}/divulgar-ociosos"><input type="hidden" name="dia" value="{{ dia.isoformat() }}"><input type="hidden" name="quadra_id" value="{{ q.id }}"><button class="link-botao" title="Divulgar os {{ q.livres }} horários livres desta quadra">Divulgar livres ({{ q.livres }})</button></form>{% endif %}
+        {% if q.divulgados %}<form method="post" action="/gestao/{{ arena.id }}/retirar-divulgados" onsubmit="return confirm('Retirar da divulgação os {{ q.divulgados }} horário(s) ainda divulgados de {{ q.nome }}? Reservas já feitas não mudam.')"><input type="hidden" name="dia" value="{{ dia.isoformat() }}"><input type="hidden" name="quadra_id" value="{{ q.id }}"><button class="link-botao" style="color:#d72561" title="Retirar os {{ q.divulgados }} horários divulgados desta quadra">Retirar ({{ q.divulgados }})</button></form>{% endif %}
+      </div>{% endif %}</th>{% endfor %}</tr></thead>
     <tbody>
     {% for l in agenda.linhas %}
     <tr><td>{{ l.hora }}</td>

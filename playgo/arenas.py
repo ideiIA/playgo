@@ -375,7 +375,14 @@ def agenda_do_dia(s: SessaoORM, arena: Arena, dia: date) -> dict:
             celulas.append(celula)
         linhas.append({"hora": h.strftime("%H:%M"), "inicio": h.isoformat(timespec="minutes"), "celulas": celulas})
         h = h2
-    return {"dia": dia.isoformat(), "quadras": [{"id": q.id, "nome": q.nome, "modalidades": q.modalidades, "valor_hora": float(q.valor_hora or 0)} for q in quadras], "linhas": linhas}
+    por_quadra = {q.id: {"livres": 0, "divulgados": 0} for q in quadras}
+    for linha in linhas:
+        for c in linha["celulas"]:
+            if not c["passado"] and c["estado"] == "livre":
+                por_quadra[c["quadra_id"]]["livres"] += 1
+            elif not c["passado"] and c["estado"] == "divulgado":
+                por_quadra[c["quadra_id"]]["divulgados"] += 1
+    return {"dia": dia.isoformat(), "quadras": [{"id": q.id, "nome": q.nome, "modalidades": q.modalidades, "valor_hora": float(q.valor_hora or 0), **por_quadra[q.id]} for q in quadras], "linhas": linhas}
 
 
 # ---------------------------------------------------------------- divulgação (RF-024)
@@ -444,16 +451,29 @@ def despublicar(s: SessaoORM, horario_id: int, usuario: Usuario) -> None:
     s.commit()
 
 
-def divulgar_ociosos(s: SessaoORM, arena: Arena, usuario: Usuario, dia: date | None = None) -> int:
-    """Publica de uma vez todos os horários livres que ainda restam no dia (o botão 'Divulgar horário')."""
+def _quadras_do_pedido(arena: Arena, quadra_id: int | None) -> list[Quadra]:
+    """Todas as quadras ativas da arena ou só a escolhida (que precisa ser desta arena)."""
+    quadras = [q for q in arena.quadras if q.ativa]
+    if quadra_id is None:
+        return quadras
+    escolhida = [q for q in quadras if q.id == quadra_id]
+    if not escolhida:
+        raise NaoEncontrado("Quadra não encontrada nesta arena.")
+    return escolhida
+
+
+def divulgar_ociosos(s: SessaoORM, arena: Arena, usuario: Usuario, dia: date | None = None, quadra_id: int | None = None) -> int:
+    """Publica de uma vez todos os horários livres que ainda restam no dia (o botão 'Divulgar horário'): da arena toda ou só de uma quadra."""
     exigir_gestor(arena, usuario)
     planos.exigir(s, usuario, "arena")
     n = agora()
     dia = dia or n.date()
+    if dia < n.date():
+        raise ErroNegocio("Esse dia já passou: não dá para divulgar horários nele.")
     abre, fecha = _janela(arena, dia)
     h = max(abre.replace(minute=0), (n + timedelta(hours=1)).replace(minute=0, second=0, microsecond=0) if dia == n.date() else abre)
     total = 0
-    quadras = [q for q in arena.quadras if q.ativa]
+    quadras = _quadras_do_pedido(arena, quadra_id)
     while h < fecha:
         h2 = h + timedelta(hours=1)
         for q in quadras:
@@ -461,6 +481,25 @@ def divulgar_ociosos(s: SessaoORM, arena: Arena, usuario: Usuario, dia: date | N
                 divulgar(s, q.id, h, h2, None, None, usuario)
                 total += 1
         h = h2
+    return total
+
+
+def retirar_divulgados(s: SessaoORM, arena: Arena, usuario: Usuario, dia: date | None = None, quadra_id: int | None = None) -> int:
+    """Imprevisto: tira da divulgação todos os horários que ainda estão divulgados no dia (da arena toda ou só de uma quadra). Só os que ainda não começaram.
+    Reservas já feitas não mudam (reservar um horário já o tira da divulgação) e a arena pode divulgar de novo quando quiser. Não exige plano: retirar é sempre permitido."""
+    exigir_gestor(arena, usuario)
+    n = agora()
+    dia = dia or n.date()
+    abre, fecha = _janela(arena, dia)
+    ids = [q.id for q in _quadras_do_pedido(arena, quadra_id)]
+    if not ids:
+        return 0
+    inicio = max(datetime.combine(dia, time.min), n)
+    fim = datetime.combine(dia + timedelta(days=1), time.min)
+    total = s.execute(delete(HorarioDivulgado).where(HorarioDivulgado.quadra_id.in_(ids), HorarioDivulgado.inicio >= inicio, HorarioDivulgado.inicio < fim)).rowcount or 0
+    if total:
+        auditoria.registrar(s, usuario.id, "horarios_retirar", "arena", arena.id, dia=dia.isoformat(), quadra_id=quadra_id, total=total)
+    s.commit()
     return total
 
 

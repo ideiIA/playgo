@@ -923,7 +923,7 @@ def tirar_foto_arena(arena_id: int, nome: str, request: Request, s: Sessao, usua
 
 
 def _volta_gestao(arena_id: int | str, dia: str = "") -> RedirectResponse:
-    return RedirectResponse(f"/gestao?arena={arena_id}", status_code=303)
+    return RedirectResponse(f"/gestao?arena={arena_id}" + (f"&dia={dia}" if dia else ""), status_code=303)
 
 
 @app.post("/gestao/{arena_id}/quadras")
@@ -949,10 +949,17 @@ def editar_quadra(quadra_id: int, request: Request, s: Sessao, usuario: Atual, n
 
 
 @app.post("/gestao/{arena_id}/divulgar-ociosos")
-def divulgar_ociosos(arena_id: int, request: Request, s: Sessao, usuario: Atual):
-    n = arenas.divulgar_ociosos(s, arenas.obter(s, arena_id), usuario)
+def divulgar_ociosos(arena_id: int, request: Request, s: Sessao, usuario: Atual, dia: str = Form(""), quadra_id: str = Form("")):
+    n = arenas.divulgar_ociosos(s, arenas.obter(s, arena_id), usuario, _data(dia), _num(quadra_id, int))
     request.session["ok"] = f"{n} horário{'s' if n != 1 else ''} publicado{'s' if n != 1 else ''} para atletas próximos! 🚀"
-    return _volta_gestao(arena_id)
+    return _volta_gestao(arena_id, dia)
+
+
+@app.post("/gestao/{arena_id}/retirar-divulgados")
+def retirar_divulgados(arena_id: int, request: Request, s: Sessao, usuario: Atual, dia: str = Form(""), quadra_id: str = Form("")):
+    n = arenas.retirar_divulgados(s, arenas.obter(s, arena_id), usuario, _data(dia), _num(quadra_id, int))
+    request.session["ok"] = f"{n} horário{'s' if n != 1 else ''} retirado{'s' if n != 1 else ''} da divulgação." if n else "Não havia horários divulgados para retirar."
+    return _volta_gestao(arena_id, dia)
 
 
 @app.post("/gestao/quadras/{quadra_id}/divulgar")

@@ -138,6 +138,13 @@
     L.circleMarker([centro.latitude, centro.longitude], { radius: 8, color: '#fff', weight: 3, fillColor: '#6c4cff', fillOpacity: 1 }).addTo(mapa).bindTooltip('Você');
     const rotas = { atividade: '/atividades/', campeonato: '/campeonatos/', arena: '/arenas/', grupo: '/grupos/', horario: '/arenas/', local: '/locais/', profissional: '/profissionais/', oferta: '/ofertas/' };
     const limites = [[centro.latitude, centro.longitude]];
+    if (window.PlayGoMapa && PlayGoMapa.pontos && pontos.some((p) => p.camada)) {  // Explorar: parceira em destaque + filtro de camadas
+      const alvoDe = (p) => (p.tipo === 'horario' ? '/arenas/' + (p.arena_id || p.id) : rotas[p.tipo] + p.id);
+      limites.push(...PlayGoMapa.pontos(mapa, pontos, { alvo: alvoDe }));
+      if (limites.length > 1) mapa.fitBounds(limites, { padding: [40, 40], maxZoom: 15 });
+      window._mapa = mapa;
+      return;
+    }
     pontos.forEach((p) => {
       const cor = p.urgente ? '#ff3d81' : { atividade: '#6c4cff', campeonato: '#ff8a00', arena: '#16c784', grupo: '#22c7f2', horario: '#16c784', local: '#0ea5e9' }[p.tipo];
       // locais do guia: pino com o ícone e a cor do tipo (público, arena, clube, loja)
