@@ -2,7 +2,7 @@
 {% import "_cards.html" as c %}
 {% block titulo %}{{ ar.nome }} | PlayGo{% endblock %}
 {% block conteudo %}
-{% if ar.capa_url %}<img src="{{ ar.capa_url }}" alt="{{ ar.nome }}" style="width:100%;aspect-ratio:16/6;object-fit:cover;border-radius:24px;display:block;margin-bottom:16px">{% endif %}
+{% if ar.capa_url %}<a href="{{ ar.capa_url }}" data-galeria data-legenda="Capa de {{ ar.nome }}" aria-label="Ampliar a capa de {{ ar.nome }}" style="display:block;margin-bottom:16px"><img src="{{ ar.capa_url }}" alt="Capa de {{ ar.nome }}" style="width:100%;aspect-ratio:16/6;object-fit:cover;border-radius:24px;display:block"></a>{% endif %}
 <div class="detalhe-topo">
   <div style="display:flex;gap:16px;align-items:center">
     {% if ar.logo_url %}<img src="{{ ar.logo_url }}" alt="Logo de {{ ar.nome }}" style="width:84px;height:84px;object-fit:contain;border-radius:20px;border:1px solid var(--borda);background:#fff;flex:none">{% endif %}
@@ -25,7 +25,7 @@
     </div>
     {% if ar.fotos %}<div class="panel" style="margin-bottom:18px">
       <h2>Conheça nosso espaço</h2>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">{% for f in ar.fotos %}<a href="{{ f }}" target="_blank" rel="noopener" aria-label="Abrir foto {{ loop.index }} de {{ ar.nome }}"><img src="{{ f }}" alt="Foto {{ loop.index }} de {{ ar.nome }}" loading="lazy" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;display:block"></a>{% endfor %}</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">{% for f in ar.fotos %}<a href="{{ f }}" data-galeria aria-label="Ver foto {{ loop.index }} de {{ ar.fotos|length }} de {{ ar.nome }}"><img src="{{ f }}" alt="Foto {{ loop.index }} de {{ ar.nome }}" loading="lazy" style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:12px;display:block"></a>{% endfor %}</div>
     </div>{% endif %}
     <div class="section-title" style="margin-top:0"><h2>Horários disponíveis</h2><a class="suave" href="/reservas">Minhas reservas</a></div>
     {% if ar.horarios and not ar.reserva.aceita_reserva %}<p class="aviso">Esta arena ainda não aceita reservas pelo app{% if ar.sou_gestor %}: ela está configurada para receber só pelo app, mas o “Receber pelo app” ainda não foi aprovado. Em <a href="/gestao/arenas/{{ ar.id }}/editar">Editar arena</a>, escolha “Na arena” ou “Os dois” enquanto isso{% endif %}.</p>{% endif %}
@@ -37,6 +37,7 @@
   </div>
   <div class="map formulario" id="mapa" style="height:340px"></div>
 </div>
+<script src="/static/galeria.js"></script>
 <script>
   window.addEventListener('load', () => mapaPontos('mapa', {latitude: {{ ar.latitude }}, longitude: {{ ar.longitude }}}, [{tipo: 'arena', id: {{ ar.id }}, latitude: {{ ar.latitude }}, longitude: {{ ar.longitude }}, rotulo: {{ ar.nome|tojson }}, distancia: {{ ar.distancia|tojson }}}]));
 </script>
