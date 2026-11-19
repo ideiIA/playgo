@@ -28,6 +28,13 @@ def _f(v) -> float:
     return float(_d(v))
 
 
+def _celula_csv(v):
+    """Planilhas executam o que começa com = + - @ (e tab/enter) como fórmula: o texto vindo de pessoas ganha um apóstrofo na frente."""
+    if isinstance(v, str) and v[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + v
+    return v
+
+
 def periodo(inicio: date | None, fim: date | None) -> tuple[date, date]:
     """Período do relatório (inclusive nas duas pontas). Sem datas: os últimos 30 dias, até hoje."""
     hoje = agora().date()
@@ -154,7 +161,7 @@ def reservas_csv(s: SessaoORM, usuario: Usuario, arena_id: int, inicio: date | N
         saida.append([r.inicio.strftime("%d/%m/%Y"), r.inicio.strftime("%H:%M"), r.fim.strftime("%H:%M"), q.nome, r.tipo,
                       nomes.get(r.usuario_id, r.rotulo), r.forma_pagamento or "", r.status_pagamento,
                       str(_d(r.valor)).replace(".", ","), str(_d(r.comissao)).replace(".", ","), str(_d(r.valor_reembolsado)).replace(".", ",")])
-    return saida
+    return [[_celula_csv(c) for c in linha] for linha in saida]
 
 
 def plataforma(s: SessaoORM, usuario: Usuario, inicio: date | None = None, fim: date | None = None) -> dict:

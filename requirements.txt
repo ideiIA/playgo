@@ -7,5 +7,6 @@ pydantic-settings
 tzdata
 itsdangerous
 httpx
-pillow
+pillow>=13.0.0  # 12.x tem dezenas de falhas conhecidas (imagens enviadas por usuários passam por ele)
+certifi>=2026.10.18
 cryptography

@@ -63,6 +63,11 @@ class Settings(BaseSettings):
     livekit_api_secret: str = ""
     youtube_max_simultaneas: int = 4  # transmissões preparadas ou no ar ao mesmo tempo (protege a cota da API e a banda do local)
 
+    # Avisos no celular (Web Push): par de chaves VAPID gerado por `python -m playgo vapid`. Sem as duas chaves o recurso fica desligado.
+    vapid_publica: str = ""
+    vapid_privada: str = ""
+    vapid_assunto: str = ""  # mailto:voce@dominio ou https://... (o serviço de push usa para falar com você se algo der errado); vazio = usa o contato de privacidade
+
     # Planos e cobrança (Asaas). Sem chave, o app funciona e o admin libera planos à mão.
     teste_dias: int = 30
     tolerancia_dias: int = 7
@@ -95,6 +100,10 @@ class Settings(BaseSettings):
     controlador_nome: str = "PlayGo (razão social a definir)"
     contato_privacidade: str = "privacidade@playgo.invalid"
     retencao_registros_dias: int = 365  # prazo de guarda dos registros de interação (confirmar com o jurídico)
+    # Freio de tentativas (contas.py): por 15 minutos para login e por 1 hora para cadastro, contando pelo endereço de origem
+    max_falhas_login_conta: int = 5  # mesma conta, mesmo endereço
+    max_falhas_login_ip: int = 30  # qualquer conta, mesmo endereço
+    max_cadastros_ip_hora: int = 10
     confiar_proxy: bool = False  # lê o IP de X-Forwarded-For (só atrás de proxy de confiança)
     cookie_seguro: bool = False  # marca o cookie de sessão como Secure (ligue em produção com HTTPS)
 

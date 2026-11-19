@@ -3,6 +3,7 @@
 # Uso:   ./backup.sh                 (na pasta deploy/, no servidor)
 # Cron:  0 3 * * *  cd /opt/playgo/deploy && ./backup.sh >> /var/log/playgo-backup.log 2>&1
 set -euo pipefail
+umask 077  # dump do banco e uploads só legíveis por quem roda o backup
 cd "$(dirname "$0")"
 
 DESTINO="${DESTINO:-/var/backups/playgo}"

@@ -16,3 +16,7 @@ class PlanoNecessario(ErroNegocio):
     def __init__(self, plano: str, mensagem: str) -> None:
         super().__init__(mensagem)
         self.plano = plano
+
+
+class TentativasDemais(ErroNegocio):
+    """Muitas tentativas de entrada ou de cadastro vindas do mesmo lugar em pouco tempo (HTTP 429)."""

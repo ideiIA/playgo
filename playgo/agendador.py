@@ -7,7 +7,7 @@ from datetime import timedelta
 
 from sqlalchemy import select
 
-from . import atividades, instagram, match, notificacoes, planos, recebimentos, reservas, taxas, youtube
+from . import atividades, instagram, match, notificacoes, planos, push, recebimentos, reservas, taxas, youtube
 from . import urgencia
 from .config import settings
 from .db import Session, agora
@@ -59,6 +59,7 @@ def ciclo() -> dict:
             "reservas": reservas.expirar_pendentes(s) if recebimentos.fase() != "desligado" else 0,
             "taxas": taxas.atualizar_todas(s) if recebimentos.fase() != "desligado" else 0,
             "instagram": instagram.publicar_aprovadas(s),
+            "push": push.enviar_pendentes(s),
             "youtube": youtube.manutencao(s),
         }
     return resultado

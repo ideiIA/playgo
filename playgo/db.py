@@ -35,6 +35,9 @@ def agora() -> datetime:
 
 # create_all não altera tabelas que já existem; colunas e índices acrescentados depois entram por aqui.
 _COLUNAS_NOVAS: tuple[str, ...] = (
+    "ALTER TABLE notificacoes ADD COLUMN IF NOT EXISTS push_em timestamp",
+    "CREATE INDEX IF NOT EXISTS ix_notificacoes_criado ON notificacoes (criado_em)",
+    "CREATE INDEX IF NOT EXISTS ix_registros_acao_em ON registros (acao, em)",
     "ALTER TABLE arenas ADD COLUMN IF NOT EXISTS logo varchar(60)",
     "ALTER TABLE arenas ADD COLUMN IF NOT EXISTS capa varchar(60)",
     "ALTER TABLE recebedores ADD COLUMN IF NOT EXISTS taxas jsonb",

@@ -11,24 +11,36 @@ from itsdangerous import BadSignature, URLSafeTimedSerializer
 from .config import RAIZ, settings
 
 SENHA_MINIMA = 8
-_N, _R, _P = 2**14, 8, 1
+# Versões do hash: "scrypt" (N=2^14, o primeiro formato) continua sendo aceito; "scrypt2" (N=2^15) é o atual.
+# Quem entra com um hash antigo tem o hash refeito no formato atual (`precisa_atualizar`).
+_PARAMS = {"scrypt": (2**14, 8, 1), "scrypt2": (2**15, 8, 1)}
+VERSAO_ATUAL = "scrypt2"
+_MEMORIA = 96 * 1024 * 1024  # teto de memória do scrypt (N=2^15, r=8 usa ~32 MiB)
 
 
-def _derivar(senha: str, sal: bytes) -> bytes:
-    return hashlib.scrypt(senha.encode(), salt=sal, n=_N, r=_R, p=_P, dklen=32)
+def _derivar(senha: str, sal: bytes, versao: str = VERSAO_ATUAL) -> bytes:
+    n, r, p = _PARAMS[versao]
+    return hashlib.scrypt(senha.encode(), salt=sal, n=n, r=r, p=p, dklen=32, maxmem=_MEMORIA)
 
 
 def gerar_hash(senha: str) -> str:
     sal = os.urandom(16)
-    return "scrypt$" + base64.b64encode(sal).decode() + "$" + base64.b64encode(_derivar(senha, sal)).decode()
+    return VERSAO_ATUAL + "$" + base64.b64encode(sal).decode() + "$" + base64.b64encode(_derivar(senha, sal)).decode()
 
 
 def conferir(senha: str, armazenado: str) -> bool:
     try:
-        _, sal, esperado = armazenado.split("$")
-        return hmac.compare_digest(_derivar(senha, base64.b64decode(sal)), base64.b64decode(esperado))
-    except ValueError:
+        versao, sal, esperado = armazenado.split("$")
+        if versao not in _PARAMS:
+            return False
+        return hmac.compare_digest(_derivar(senha, base64.b64decode(sal), versao), base64.b64decode(esperado))
+    except (ValueError, KeyError):
         return False
+
+
+def precisa_atualizar(armazenado: str) -> bool:
+    """True para hash feito com parâmetros mais fracos que os atuais (refazer quando a pessoa entra com a senha certa)."""
+    return not armazenado.startswith(VERSAO_ATUAL + "$")
 
 
 def chave_sessao() -> str:

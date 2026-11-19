@@ -15,6 +15,10 @@ os.environ["PLAYGO_IA_PROVEDOR"] = ""
 os.environ["PLAYGO_ARMAZENAMENTO"] = "local"  # nunca grava no Storage de produção
 os.environ["PLAYGO_SUPABASE_URL"] = ""
 os.environ["PLAYGO_SUPABASE_SERVICE_KEY"] = ""
+# todos os testes chegam do mesmo "endereço" (testclient) e o banco de teste guarda a trilha: sem teto, o freio de cadastro/login travaria a suíte
+os.environ["PLAYGO_MAX_CADASTROS_IP_HORA"] = "1000000"
+os.environ["PLAYGO_MAX_FALHAS_LOGIN_IP"] = "1000000"
+os.environ["PLAYGO_MAX_FALHAS_LOGIN_CONTA"] = "1000000"
 
 import pytest
 from sqlalchemy import create_engine, select, text

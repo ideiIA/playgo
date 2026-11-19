@@ -48,6 +48,7 @@ from ..api.ensino import router as api_ensino
 from ..api.instagram import router as api_instagram
 from ..api.mural import router as api_mural
 from ..api.planos import router as api_planos
+from ..api.push import router as api_push
 from ..api.recebimentos import router as api_recebimentos
 from ..api.relatorios import router as api_relatorios
 from ..api.v1 import router as api_v1
@@ -55,7 +56,7 @@ from ..api.youtube import router as api_youtube
 from ..config import settings
 from ..db import Session, agora, criar_tabelas
 from ..deps import Atual, Opcional, PrecisaCompletar, PrecisaEntrar, Sessao
-from ..erros import ErroNegocio, NaoEncontrado, PlanoNecessario, SemPermissao
+from ..erros import ErroNegocio, NaoEncontrado, PlanoNecessario, SemPermissao, TentativasDemais
 from sqlalchemy import select
 
 from ..models import CATEGORIAS, NIVEIS, NOME_NIVEL, PERIODOS, HorarioDivulgado, Quadra, Usuario
@@ -76,7 +77,9 @@ async def lifespan(_: FastAPI):
     parar.set()
 
 
-app = FastAPI(title="PlayGo", lifespan=lifespan)
+# Em produção (HTTPS) a documentação automática da API não fica pública: ela lista todas as rotas.
+_PROD = settings.cookie_seguro or settings.em_serverless
+app = FastAPI(title="PlayGo", lifespan=lifespan, docs_url=None if _PROD else "/docs", redoc_url=None if _PROD else "/redoc", openapi_url=None if _PROD else "/openapi.json")
 app.add_middleware(
     SessionMiddleware, secret_key=seguranca.chave_sessao(), session_cookie="playgo_sessao", max_age=30 * 24 * 3600, same_site="lax", https_only=settings.cookie_seguro
 )
@@ -95,6 +98,7 @@ app.mount("/app", _EstaticosAtuais(directory=PASTA.parent / "app", html=True), n
 app.include_router(api_v1)
 app.include_router(api_mural)
 app.include_router(api_planos)
+app.include_router(api_push)
 app.include_router(api_recebimentos)
 app.include_router(api_relatorios)
 app.include_router(api_chaves)
@@ -103,6 +107,42 @@ app.include_router(api_ensino)
 app.include_router(api_instagram)
 app.include_router(api_youtube)
 templates = Jinja2Templates(directory=PASTA / "templates")
+
+
+@app.middleware("http")
+async def _origem_confiavel(request: Request, call_next):
+    """Defesa extra contra CSRF (além do cookie SameSite=Lax): pedido que muda dados e traz `Origin` de OUTRO site é recusado.
+    Sem `Origin` (app nativo, webhooks do Asaas, curl) segue normal: quem não é navegador não é alvo de CSRF."""
+    if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+        origem = request.headers.get("origin")
+        if origem and origem != "null":
+            from urllib.parse import urlsplit
+
+            alvo = urlsplit(origem).netloc
+            aceitos = {request.url.netloc}
+            if settings.url_publica:
+                aceitos.add(urlsplit(settings.url_publica).netloc)
+            if alvo not in aceitos:
+                return JSONResponse({"detail": "Origem não permitida."}, status_code=403)
+        elif origem == "null":
+            return JSONResponse({"detail": "Origem não permitida."}, status_code=403)
+    return await call_next(request)
+
+
+@app.middleware("http")
+async def _cabecalhos_de_seguranca(request: Request, call_next):
+    """Cabeçalhos que o navegador respeita: sem MIME adivinhado, sem site de fora emoldurando o PlayGo, sem plugins, referência enxuta e
+    só recursos sensíveis (localização, câmera e microfone da transmissão) para o próprio site."""
+    resp = await call_next(request)
+    h = resp.headers
+    h.setdefault("X-Content-Type-Options", "nosniff")
+    h.setdefault("X-Frame-Options", "SAMEORIGIN")
+    h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    h.setdefault("Permissions-Policy", "geolocation=(self), camera=(self), microphone=(self), payment=(), usb=(), interest-cohort=()")
+    h.setdefault("Content-Security-Policy", "frame-ancestors 'self'; base-uri 'self'; object-src 'none'; form-action 'self'")
+    if settings.cookie_seguro:
+        h.setdefault("Strict-Transport-Security", "max-age=31536000")
+    return resp
 
 
 @app.middleware("http")
@@ -135,12 +175,12 @@ def _plano_necessario(request: Request, erro: PlanoNecessario):
 
 @app.exception_handler(ErroNegocio)
 def _erro_de_negocio(request: Request, erro: ErroNegocio):
-    codigo = 404 if isinstance(erro, NaoEncontrado) else 403 if isinstance(erro, SemPermissao) else 400
+    codigo = 404 if isinstance(erro, NaoEncontrado) else 403 if isinstance(erro, SemPermissao) else 429 if isinstance(erro, TentativasDemais) else 400
     if request.url.path.startswith(("/api/", "/midia/", "/foto/", "/capa/", "/logo/")) or request.url.path.endswith("/regulamento.pdf"):
         return JSONResponse({"detail": str(erro)}, status_code=codigo)
     # No site, a mensagem vai para a página de onde a pessoa veio
     request.session["erro"] = str(erro)
-    destino = request.headers.get("referer") or "/"
+    destino = _de_volta_ao_site(request)
     return RedirectResponse("/" if codigo == 404 else destino, status_code=303)
 
 
@@ -185,8 +225,19 @@ def _sem_plano(request: Request, s, usuario: Usuario, recurso: str) -> RedirectR
     return RedirectResponse("/planos", status_code=303)
 
 
+def _de_volta_ao_site(request: Request, padrao: str = "/") -> str:
+    """Endereço de onde a pessoa veio, mas só se for deste mesmo site (o cabeçalho Referer pode apontar para qualquer lugar: seria redirecionamento aberto)."""
+    from urllib.parse import urlsplit
+
+    ref = request.headers.get("referer") or ""
+    partes = urlsplit(ref)
+    if ref and partes.netloc == request.url.netloc and partes.scheme in ("http", "https"):
+        return ref
+    return padrao
+
+
 def voltar(request: Request, padrao: str = "/") -> RedirectResponse:
-    return RedirectResponse(request.headers.get("referer") or padrao, status_code=303)
+    return RedirectResponse(_de_volta_ao_site(request, padrao), status_code=303)
 
 
 def _data_ou_none(texto: str | None):

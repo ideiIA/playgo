@@ -334,6 +334,8 @@ def liberar(s: SessaoORM, reserva_id: int, usuario: Usuario) -> None:
     exigir_gestor(r.quadra.arena, usuario)
     if r.tipo == R_ATIVIDADE:
         raise ErroNegocio("Esse horário pertence a uma atividade. Cancele a atividade para liberar a quadra.")
+    if r.status_pagamento in ("pago", "pendente"):
+        raise ErroNegocio("Esta reserva tem pagamento pelo app. Cancele a cobrança (ou devolva o valor) antes de liberar o horário.")
     s.delete(r)
     s.commit()
 

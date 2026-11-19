@@ -696,6 +696,21 @@ class Notificacao(Base):
     atividade_id: Mapped[int | None] = mapped_column(ForeignKey("atividades.id", ondelete="CASCADE"))
     chave: Mapped[str | None] = mapped_column(String(80))
     lida: Mapped[bool] = mapped_column(Boolean, default=False)
+    push_em: Mapped[datetime | None] = mapped_column(DateTime)  # quando virou aviso no celular (push.enviar_pendentes); vazio = ainda não
+    criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
+
+
+class PushInscricao(Base):
+    """Um aparelho que ativou os avisos no celular (Web Push). `endpoint` identifica o aparelho no serviço de push; `p256dh` e `auth` são as chaves dele (ver push.py)."""
+
+    __tablename__ = "push_inscricoes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    usuario_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id", ondelete="CASCADE"), index=True)
+    endpoint: Mapped[str] = mapped_column(String(700), unique=True)
+    p256dh: Mapped[str] = mapped_column(String(120))
+    auth: Mapped[str] = mapped_column(String(60))
+    user_agent: Mapped[str | None] = mapped_column(String(200))
     criado_em: Mapped[datetime] = mapped_column(DateTime, default=agora)
 
 

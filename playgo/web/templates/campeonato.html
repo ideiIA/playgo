@@ -127,7 +127,7 @@
       if (campo.value.length < 2) return;
       const r = await fetch('/api/v1/atletas?q=' + encodeURIComponent(campo.value.replace(/^@/, '')));
       achados = r.ok ? await r.json() : [];
-      lista.innerHTML = achados.map((a) => '<option value="' + a.arroba + '">').join('');
+      lista.innerHTML = achados.map((a) => '<option value="' + String(a.arroba).replace(/[^\w.@]/g, '') + '">').join('');
       oculto.value = (achados.find((a) => a.arroba === campo.value || a.usuario === campo.value.replace(/^@/, '')) || {}).id || '';
     });
     f.addEventListener('submit', (e) => { if (!oculto.value) { e.preventDefault(); toast('Escolha um atleta da lista.'); } });

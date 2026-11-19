@@ -16,6 +16,7 @@ from .config import settings
 from .db import agora
 from .erros import ErroNegocio
 
+Image.MAX_IMAGE_PIXELS = 40_000_000  # recusa imagem de dezenas de megapixels (cabe em poucos MB de PNG e enche a memória ao abrir)
 LADO_MAX = 2048
 LADO_MINIATURA = 480
 VALIDADE_URL_S = 3600
@@ -28,6 +29,15 @@ class Recebida:
     extensao: str
     dados: bytes
     miniatura: bytes | None = None
+
+
+def _abrir_com_teto(dados: bytes) -> Image.Image:
+    """Abre e carrega a imagem, mas recusa antes de decodificar se ela tiver pixels demais (um PNG pequeno pode expandir para gigabytes)."""
+    img = Image.open(io.BytesIO(dados))
+    if img.width * img.height > Image.MAX_IMAGE_PIXELS:
+        raise Image.DecompressionBombError("imagem com pixels demais")
+    img.load()
+    return img
 
 
 def detectar(dados: bytes) -> tuple[str, str, str] | None:
@@ -57,8 +67,7 @@ def processar(dados: bytes) -> Recebida:
         return Recebida("video", mime, ext, dados)
 
     try:
-        img = Image.open(io.BytesIO(dados))
-        img.load()
+        img = _abrir_com_teto(dados)
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
         raise ErroNegocio("Não foi possível ler essa imagem. Tente outra foto.") from None
     img = ImageOps.exif_transpose(img)  # respeita a rotação da câmera antes de descartar o EXIF
@@ -94,8 +103,7 @@ def processar_avatar(dados: bytes) -> bytes:
     if len(dados) > settings.limite_foto_mb * 1024 * 1024:
         raise ErroNegocio(f"A foto passa do limite de {settings.limite_foto_mb} MB.")
     try:
-        img = Image.open(io.BytesIO(dados))
-        img.load()
+        img = _abrir_com_teto(dados)
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
         raise ErroNegocio("Não foi possível ler essa imagem. Tente outra foto.") from None
     img = ImageOps.exif_transpose(img)
@@ -126,8 +134,7 @@ def _abrir_imagem(dados: bytes, manter_transparencia: bool = False) -> Image.Ima
     if len(dados) > settings.limite_foto_mb * 1024 * 1024:
         raise ErroNegocio(f"A imagem passa do limite de {settings.limite_foto_mb} MB.")
     try:
-        img = Image.open(io.BytesIO(dados))
-        img.load()
+        img = _abrir_com_teto(dados)
     except (UnidentifiedImageError, OSError, Image.DecompressionBombError):
         raise ErroNegocio("Não foi possível ler essa imagem. Tente outra.") from None
     img = ImageOps.exif_transpose(img)

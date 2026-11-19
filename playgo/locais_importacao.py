@@ -24,6 +24,7 @@ from .models import Local, Modalidade, Usuario
 
 MAX_LINHAS = 500
 MAX_BYTES = 2 * 1024 * 1024
+MAX_DESCOMPRIMIDO = 30 * 1024 * 1024
 MAX_GEOCODIFICAR = 60
 
 CABECALHO_MODELO = ["tipo", "nome", "endereco", "cidade", "telefone", "horario_funcionamento", "email", "site", "instagram", "facebook", "link_do_maps", "regras", "descricao", "esportes", "latitude", "longitude"]
@@ -118,6 +119,8 @@ def _col(ref: str) -> int:
 def _ler_xlsx(dados: bytes) -> list[list[str]]:
     try:
         z = zipfile.ZipFile(io.BytesIO(dados))
+        if sum(i.file_size for i in z.infolist()) > MAX_DESCOMPRIMIDO:  # "bomba zip": 2 MB comprimidos podem virar gigabytes
+            raise ErroNegocio("A planilha é grande demais depois de descompactada. Divida em partes menores.")
         nomes = z.namelist()
         textos: list[str] = []
         if "xl/sharedStrings.xml" in nomes:

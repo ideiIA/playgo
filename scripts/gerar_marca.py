@@ -214,6 +214,17 @@ def simbolo_png(altura: int, contorno: bool = True, completa: bool = True, rastr
     return img.resize((altura, altura), Image.LANCZOS)
 
 
+def badge_png(tam: int = 96) -> Image.Image:
+    """Ícone pequeno do aviso no celular (barra de status do Android): só a silhueta da bola, branca e transparente (o Android pinta sozinho).
+    O pentágono central vira vazado (a bola continua redonda); sem gomos nem rastro, que viram borrão em tamanho pequeno."""
+    bola = simbolo_png(tam, contorno=False, completa=False, rastro=False)
+    luz = bola.convert("L")  # branco da bola = 255, gomos escuros = ~0
+    alfa = Image.composite(luz, Image.new("L", bola.size, 0), bola.getchannel("A"))
+    saida = Image.new("RGBA", bola.size, (255, 255, 255, 0))
+    saida.putalpha(alfa.point(lambda v: 255 if v > 140 else (0 if v < 60 else round((v - 60) * 255 / 80))))
+    return saida
+
+
 def _degrade(tam: int) -> Image.Image:
     pequeno = Image.new("RGB", (64, 64))
     px = pequeno.load()
@@ -289,6 +300,7 @@ def main() -> None:
     for t in (192, 512):  # ícones do app (ainda não ligados ao manifest: a troca no PWA é outra etapa)
         icone_png(t, False, ocupa=0.7).convert("RGB").save(APP / f"icone-{t}.png")
     icone_png(180, False, ocupa=0.7).convert("RGB").save(APP / "apple-touch-icon-novo.png")
+    badge_png(96).save(APP / "badge-push-96.png")  # ícone monocromático do aviso no celular
     logo_horizontal_png(1920, True).save(MARCA / "logo-horizontal.png")
     logo_horizontal_png(1920, False).save(MARCA / "logo-horizontal-branco.png")
     og_png().save(MARCA / "og-playgo.png")

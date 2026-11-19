@@ -2,16 +2,19 @@
 consentimento de localização (LGPD)."""
 
 import re
-from datetime import date
+import hashlib
+from datetime import date, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session as SessaoORM
 
 from . import auditoria, seguranca, termos
+from .config import settings
 from .db import agora
-from .erros import ErroNegocio
-from .models import NIVEIS, PERIODOS, AceiteTermos, Modalidade, Usuario, UsuarioModalidade
+from .erros import ErroNegocio, TentativasDemais
+from .models import NIVEIS, PERIODOS, AceiteTermos, Modalidade, Registro, Usuario, UsuarioModalidade
 
+_FOTO_PROPRIA = re.compile(r"/foto/[0-9a-f]{32}\.jpg")
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 _USUARIO = re.compile(r"^[a-z0-9](?:[a-z0-9_.]{1,18})[a-z0-9]$")
 RESERVADOS = {"admin", "administrador", "playgo", "suporte", "moderacao", "moderador", "oficial", "root", "sistema", "ajuda", "api", "app", "removido", "anonimo"}
@@ -21,6 +24,44 @@ _HASH_FALSO = seguranca.gerar_hash("sem-usuario")
 
 def normalizar_email(email: str) -> str:
     return email.strip().lower()
+
+
+# Freio contra senha adivinhada e cadastro em massa. Conta as falhas pela própria trilha de auditoria (vale em qualquer hospedagem, sem estado em memória).
+JANELA_TENTATIVAS_MIN = 15
+# Os tetos vêm de `settings` (PLAYGO_MAX_FALHAS_LOGIN_CONTA, PLAYGO_MAX_FALHAS_LOGIN_IP, PLAYGO_MAX_CADASTROS_IP_HORA); sem endereço conhecido vale o dobro por conta.
+_MENSAGEM_FREIO = "Muitas tentativas em pouco tempo. Aguarde alguns minutos e tente de novo."
+
+
+def _impressao(email: str) -> str:
+    """Identifica a conta nas falhas sem guardar o e-mail digitado (que pode ser de outra pessoa)."""
+    return hashlib.sha256(email.encode()).hexdigest()[:16]
+
+
+def _falhas_recentes(s: SessaoORM, ip: str | None, impressao: str | None) -> int:
+    q = select(func.count()).select_from(Registro).where(Registro.acao == "login_falha", Registro.em >= agora() - timedelta(minutes=JANELA_TENTATIVAS_MIN))
+    if ip:
+        q = q.where(Registro.ip == ip)
+    if impressao:
+        q = q.where(Registro.detalhes["e"].as_string() == impressao)
+    return s.scalar(q) or 0
+
+
+def _exigir_sem_excesso_de_falhas(s: SessaoORM, email: str) -> None:
+    ip, imp = auditoria.contexto().get("ip"), _impressao(email)
+    if ip:
+        if _falhas_recentes(s, ip, imp) >= settings.max_falhas_login_conta or _falhas_recentes(s, ip, None) >= settings.max_falhas_login_ip:
+            raise TentativasDemais(_MENSAGEM_FREIO)
+    elif _falhas_recentes(s, None, imp) >= settings.max_falhas_login_conta * 2:
+        raise TentativasDemais(_MENSAGEM_FREIO)
+
+
+def _exigir_cadastros_moderados(s: SessaoORM) -> None:
+    ip = auditoria.contexto().get("ip")
+    if not ip:
+        return
+    n = s.scalar(select(func.count()).select_from(Registro).where(Registro.acao == "cadastro", Registro.ip == ip, Registro.em >= agora() - timedelta(hours=1))) or 0
+    if n >= settings.max_cadastros_ip_hora:
+        raise TentativasDemais("Muitas contas criadas deste endereço em pouco tempo. Tente de novo mais tarde.")
 
 
 def validar_usuario(nome: str) -> str:
@@ -45,6 +86,7 @@ def cadastrar(
     s: SessaoORM, nome: str, email: str, senha: str, usuario: str, aceita_termos: bool = False, consent_localizacao: bool = False
 ) -> Usuario:
     email = normalizar_email(email)
+    _exigir_cadastros_moderados(s)
     if not nome.strip():
         raise ErroNegocio("Informe seu nome.")
     if not _EMAIL.match(email):
@@ -72,12 +114,16 @@ def cadastrar(
 
 
 def autenticar(s: SessaoORM, email: str, senha: str) -> Usuario | None:
-    u = s.scalar(select(Usuario).where(Usuario.email == normalizar_email(email)))
+    email = normalizar_email(email)
+    _exigir_sem_excesso_de_falhas(s, email)  # antes de gastar CPU com o scrypt
+    u = s.scalar(select(Usuario).where(Usuario.email == email))
     ok = seguranca.conferir(senha, u.senha_hash if u else _HASH_FALSO)
     if u is not None and ok and u.ativo:
+        if seguranca.precisa_atualizar(u.senha_hash):
+            u.senha_hash = seguranca.gerar_hash(senha)  # hash antigo sobe para os parâmetros atuais
         auditoria.registrar(s, u.id, "login", "usuario", u.id, commit=True)
         return u
-    auditoria.registrar(s, u.id if u else None, "login_falha", "usuario", u.id if u else None, commit=True)
+    auditoria.registrar(s, u.id if u else None, "login_falha", "usuario", u.id if u else None, commit=True, e=_impressao(email))
     return None
 
 
@@ -183,8 +229,13 @@ def atualizar_perfil(
         u.sexo = sexo if sexo in ("M", "F") else None
     if nascimento is not None:
         u.nascimento = nascimento
-    if foto_url is not None:
-        u.foto_url = foto_url.strip() or None
+    if foto_url is not None and foto_url.strip():
+        # a foto só entra pelo envio de imagem (definir_foto): aceitar um endereço qualquer permitiria apontar para site de fora
+        # (rastreia quem vê o perfil) ou para "/foto/../" e apagar arquivo de outra pessoa ao trocar a foto
+        if not _FOTO_PROPRIA.fullmatch(foto_url.strip()) or foto_url.strip() != u.foto_url:
+            raise ErroNegocio("Para mudar a foto, envie uma imagem (botão Adicionar foto).")
+    elif foto_url is not None:
+        u.foto_url = None
     for campo, valor in (("notif_vagas", notif_vagas), ("notif_lembretes", notif_lembretes), ("notif_campeonatos", notif_campeonatos), ("notif_grupos", notif_grupos)):
         if valor is not None:
             setattr(u, campo, valor)
@@ -195,7 +246,7 @@ def atualizar_perfil(
 
 
 def _arquivo_da_foto(u: Usuario) -> str | None:
-    return f"perfil/{u.foto_url[6:]}" if u.foto_url and u.foto_url.startswith("/foto/") else None
+    return f"perfil/{u.foto_url[6:]}" if u.foto_url and _FOTO_PROPRIA.fullmatch(u.foto_url) else None
 
 
 def definir_foto(s: SessaoORM, u: Usuario, dados: bytes) -> Usuario:

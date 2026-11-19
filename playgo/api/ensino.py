@@ -1,5 +1,6 @@
 """API de ensino: perfil do profissional, documentos (privados), ofertas, Central "Aulas e Treinamentos" e fila de aprovação da administração."""
 
+import re
 from datetime import date
 
 from fastapi import APIRouter, Depends, File, Form, Query, Response, UploadFile
@@ -138,6 +139,7 @@ def remover_documento(doc_id: int, u: AtualApi, s: Sessao):
 def ver_documento(doc_id: int, u: AtualApi, s: Sessao):
     """Só o titular e a administração. Sem cache."""
     dados, mime, nome = profissionais.arquivo_documento(s, u, doc_id)
+    nome = re.sub(r"[^\w.\- ]", "_", nome)[:120] or "documento"  # o nome vem do envio: nada de aspas nem quebra de linha no cabeçalho
     return Response(dados, media_type=mime, headers={"Cache-Control": "no-store", "Content-Disposition": f'inline; filename="{nome}"', "X-Content-Type-Options": "nosniff"})
 
 

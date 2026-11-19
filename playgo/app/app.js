@@ -992,12 +992,47 @@
     } catch (e) { erroTela(e); }
   }
 
+  // ---- Avisos no celular (Web Push): o navegador pede permissão, devolve uma inscrição e o servidor passa a mandar os avisos para este aparelho
+  const _bytes = (b64) => { const r = atob((b64 + '='.repeat((4 - (b64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(r, (c) => c.charCodeAt(0)); };
+  const _ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const _instalado = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  // `ready` nunca resolve se o service worker não registrou (navegador restrito): sem prazo a tela ficaria esperando para sempre
+  const _swPronto = () => Promise.race([navigator.serviceWorker.ready, new Promise((_, falha) => setTimeout(() => falha(new Error('O app ainda não está pronto para avisos. Feche, abra de novo e tente outra vez.')), 4000))]);
+  const _pushSuportado = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+
+  async function pintarAvisosCelular() {
+    const box = $('#avisos-celular');
+    if (!box) return;
+    const cartao = (corpo) => { box.innerHTML = `<h3 style="margin:0 0 6px">${ic('bell')} Avisos no celular</h3>${corpo}`; box.hidden = false; };
+    if (!_pushSuportado()) {
+      if (_ios && !_instalado) cartao('<p class="suave" style="margin:0">No iPhone, instale o PlayGo para receber avisos: toque em <b>Compartilhar</b> e depois em <b>Adicionar à Tela de Início</b>. Abra o app pelo ícone e volte aqui.</p>');
+      return;
+    }
+    let sub = null;
+    try { sub = await (await _swPronto()).pushManager.getSubscription(); } catch (e) { return; }  // sem service worker não há como receber avisos: o cartão fica escondido
+    let st;
+    try { st = await api('/push/estado' + (sub ? '?endpoint=' + encodeURIComponent(sub.endpoint) : '')); } catch (e) { return; }
+    if (!st.disponivel) return;  // servidor sem as chaves: o cartão nem aparece
+    if (Notification.permission === 'denied') {
+      cartao('<p class="suave" style="margin:0">Os avisos estão bloqueados neste aparelho. Libere em <b>Configurações do navegador > Notificações > PlayGo</b> e volte aqui.</p>');
+      return;
+    }
+    if (sub && st.este_aparelho && Notification.permission === 'granted') {
+      cartao(`<p class="suave" style="margin:0 0 10px">Ativos neste aparelho: vagas, lembretes e avisos chegam com o som e o ícone do PlayGo, mesmo com o app fechado.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn roxo pequeno" data-acao="push-teste">Enviar um aviso de teste</button><button class="btn suave pequeno" data-acao="push-desativar">Desativar neste aparelho</button></div>`);
+      return;
+    }
+    cartao(`<p class="suave" style="margin:0 0 10px">Receba no celular o aviso de vaga, lembrete de jogo e novidades dos seus grupos, com a logo do PlayGo, mesmo com o app fechado.</p>
+      <button class="btn roxo pequeno" data-acao="push-ativar">Ativar avisos neste aparelho</button>`);
+  }
+
   async function vNotificacoes() {
     carregando();
     try {
       const r = await api('/notificacoes');
-      montar(`<div class="secao" style="margin-top:0"><h1>Notificações</h1>${r.nao_lidas ? '<button class="btn suave pequeno" data-acao="lidas">Marcar lidas</button>' : ''}</div>
+      montar(`<div id="avisos-celular" class="painel" hidden style="margin-bottom:12px"></div><div class="secao" style="margin-top:0"><h1>Notificações</h1>${r.nao_lidas ? '<button class="btn suave pequeno" data-acao="lidas">Marcar lidas</button>' : ''}</div>
         <div class="painel" style="padding:0;overflow:hidden">${r.itens.map((n) => `<a class="notif ${n.lida ? '' : 'nova'}" href="${n.link ? '#' + esc(n.link) : '#/notificacoes'}"><b>${esc(n.titulo)}</b>${n.corpo ? `<span>${esc(n.corpo)}</span>` : ''}<small>${esc(n.quando)}</small></a>`).join('') || '<p class="vazio" style="border:0">Nada por aqui ainda. Quando surgirem vagas perto de você, avisamos.</p>'}</div>`);
+      pintarAvisosCelular();
       atualizarSino(0);
     } catch (e) { erroTela(e); }
   }
@@ -1527,6 +1562,33 @@
       };
     },
     async lidas() { await post('/notificacoes/lidas', {}); vNotificacoes(); },
+    async 'push-ativar'(el) {
+      el.disabled = true;
+      try {
+        const st = await api('/push/estado');
+        if (!st.disponivel) throw new Error('Os avisos no celular ainda não estão ligados neste servidor.');
+        const permissao = await Notification.requestPermission();
+        if (permissao !== 'granted') { toast('Sem a permissão do navegador não dá para receber avisos.'); return pintarAvisosCelular(); }
+        const reg = await _swPronto();
+        const sub = (await reg.pushManager.getSubscription()) || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: _bytes(st.chave_publica) });
+        await post('/push/inscrever', sub.toJSON());
+        toast('Avisos ativados neste aparelho! 🔔');
+      } catch (e) { toast(e.message || 'Não consegui ativar os avisos agora.'); }
+      pintarAvisosCelular();
+    },
+    async 'push-desativar'() {
+      try {
+        const sub = await (await _swPronto()).pushManager.getSubscription();
+        if (sub) { await post('/push/cancelar', { endpoint: sub.endpoint }); await sub.unsubscribe(); }
+        toast('Avisos desativados neste aparelho.');
+      } catch (e) { toast(e.message || 'Não consegui desativar agora.'); }
+      pintarAvisosCelular();
+    },
+    async 'push-teste'(el) {
+      el.disabled = true;
+      try { await post('/push/teste', {}); toast('Aviso de teste enviado. Ele chega em instantes.'); } catch (e) { toast(e.message); }
+      el.disabled = false;
+    },
     ...acoesNovas,
     sair() { sair(); },
   };
